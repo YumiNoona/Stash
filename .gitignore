@@ -1,0 +1,33 @@
+# Gradle and Kotlin build state
+.gradle/
+.kotlin/
+**/build/
+
+# Source copies are duplicated in app/src/main/res/drawable-nodpi
+/public/
+
+# Android Studio and local machine configuration
+.idea/
+*.iml
+local.properties
+
+# Android build outputs and native intermediates
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Signing keys and local secrets
+*.jks
+*.keystore
+*.p12
+*.pem
+secrets.properties
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
