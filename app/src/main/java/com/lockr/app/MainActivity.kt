@@ -491,15 +491,11 @@ private fun LockrApp() {
                         items = items,
                         profileName = profileName,
                         profilePhoto = profilePhoto,
-                        onOpenCards = { screen = LockrScreen.CARDS },
-                        onOpenDocuments = { screen = LockrScreen.DOCUMENTS },
-                        onOpenPasswords = { screen = LockrScreen.PASSWORDS },
-                        onOpenNotes = { screen = LockrScreen.NOTES },
                         onOpenSettings = { returnFromSettings = LockrScreen.HOME; screen = LockrScreen.SETTINGS },
                         onOpenAllItems = { screen = LockrScreen.ALL_ITEMS },
                         onOpenProfile = { returnFromProfile = LockrScreen.HOME; screen = LockrScreen.PROFILE },
-                        onSearch = { returnFromSearch = LockrScreen.HOME; screen = LockrScreen.SEARCH },
-                        onOpenItem = { item -> openItem(item, LockrScreen.HOME) }
+                        onOpenItem = { item -> openItem(item, LockrScreen.HOME) },
+                        onOpenDetails = { item -> currentDetailItem = item; returnFromDetail = LockrScreen.HOME; screen = LockrScreen.ITEM_DETAIL }
                     )
                     LockrScreen.CARDS -> CardsScreen(items = items, onBack = { screen = LockrScreen.HOME }, onSearch = { returnFromSearch = LockrScreen.CARDS; screen = LockrScreen.SEARCH }, onOpenItem = { item -> openItem(item, LockrScreen.CARDS) })
                     LockrScreen.SETTINGS -> SettingsScreen(

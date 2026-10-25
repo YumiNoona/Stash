@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -152,30 +151,20 @@ fun StashDock(
     onDocuments: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp), contentAlignment = Alignment.Center) {
-    GlassPanel(Modifier.widthIn(max = 312.dp).fillMaxWidth(), radius = 29.dp) {
-        Row(
-            Modifier.fillMaxWidth().height(66.dp).padding(horizontal = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
-        ) {
-            DockAction("Cards", Icons.Outlined.CreditCard, selected == DockDestination.CARDS, onCards, Modifier.weight(1f))
-            Box(Modifier.width(65.dp), contentAlignment = Alignment.Center) {
-                Box(
-                    Modifier.size(52.dp)
-                        .shadow(12.dp, CircleShape, ambientColor = Color(0x667ACCC6))
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(Color(0xFFEEDFFF), Color(0xFFBFEDEB), Color(0xFFD6E8FF), Color(0xFFFFE2D4))))
-                        .border(1.dp, Color.White, CircleShape)
-                        .clickable(onClick = onAdd),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Outlined.Add, contentDescription = "Add to Stash", tint = LockrColors.TextPrimary, modifier = Modifier.size(27.dp))
-                }
+    Box(modifier.fillMaxWidth().height(100.dp).padding(start = 11.dp, end = 11.dp, bottom = 5.dp)) {
+        GlassPanel(Modifier.fillMaxWidth().height(78.dp).align(Alignment.BottomCenter), radius = 38.dp) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 19.dp), verticalAlignment = Alignment.CenterVertically) {
+                DockAction("Cards", Icons.Outlined.CreditCard, selected == DockDestination.CARDS, onCards, Modifier.weight(1f))
+                Spacer(Modifier.width(84.dp))
+                DockAction("Documents", Icons.Outlined.Description, selected == DockDestination.DOCUMENTS, onDocuments, Modifier.weight(1f))
             }
-            DockAction("Documents", Icons.Outlined.Description, selected == DockDestination.DOCUMENTS, onDocuments, Modifier.weight(1f))
         }
-    }
+        Box(Modifier.align(Alignment.TopCenter).size(74.dp).shadow(15.dp, CircleShape,
+            ambientColor = Color(0x7774A9DB)).clip(CircleShape).clickable(onClick = onAdd),
+            contentAlignment = Alignment.Center) {
+            IridescentOrb(orbSize = 74.dp)
+            Icon(Icons.Outlined.Add, contentDescription = "Add to Stash", tint = Color(0xFF08184B), modifier = Modifier.size(33.dp))
+        }
     }
 }
 
@@ -198,26 +187,6 @@ fun IridescentOrb(
     modifier: Modifier = Modifier,
     orbSize: Dp = 46.dp
 ) {
-    Box(
-        modifier = modifier
-            .size(orbSize)
-            .shadow(12.dp, CircleShape, ambientColor = Color(0x447E9FC6))
-            .clip(CircleShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(Color(0xFFE8CFFF), Color(0xFFC8E8FF), Color(0xFFB9F2E2), Color(0xFFFFD9CE))
-                )
-            )
-            .border(1.dp, Color.White.copy(alpha = 0.9f), CircleShape)
-    ) {
-        Canvas(Modifier.fillMaxSize()) {
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.9f), Color.Transparent),
-                    center = Offset(this.size.width * 0.28f, this.size.height * 0.2f),
-                    radius = this.size.minDimension * 0.65f
-                )
-            )
-        }
-    }
+    Image(painterResource(R.drawable.opal_orb), contentDescription = null,
+        contentScale = ContentScale.Fit, modifier = modifier.size(orbSize))
 }

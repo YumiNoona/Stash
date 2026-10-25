@@ -8,13 +8,15 @@ Stash is a local Android vault for cards, documents, passwords, and notes, built
 | --- | --- |
 | ![Stash dashboard](docs/screenshots/dashboard.jpg) | ![Add source picker](docs/screenshots/add-source.jpg) |
 
-| Cards | Documents |
+| Cards | Card detail |
 | --- | --- |
-| ![Cards collection](docs/screenshots/cards.jpg) | ![Documents collection](docs/screenshots/documents.jpg) |
+| ![Cards collection with a temporary test import](docs/screenshots/cards.jpg) | ![Card detail with a temporary test import](docs/screenshots/card-detail.jpg) |
 
-| Profile | Settings |
-| --- | --- |
-| ![Local profile](docs/screenshots/profile.jpg) | ![Security and export settings](docs/screenshots/settings.jpg) |
+| Documents | Profile | Settings |
+| --- | --- | --- |
+| ![Documents collection](docs/screenshots/documents.jpg) | ![Local profile](docs/screenshots/profile.jpg) | ![Security and export settings](docs/screenshots/settings.jpg) |
+
+The card screenshots show a temporary file imported during emulator testing. It was deleted afterward; a new vault starts empty.
 
 ## Add and review
 

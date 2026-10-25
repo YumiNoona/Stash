@@ -5,16 +5,22 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -22,7 +28,11 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,6 +76,13 @@ fun VaultItemDetailScreen(
     var editing by rememberSaveable(item.id) { mutableStateOf(false) }
     var editTitle by rememberSaveable(item.id) { mutableStateOf(item.title) }
     var editCategory by remember(item.id) { mutableStateOf(item.metadata["documentCategory"].orEmpty()) }
+    var editCardholder by rememberSaveable(item.id) { mutableStateOf(item.metadata["cardholder"].orEmpty()) }
+    var editCardNumber by rememberSaveable(item.id) { mutableStateOf(item.metadata["cardNumber"].orEmpty()) }
+    var editExpiry by rememberSaveable(item.id) { mutableStateOf(item.metadata["expiry"].orEmpty()) }
+    var editIssuer by rememberSaveable(item.id) { mutableStateOf(item.metadata["issuer"].orEmpty()) }
+    var editNetwork by rememberSaveable(item.id) { mutableStateOf(item.metadata["network"].orEmpty()) }
+    var showMenu by rememberSaveable(item.id) { mutableStateOf(false) }
+    var showOriginal by rememberSaveable(item.id) { mutableStateOf(false) }
     var feedback by rememberSaveable(item.id) { mutableStateOf("") }
     BackHandler(onBack = onBack)
 
@@ -83,7 +101,36 @@ fun VaultItemDetailScreen(
     }
 
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar(
+        if (item.category == VaultCategory.CARD) {
+            Row(Modifier.fillMaxWidth().height(69.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(45.dp).shadow(6.dp, CircleShape).clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.82f))
+                    .border(1.dp, Color.White.copy(alpha = 0.96f), CircleShape)
+                    .clickable(onClick = onBack), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.ChevronLeft, contentDescription = "Back", modifier = Modifier.size(27.dp))
+                }
+                Spacer(Modifier.weight(1f))
+                Box {
+                    Box(Modifier.size(45.dp).shadow(6.dp, CircleShape).clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.82f))
+                        .border(1.dp, Color.White.copy(alpha = 0.96f), CircleShape)
+                        .clickable { showMenu = true }, contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.MoreVert, contentDescription = "Card options")
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        if (item.attachments.isNotEmpty()) DropdownMenuItem(text = { Text("View original file") },
+                            onClick = { showMenu = false; showOriginal = true; if (!authorized) onAuthenticate() })
+                        DropdownMenuItem(text = { Text("Edit card") }, leadingIcon = { Icon(Icons.Outlined.Edit, null) },
+                            onClick = {
+                                showMenu = false
+                                if (item.metadata["cardNumber"].isNullOrBlank() || authorized) editing = true else onAuthenticate()
+                            })
+                        DropdownMenuItem(text = { Text("Delete card") }, leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null) },
+                            onClick = { showMenu = false; confirmDelete = true })
+                    }
+                }
+            }
+        } else StashTopBar(
             item.title,
             subtitle = "${item.category.label} · saved ${item.time}",
             onBack = onBack,
@@ -94,9 +141,34 @@ fun VaultItemDetailScreen(
         )
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (item.category == VaultCategory.CARD) {
-                CardDetailPreview(item, Modifier.fillMaxWidth().padding(top = 3.dp))
+                CardDetailPreview(item, Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 22.dp), height = 255.dp)
             }
-            if (item.metadata.isNotEmpty()) {
+            if (item.category == VaultCategory.CARD) {
+                GlassPanel(Modifier.fillMaxWidth(), radius = 26.dp) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 19.dp, vertical = 6.dp)) {
+                        val number = item.metadata["cardNumber"].orEmpty()
+                        val lastFour = item.lastFour.ifBlank { number.takeLast(4).ifBlank { item.metadata["lastFour"].orEmpty() } }
+                        DetailField("Card Number", "••••  ••••  ${lastFour.ifBlank { "••••" }}",
+                            onCopy = {
+                                if (number.isNotBlank()) {
+                                    if (authorized) { copyPrivateText(context, number, autoClearClipboard); feedback = "Card number copied" }
+                                    else onAuthenticate()
+                                } else feedback = "Full card number was not saved"
+                            }, onReveal = null, revealed = false)
+                        CardDetailDivider()
+                        DetailField("Card Holder Name", item.metadata["cardholder"].orEmpty().ifBlank { "Not added" },
+                            onCopy = { item.metadata["cardholder"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard); feedback = "Name copied" } },
+                            onReveal = null, revealed = false)
+                        CardDetailDivider()
+                        DetailField("Expiry Date", item.metadata["expiry"].orEmpty().ifBlank { "Not added" },
+                            onCopy = { item.metadata["expiry"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard); feedback = "Expiry copied" } },
+                            onReveal = null, revealed = false)
+                        CardDetailDivider()
+                        DetailField("Security Code", "Not stored", onCopy = { feedback = "Security code was not saved" },
+                            onReveal = null, revealed = false)
+                    }
+                }
+            } else if (item.metadata.isNotEmpty()) {
                 GlassPanel(Modifier.fillMaxWidth(), radius = 22.dp) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp)) {
                         item.metadata.entries
@@ -150,12 +222,12 @@ fun VaultItemDetailScreen(
                     feedback = if (autoClearClipboard) "Extracted text copied · clears in 30 seconds" else "Extracted text copied"
                 })
             }
-            if (item.attachments.isNotEmpty() && (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) || authorized)) {
+            if (item.attachments.isNotEmpty() && (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) || (authorized && (item.category != VaultCategory.CARD || showOriginal)))) {
                 Column {
                     Text("Original files", style = MaterialTheme.typography.titleMedium, color = LockrColors.TextPrimary, modifier = Modifier.padding(bottom = 7.dp))
                     VaultAttachmentsSection(item.attachments, Modifier.fillMaxWidth())
                 }
-            } else if (item.attachments.isNotEmpty()) {
+            } else if (item.attachments.isNotEmpty() && item.category != VaultCategory.CARD) {
                 Button(onClick = onAuthenticate, modifier = Modifier.fillMaxWidth()) { Text("Unlock attached file") }
             }
             if (feedback.isNotBlank()) Text(feedback, style = MaterialTheme.typography.bodySmall, color = LockrColors.Accent)
@@ -166,6 +238,7 @@ fun VaultItemDetailScreen(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
+            containerColor = Color(0xF8FFFFFF),
             title = { Text("Delete ${item.title}?") },
             text = { Text("This removes the item and its attached files from this device.", color = LockrColors.TextSecondary) },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
@@ -177,10 +250,18 @@ fun VaultItemDetailScreen(
     if (editing) {
         AlertDialog(
             onDismissRequest = { editing = false },
-            title = { Text("Edit item") },
+            containerColor = Color(0xF8FFFFFF),
+            title = { Text(if (item.category == VaultCategory.CARD) "Edit card" else "Edit item") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(value = editTitle, onValueChange = { editTitle = it.take(80) }, label = { Text("Title") }, singleLine = true)
+                Column(Modifier.heightIn(max = 470.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(value = editTitle, onValueChange = { editTitle = it.take(80) }, label = { Text("Title") }, singleLine = true, shape = RoundedCornerShape(15.dp))
+                    if (item.category == VaultCategory.CARD) {
+                        OutlinedTextField(value = editIssuer, onValueChange = { editIssuer = it.take(60) }, label = { Text("Issuer") }, singleLine = true, shape = RoundedCornerShape(15.dp))
+                        OutlinedTextField(value = editCardholder, onValueChange = { editCardholder = it.take(60) }, label = { Text("Name on card") }, singleLine = true, shape = RoundedCornerShape(15.dp))
+                        OutlinedTextField(value = editCardNumber, onValueChange = { editCardNumber = it.filter(Char::isDigit).take(19) }, label = { Text("Card number") }, singleLine = true, shape = RoundedCornerShape(15.dp))
+                        OutlinedTextField(value = editExpiry, onValueChange = { editExpiry = it.take(10) }, label = { Text("Expiry") }, singleLine = true, shape = RoundedCornerShape(15.dp))
+                        OutlinedTextField(value = editNetwork, onValueChange = { editNetwork = it.take(20) }, label = { Text("Network") }, singleLine = true, shape = RoundedCornerShape(15.dp))
+                    }
                     if (item.category == VaultCategory.DOCUMENT) {
                         Text("Document group", style = MaterialTheme.typography.labelLarge)
                         Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -194,8 +275,15 @@ fun VaultItemDetailScreen(
             dismissButton = { TextButton(onClick = { editing = false }) { Text("Cancel") } },
             confirmButton = {
                 TextButton(onClick = {
-                    val metadata = if (item.category == VaultCategory.DOCUMENT) item.metadata + ("documentCategory" to editCategory.ifBlank { "Other" }) else item.metadata
-                    onEdit(item.copy(title = editTitle.trim().ifBlank { item.title }, metadata = metadata))
+                    val metadata = when (item.category) {
+                        VaultCategory.DOCUMENT -> item.metadata + ("documentCategory" to editCategory.ifBlank { "Other" })
+                        VaultCategory.CARD -> item.metadata + mapOf("issuer" to editIssuer.trim(), "cardholder" to editCardholder.trim(),
+                            "cardNumber" to editCardNumber.trim(), "expiry" to editExpiry.trim(), "network" to editNetwork.trim(),
+                            "lastFour" to editCardNumber.takeLast(4).ifBlank { item.lastFour })
+                        else -> item.metadata
+                    }
+                    onEdit(item.copy(title = editTitle.trim().ifBlank { item.title }, metadata = metadata,
+                        lastFour = if (item.category == VaultCategory.CARD) editCardNumber.takeLast(4).ifBlank { item.lastFour } else item.lastFour))
                     editing = false
                 }) { Text("Save") }
             }
@@ -204,16 +292,21 @@ fun VaultItemDetailScreen(
 }
 
 @Composable
+private fun CardDetailDivider() {
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x1992A2BB)))
+}
+
+@Composable
 private fun DetailField(label: String, value: String, onCopy: () -> Unit, onReveal: (() -> Unit)?, revealed: Boolean) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = LockrColors.TextSecondary)
             Text(value, style = MaterialTheme.typography.bodyLarge, color = LockrColors.TextPrimary)
         }
-        if (onReveal != null) IconButton(onClick = onReveal) {
-            Icon(if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, contentDescription = if (revealed) "Hide $label" else "Reveal $label")
+        if (onReveal != null) IconButton(onClick = onReveal, modifier = Modifier.size(42.dp)) {
+            Icon(if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, contentDescription = if (revealed) "Hide $label" else "Reveal $label", modifier = Modifier.size(20.dp))
         }
-        IconButton(onClick = onCopy) { Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy $label") }
+        IconButton(onClick = onCopy, modifier = Modifier.size(42.dp)) { Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy $label", modifier = Modifier.size(20.dp)) }
     }
 }
 
