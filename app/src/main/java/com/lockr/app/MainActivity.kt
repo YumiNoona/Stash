@@ -80,7 +80,7 @@ class MainActivity : androidx.activity.ComponentActivity() {
     }
 }
 
-enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, PROFILE, SEARCH, SCANNER, IMPORTING, REVIEW, MANUAL, ITEM_DETAIL }
+enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, PROFILE, SEARCH, SCANNER, IMPORTING, REVIEW, MANUAL, ITEM_DETAIL, ITEM_PREVIEW }
 
 enum class VaultCategory(val label: String) {
     CARD("Card"), DOCUMENT("Document"), PASSWORD("Password"), NOTE("Note")
@@ -111,7 +111,11 @@ private const val MAX_IMPORT_ITEMS = 20
 private fun LockrApp() {
     var screen by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
     var returnScreen by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
+    var returnFromProfile by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
+    var returnFromSettings by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
+    var returnFromSearch by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
     var returnFromDetail by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
+    var returnFromPreview by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
     var showAdd by rememberSaveable { mutableStateOf(false) }
     var savingItem by rememberSaveable { mutableStateOf(false) }
     var storageReady by remember { mutableStateOf(false) }
@@ -132,6 +136,10 @@ private fun LockrApp() {
     val preferences = remember(context) { context.getSharedPreferences("lockr_preferences", Context.MODE_PRIVATE) }
     var onboardingComplete by rememberSaveable { mutableStateOf(preferences.getBoolean("onboarding_complete", false)) }
     val store = remember(context) { LocalVaultStore(context) }
+    val profileStore = remember(context) { LocalProfileStore(context) }
+    var profileName by remember { mutableStateOf(profileStore.name()) }
+    var profilePhoto by remember { mutableStateOf(profileStore.photo()) }
+    var pendingExport by remember { mutableStateOf<Pair<DataExportFormat, Boolean>?>(null) }
     val items = remember { mutableStateListOf<VaultItem>() }
     var settings by remember(context) {
         mutableStateOf(
@@ -165,14 +173,17 @@ private fun LockrApp() {
     ) {
         when (screen) {
             LockrScreen.ITEM_DETAIL -> {
-                currentDetailItem = null
+                if (returnFromDetail != LockrScreen.ITEM_PREVIEW) currentDetailItem = null
                 authorizedItem = null
                 screen = returnFromDetail
             }
+            LockrScreen.ITEM_PREVIEW -> { currentDetailItem = null; authorizedItem = null; screen = returnFromPreview }
             LockrScreen.REVIEW -> { importedAttachments = emptyList(); screen = returnScreen; showAdd = true }
             LockrScreen.SCANNER -> { screen = returnScreen; showAdd = true }
             LockrScreen.MANUAL -> { screen = returnScreen; showAdd = true }
-            LockrScreen.SETTINGS, LockrScreen.PROFILE -> screen = returnScreen
+            LockrScreen.SETTINGS -> screen = returnFromSettings
+            LockrScreen.PROFILE -> screen = returnFromProfile
+            LockrScreen.SEARCH -> screen = returnFromSearch
             else -> screen = LockrScreen.HOME
         }
     }
@@ -252,6 +263,26 @@ private fun LockrApp() {
             }
         }
     }
+    val exportDataLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val request = pendingExport
+        pendingExport = null
+        val uri = result.data?.data
+        if (result.resultCode == Activity.RESULT_OK && uri != null && request != null) {
+            backupStatus = "Creating ${request.first.label} export…"
+            coroutineScope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver.openOutputStream(uri)?.use { output ->
+                            writeReadableExport(output, items.toList(), request.first, request.second)
+                        } ?: throw IllegalStateException("Could not open destination")
+                    }
+                    backupStatus = "${request.first.label} export saved."
+                } catch (_: Exception) {
+                    backupStatus = "Export failed. Your vault is unchanged."
+                }
+            }
+        }
+    }
     val importBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) coroutineScope.launch {
             backupStatus = "Checking backup…"
@@ -308,6 +339,12 @@ private fun LockrApp() {
     val fileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         beginImport(uris, importCategoryHint)
     }
+    val profilePhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) coroutineScope.launch {
+            try { profilePhoto = withContext(Dispatchers.IO) { profileStore.savePhoto(uri) } }
+            catch (_: Exception) { snackbarHostState.showSnackbar("Could not save that profile photo.") }
+        }
+    }
 
     val beginCameraImport: (List<File>, VaultCategory?) -> Unit = { files, categoryHint ->
         screen = LockrScreen.IMPORTING
@@ -352,6 +389,7 @@ private fun LockrApp() {
     }
 
     LaunchedEffect(store) {
+        withContext(Dispatchers.IO) { clearSharedAttachmentCache(context) }
         try {
             val storedItems = withContext(Dispatchers.IO) { store.loadOrNull() }
             if (storedItems != null) items.addAll(storedItems)
@@ -399,6 +437,31 @@ private fun LockrApp() {
             }
         }
     }
+    val openItem: (VaultItem, LockrScreen) -> Unit = { item, origin ->
+        currentDetailItem = item
+        if (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) &&
+            item.attachments.firstOrNull()?.let { it.mimeType.startsWith("image/") || it.mimeType == "application/pdf" } == true) {
+            returnFromPreview = origin
+            screen = LockrScreen.ITEM_PREVIEW
+        } else {
+            returnFromDetail = origin
+            screen = LockrScreen.ITEM_DETAIL
+        }
+    }
+    val deleteItem: (VaultItem) -> Unit = { deleting ->
+        val updatedItems = items.filterNot { it.id == deleting.id }
+        coroutineScope.launch {
+            try {
+                withContext(Dispatchers.IO) { store.save(updatedItems) }
+                items.clear(); items.addAll(updatedItems)
+                currentDetailItem = null
+                screen = if (screen == LockrScreen.ITEM_PREVIEW || returnFromDetail == LockrScreen.ITEM_PREVIEW) returnFromPreview else returnFromDetail
+                snackbarHostState.showSnackbar("Item deleted")
+            } catch (_: Exception) {
+                snackbarHostState.showSnackbar("Could not delete this item. Your vault was left unchanged.")
+            }
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         if (!onboardingComplete) {
@@ -426,35 +489,51 @@ private fun LockrApp() {
                     when (screen) {
                     LockrScreen.HOME -> HomeScreen(
                         items = items,
+                        profileName = profileName,
+                        profilePhoto = profilePhoto,
                         onOpenCards = { screen = LockrScreen.CARDS },
                         onOpenDocuments = { screen = LockrScreen.DOCUMENTS },
                         onOpenPasswords = { screen = LockrScreen.PASSWORDS },
                         onOpenNotes = { screen = LockrScreen.NOTES },
-                        onOpenSettings = { returnScreen = screen; screen = LockrScreen.SETTINGS },
+                        onOpenSettings = { returnFromSettings = LockrScreen.HOME; screen = LockrScreen.SETTINGS },
                         onOpenAllItems = { screen = LockrScreen.ALL_ITEMS },
-                        onOpenProfile = { returnScreen = screen; screen = LockrScreen.PROFILE },
-                        onSearch = { screen = LockrScreen.SEARCH },
-                        onOpenItem = { item -> currentDetailItem = item; returnFromDetail = screen; screen = LockrScreen.ITEM_DETAIL }
+                        onOpenProfile = { returnFromProfile = LockrScreen.HOME; screen = LockrScreen.PROFILE },
+                        onSearch = { returnFromSearch = LockrScreen.HOME; screen = LockrScreen.SEARCH },
+                        onOpenItem = { item -> openItem(item, LockrScreen.HOME) }
                     )
-                    LockrScreen.CARDS -> CardsScreen(items = items, onOpenItem = { item -> currentDetailItem = item; returnFromDetail = screen; screen = LockrScreen.ITEM_DETAIL })
+                    LockrScreen.CARDS -> CardsScreen(items = items, onBack = { screen = LockrScreen.HOME }, onSearch = { returnFromSearch = LockrScreen.CARDS; screen = LockrScreen.SEARCH }, onOpenItem = { item -> openItem(item, LockrScreen.CARDS) })
                     LockrScreen.SETTINGS -> SettingsScreen(
                         settings = settings,
                         onSettingsChange = updateSettings,
-                        onBack = { screen = returnScreen },
+                        onBack = { screen = returnFromSettings },
                         onExportBackup = { exportBackupLauncher.launch("Stash-Encrypted-Backup.stash") },
+                        onExportData = { format, includePrivate ->
+                            pendingExport = format to includePrivate
+                            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = format.mimeType
+                                putExtra(Intent.EXTRA_TITLE, "Stash-Export.${format.extension}")
+                            }
+                            exportDataLauncher.launch(intent)
+                        },
                         onImportBackup = { importBackupLauncher.launch(arrayOf("*/*")) },
                         backupStatus = backupStatus
                     )
                     LockrScreen.PROFILE -> ProfileScreen(
-                        items = items,
-                        onBack = { screen = returnScreen },
-                        onOpenSettings = { returnScreen = screen; screen = LockrScreen.SETTINGS },
+                        name = profileName,
+                        photo = profilePhoto,
+                        itemCount = items.size,
+                        onBack = { screen = returnFromProfile },
+                        onChangeName = { name -> profileStore.saveName(name); profileName = profileStore.name() },
+                        onChoosePhoto = { profilePhotoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                        onRemovePhoto = { profileStore.removePhoto(); profilePhoto = null },
+                        onOpenSettings = { returnFromSettings = LockrScreen.PROFILE; screen = LockrScreen.SETTINGS },
                         onOpenAllItems = { screen = LockrScreen.ALL_ITEMS }
                     )
                     LockrScreen.SEARCH -> VaultSearchScreen(
                         items,
-                        onBack = { screen = LockrScreen.HOME },
-                        onOpenItem = { item -> currentDetailItem = item; returnFromDetail = LockrScreen.SEARCH; screen = LockrScreen.ITEM_DETAIL }
+                        onBack = { screen = returnFromSearch },
+                        onOpenItem = { item -> openItem(item, LockrScreen.SEARCH) }
                     )
                     LockrScreen.SCANNER -> CameraScannerScreen(
                         onBack = { screen = returnScreen; showAdd = true },
@@ -466,7 +545,7 @@ private fun LockrApp() {
                         categoryHint = importCategoryHint,
                         onBack = { screen = returnScreen; showAdd = true },
                         onSave = { title, category, metadata, attachments ->
-                            if (!savingItem) persistNewItem(VaultItem(title, category, "", nowLabel(), metadata = metadata, attachments = attachments))
+                            if (!savingItem) persistNewItem(VaultItem(title, category, metadata["cardType"].orEmpty(), nowLabel(), lastFour = metadata["lastFour"].orEmpty(), metadata = metadata, attachments = attachments))
                         }
                     )
                     LockrScreen.MANUAL -> ManualItemScreen(
@@ -484,29 +563,39 @@ private fun LockrApp() {
                             authorized = authorizedItem == item.id,
                             onAuthenticate = requestAuthentication,
                             onAuthorizationExpired = { if (authorizedItem == item.id) authorizedItem = null },
-                            onBack = { currentDetailItem = null; authorizedItem = null; screen = returnFromDetail },
+                            onBack = { if (returnFromDetail != LockrScreen.ITEM_PREVIEW) currentDetailItem = null; authorizedItem = null; screen = returnFromDetail },
                             onEdit = persistUpdatedItem,
-                            onDelete = { deleting ->
-                                val updatedItems = items.filterNot { it.id == deleting.id }
+                            onDelete = deleteItem
+                        )
+                    } ?: LocalVaultMessage("Item unavailable", "Return to your vault and open the item again.")
+                    LockrScreen.ITEM_PREVIEW -> currentDetailItem?.let { item ->
+                        ItemPreviewScreen(
+                            item = item,
+                            onBack = { currentDetailItem = null; screen = returnFromPreview },
+                            onRename = { name -> persistUpdatedItem(item.copy(title = name)) },
+                            onExtract = {
                                 coroutineScope.launch {
                                     try {
-                                        withContext(Dispatchers.IO) { store.save(updatedItems) }
-                                        items.clear(); items.addAll(updatedItems)
-                                        currentDetailItem = null
-                                        screen = returnFromDetail
-                                        snackbarHostState.showSnackbar("Item deleted")
-                                    } catch (_: Exception) {
-                                        snackbarHostState.showSnackbar("Could not delete this item. Your vault was left unchanged.")
-                                    }
+                                        val text = recognizeAttachmentText(context, item.attachments.first())
+                                        if (text.isBlank()) snackbarHostState.showSnackbar("No text found in this file.")
+                                        else {
+                                            persistUpdatedItem(item.copy(metadata = item.metadata + ("ocrText" to redactPaymentSecrets(text))))
+                                            snackbarHostState.showSnackbar("Text extracted and saved.")
+                                        }
+                                    } catch (_: Exception) { snackbarHostState.showSnackbar("Text could not be extracted.") }
                                 }
-                            }
+                            },
+                            onSend = { shareVaultAttachment(context, item.attachments.first()) },
+                            onDelete = { deleteItem(item) },
+                            onDetails = { returnFromDetail = LockrScreen.ITEM_PREVIEW; screen = LockrScreen.ITEM_DETAIL }
                         )
                     } ?: LocalVaultMessage("Item unavailable", "Return to your vault and open the item again.")
                     else -> CategoryScreen(
                         screen = screen,
                         items = items,
                         onBack = { screen = LockrScreen.HOME },
-                        onOpenItem = { item -> currentDetailItem = item; returnFromDetail = screen; screen = LockrScreen.ITEM_DETAIL }
+                        onSearch = { returnFromSearch = screen; screen = LockrScreen.SEARCH },
+                        onOpenItem = { item -> openItem(item, screen) }
                     )
                     }
                 }
@@ -539,7 +628,6 @@ private fun LockrApp() {
                 dragHandle = null
             ) {
                 AddSourceSheet(
-                    onDismiss = { showAdd = false },
                     onCamera = { hint -> importCategoryHint = hint; showAdd = false; screen = LockrScreen.SCANNER },
                     onPhotos = { hint -> importCategoryHint = hint; photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onFiles = { hint -> importCategoryHint = hint; fileLauncher.launch(arrayOf("application/pdf", "image/*", "text/plain", "*/*")) },

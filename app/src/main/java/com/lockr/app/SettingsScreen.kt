@@ -1,9 +1,7 @@
 package com.lockr.app
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,16 +16,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Restore
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.AlertDialog
@@ -44,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -63,6 +59,7 @@ fun SettingsScreen(
     onSettingsChange: (LockrSettingsState) -> Unit,
     onBack: () -> Unit,
     onExportBackup: () -> Unit,
+    onExportData: (DataExportFormat, Boolean) -> Unit,
     onImportBackup: () -> Unit,
     backupStatus: String?,
     modifier: Modifier = Modifier
@@ -70,11 +67,9 @@ fun SettingsScreen(
     var dialog by remember { mutableStateOf("") }
 
     Column(modifier.fillMaxSize().padding(horizontal = 22.dp)) {
-        StashTopBar("Settings", "Security and local backup", onBack = onBack, modifier = Modifier.padding(top = 3.dp, bottom = 7.dp))
+        StashTopBar("Settings", "Security, privacy and exports", onBack = onBack, modifier = Modifier.padding(top = 3.dp, bottom = 7.dp))
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            LocalOnlyBanner(Modifier.padding(top = 8.dp, bottom = 16.dp))
-
             SettingsSection("Security") {
                 SettingsRow(
                     Icons.Outlined.Lock, "App Lock", "Require device unlock after idle",
@@ -99,7 +94,11 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsSection("Local Backup", modifier = Modifier.padding(top = 14.dp)) {
+            SettingsSection("Export & Backup", modifier = Modifier.padding(top = 14.dp)) {
+                SettingsRow(
+                    Icons.Outlined.IosShare, "Export Vault", "JSON, PDF, Excel or text", value = "›",
+                    iconTint = Color(0xFF286DE0), iconBg = Color(0xFFE3EEFF), onClick = { dialog = "export" }
+                )
                 SettingsRow(
                     Icons.Outlined.CloudUpload, "Export Encrypted Backup", "Save a protected file on this device", value = "›",
                     iconTint = Color(0xFF286DE0), iconBg = Color(0xFFE3EEFF), onClick = onExportBackup
@@ -139,6 +138,10 @@ fun SettingsScreen(
     }
 
     when (dialog) {
+        "export" -> ExportFormatDialog(onDismiss = { dialog = "" }) { format, includePrivate ->
+            dialog = ""
+            onExportData(format, includePrivate)
+        }
         "auto" -> ChoiceDialog(
             "Auto Lock", listOf("Immediately", "After 30 seconds", "After 1 minute", "After 5 minutes"),
             selected = settings.autoLock,
@@ -163,24 +166,28 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun LocalOnlyBanner(modifier: Modifier = Modifier) {
-    Row(
-        modifier.fillMaxWidth().height(94.dp).clip(RoundedCornerShape(22.dp))
-            .background(Brush.linearGradient(listOf(Color(0xD6DDEBFF), Color(0xCEF5E6F6), Color(0xD2D7F4EA))))
-            .border(1.dp, Color.White, RoundedCornerShape(24.dp)).padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(Modifier.size(62.dp), contentAlignment = Alignment.Center) {
-            IridescentOrb(Modifier.align(Alignment.Center), orbSize = 58.dp)
-            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(Color(0xEFFFFFFF)).border(1.dp, Color.White, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Lock, contentDescription = null, tint = Color(0xFF397E9C), modifier = Modifier.size(20.dp))
+private fun ExportFormatDialog(onDismiss: () -> Unit, onExport: (DataExportFormat, Boolean) -> Unit) {
+    var includePrivate by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFFF9FCFD),
+        shape = RoundedCornerShape(27.dp),
+        title = { Text("Export vault") },
+        text = {
+            Column {
+                Text("Choose a readable file format. Attachments are included in JSON only when private data is enabled.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                DataExportFormat.entries.forEach { format ->
+                    Text(format.label, modifier = Modifier.fillMaxWidth().clickable { onExport(format, includePrivate) }.padding(vertical = 13.dp), color = LockrColors.TextPrimary)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Include private fields", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Switch(checked = includePrivate, onCheckedChange = { includePrivate = it })
+                }
+                Text("Readable exports are not encrypted. Keep them in a safe location.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
-        }
-        Column(Modifier.weight(1f).padding(start = 13.dp)) {
-            Text("Your vault stays on this device", style = MaterialTheme.typography.titleMedium, color = LockrColors.TextPrimary)
-            Text("No account, sync, or cloud connection.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 5.dp))
-        }
-    }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable

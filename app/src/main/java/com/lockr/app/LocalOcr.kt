@@ -116,7 +116,7 @@ private suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { c
 
 fun suggestedVaultCategory(filename: String, recognizedText: String): VaultCategory {
     val sample = "$filename $recognizedText".lowercase()
-    val paymentHints = listOf("credit card", "debit card", "visa", "mastercard", "american express", "card number")
+    val paymentHints = listOf("credit card", "debit card", "visa", "mastercard", "american express", "card number", "id card", "identity card")
     return if (paymentHints.any(sample::contains)) VaultCategory.CARD else VaultCategory.DOCUMENT
 }
 
@@ -129,6 +129,13 @@ fun suggestedDocumentGroup(filename: String, recognizedText: String): String {
         listOf("invoice", "bill", "utility", "electricity", "water statement").any(sample::contains) -> "Bills"
         else -> "Other"
     }
+}
+
+fun suggestedCardType(recognizedText: String): String = when {
+    recognizedText.contains("debit", ignoreCase = true) -> "Debit"
+    recognizedText.contains("credit", ignoreCase = true) -> "Credit"
+    recognizedText.contains("identity", ignoreCase = true) || recognizedText.contains("id card", ignoreCase = true) -> "ID Card"
+    else -> "Other"
 }
 
 fun suggestedCardLastFour(text: String): String {

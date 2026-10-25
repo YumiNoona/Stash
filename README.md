@@ -1,6 +1,6 @@
 # Stash
 
-Stash is a local-first Android vault for cards, documents, passwords, and notes. It is built with Kotlin and Jetpack Compose. Your vault stays on the device; Stash has no account, cloud service, or internet permission.
+Stash is a local Android vault for cards, documents, passwords, and notes, built with Kotlin and Jetpack Compose. The interface uses JetBrains Mono, aurora artwork, and glass surfaces. Stash has no account, cloud service, or internet permission.
 
 ## Screenshots
 
@@ -12,20 +12,26 @@ Stash is a local-first Android vault for cards, documents, passwords, and notes.
 | --- | --- |
 | ![Cards collection](docs/screenshots/cards.jpg) | ![Documents collection](docs/screenshots/documents.jpg) |
 
-| Settings |
-| --- |
-| ![Security and local backup settings](docs/screenshots/settings.jpg) |
+| Profile | Settings |
+| --- | --- |
+| ![Local profile](docs/screenshots/profile.jpg) | ![Security and export settings](docs/screenshots/settings.jpg) |
 
 ## Add and review
 
-The center button in the dock opens a source picker:
+The center dock button opens a compact source picker:
 
 - **Scan with camera** captures one or more pages using CameraX.
 - **Choose photos** opens Android's photo picker.
 - **Choose files** opens the Android file picker for PDFs, images, and text files.
-- **Password** and **Note** open short manual forms. Imported items can be reviewed and renamed before saving.
+- **Password** and **Note** open short manual forms. Imported items can be reviewed, reclassified, and renamed before saving.
 
-Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works offline; PDF recognition is limited to the first 20 pages. The review step suggests a category, document group, title, and (when a card number is detected) its last four digits. The original selected file is kept as an encrypted attachment. OCR is a convenience and should be checked before saving.
+Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works offline; PDF recognition is limited to the first 20 pages. The review step suggests a category, document group or card type, title, and (when a card number is detected) its last four digits. The original selected file is kept as an encrypted attachment. Tapping a saved image or PDF opens a preview with rename, extract text, send, details, and delete actions. OCR is a convenience and should be checked before saving.
+
+The profile screen lets you change the display name and choose or remove a photo. Both stay in app-private local storage.
+
+## Export
+
+Settings offers readable JSON, PDF, Excel (`.xlsx`), and text exports, plus a separate encrypted backup. Readable exports contain item summaries and selected metadata. JSON can also contain the original attachments when **Include private fields** is enabled. PDF, Excel, and text list attachment names; use the item preview to send an original file. Readable exports are not encrypted, so choose a safe destination.
 
 ## Privacy and storage
 
@@ -34,6 +40,7 @@ Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works off
 - Stash does not store a card CVV/CVC/security code. OCR redacts likely full card numbers and labeled security codes before indexing.
 - Sensitive values are masked and require the device screen-lock credential to reveal. Clipboard clearing and app-lock preferences are available in Settings.
 - Encrypted backup files can be exported and restored locally, but the key is device-bound: a backup is restorable only on the device that created it.
+- Sharing an original attachment uses a temporary app-private cache file, which Stash removes after ten minutes or on next launch.
 - The vault starts empty. There are no demo records, sample cards, or seeded passwords.
 
 ## Current scope
@@ -65,3 +72,4 @@ The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Gradle may ne
 - `app/src/main/java/com/lockr/app/` — Compose screens, navigation, import/OCR, encrypted storage, and settings.
 - `app/src/test/` — JVM unit tests for OCR privacy and vault search behavior.
 - `docs/screenshots/` — emulator captures embedded above.
+- `docs/licenses/` — the JetBrains Mono font license.

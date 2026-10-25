@@ -1,6 +1,9 @@
 package com.lockr.app
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,111 +12,116 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Key
-import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
+fun ProfileAvatar(photo: Bitmap?, size: Dp, modifier: Modifier = Modifier) {
+    Box(modifier.size(size).clip(CircleShape).border(2.dp, Color.White, CircleShape), contentAlignment = Alignment.Center) {
+        if (photo != null) Image(photo.asImageBitmap(), contentDescription = "Profile photo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else {
+            IridescentOrb(orbSize = size)
+            Icon(Icons.Outlined.Person, contentDescription = "Profile", tint = Color(0xFF517A98), modifier = Modifier.size(size * 0.45f))
+        }
+    }
+}
+
+@Composable
 fun ProfileScreen(
-    items: List<VaultItem>,
+    name: String,
+    photo: Bitmap?,
+    itemCount: Int,
     onBack: () -> Unit,
+    onChangeName: (String) -> Unit,
+    onChoosePhoto: () -> Unit,
+    onRemovePhoto: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAllItems: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier.fillMaxSize().padding(horizontal = 22.dp)) {
-        Row(
-            Modifier.fillMaxWidth().padding(top = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            RoundProfileAction(Icons.AutoMirrored.Outlined.ArrowBack, "Back", onBack)
-            Text("Vault Profile", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 12.dp))
-        }
-
-        Column(
-            Modifier.weight(1f).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(Modifier.size(104.dp), contentAlignment = Alignment.Center) {
-                IridescentOrb(orbSize = 98.dp)
-                Icon(Icons.Outlined.Lock, contentDescription = null, tint = Color(0xFF467A99), modifier = Modifier.size(39.dp))
+    var editingName by remember { mutableStateOf(false) }
+    var draftName by remember(name, editingName) { mutableStateOf(name) }
+    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        StashTopBar("Profile", onBack = onBack)
+        Column(Modifier.fillMaxWidth().padding(top = 35.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(116.dp).clickable(onClick = onChoosePhoto), contentAlignment = Alignment.Center) {
+                ProfileAvatar(photo, 104.dp)
+                Box(
+                    Modifier.align(Alignment.BottomEnd).size(36.dp).clip(CircleShape).background(Color.White)
+                        .border(1.dp, Color(0xFFE0E8EE), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) { Icon(Icons.Outlined.CameraAlt, contentDescription = "Choose profile photo", tint = LockrColors.Accent, modifier = Modifier.size(19.dp)) }
             }
-            Text("Stash", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 12.dp))
-            Text("Your personal vault", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 2.dp))
-
-            GlassPanel(Modifier.fillMaxWidth().padding(top = 25.dp), radius = 24.dp) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 5.dp)) {
-                    ProfileSummaryRow(Icons.Outlined.Lock, "Storage", "Encrypted on this device", last = false)
-                    ProfileSummaryRow(Icons.Outlined.Description, "Vault items", "${items.size} saved", last = false)
-                    ProfileSummaryRow(Icons.Outlined.Key, "Connection", "Offline · no cloud account", last = true)
+            Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(name, style = MaterialTheme.typography.headlineMedium, color = LockrColors.TextPrimary)
+                IconButton(onClick = { editingName = true }, modifier = Modifier.size(39.dp)) {
+                    Icon(Icons.Outlined.Edit, contentDescription = "Edit profile name", tint = LockrColors.Accent, modifier = Modifier.size(19.dp))
                 }
             }
-
-            ProfileAction("All items", "Browse your local vault", Icons.Outlined.Description, onOpenAllItems)
-            ProfileAction("Security settings", "Manage privacy and backup", Icons.Outlined.Settings, onOpenSettings)
-            Spacer(Modifier.padding(bottom = 15.dp))
+            Text("$itemCount saved ${if (itemCount == 1) "item" else "items"}", color = LockrColors.TextSecondary,
+                style = MaterialTheme.typography.bodyMedium)
+            if (photo != null) TextButton(onClick = onRemovePhoto) { Text("Remove photo") }
         }
+        Spacer(Modifier.height(33.dp))
+        ProfileAction("All items", "Browse your collection", Icons.Outlined.Description, onOpenAllItems)
+        Spacer(Modifier.height(11.dp))
+        ProfileAction("Settings", "Security, privacy and export", Icons.Outlined.Settings, onOpenSettings)
     }
-}
-
-@Composable
-private fun RoundProfileAction(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(
-        Modifier.size(42.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.78f)).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription = label, tint = LockrColors.TextPrimary)
+    if (editingName) {
+        AlertDialog(
+            onDismissRequest = { editingName = false },
+            title = { Text("Your name") },
+            text = { OutlinedTextField(draftName, onValueChange = { draftName = it.take(40) }, label = { Text("Display name") }, singleLine = true) },
+            dismissButton = { TextButton(onClick = { editingName = false }) { Text("Cancel") } },
+            confirmButton = { TextButton(onClick = { onChangeName(draftName.trim()); editingName = false }, enabled = draftName.isNotBlank()) { Text("Save") } }
+        )
     }
-}
-
-@Composable
-private fun ProfileSummaryRow(icon: ImageVector, label: String, value: String, last: Boolean) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(39.dp).clip(CircleShape).background(Color(0xDDE7F3FC)), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = Color(0xFF4C7C9B), modifier = Modifier.size(20.dp))
-        }
-        Column(Modifier.weight(1f).padding(start = 11.dp)) {
-            Text(label, style = MaterialTheme.typography.bodyMedium)
-            Text(value, style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
-        }
-    }
-    if (!last) androidx.compose.material3.HorizontalDivider(color = LockrColors.Line)
 }
 
 @Composable
 private fun ProfileAction(label: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
-    GlassPanel(Modifier.fillMaxWidth().padding(top = 10.dp), radius = 19.dp) {
-        Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(19.dp)).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(Modifier.size(39.dp).clip(CircleShape).background(Color(0xDDE7F3FC)), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = Color(0xFF4C7C9B), modifier = Modifier.size(21.dp))
+    GlassPanel(Modifier.fillMaxWidth(), radius = 20.dp) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable(onClick = onClick).padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0xFFE7F2FA)), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = Color(0xFF4C7C9B), modifier = Modifier.size(22.dp))
             }
-            Column(Modifier.weight(1f).padding(start = 11.dp)) {
-                Text(label, style = MaterialTheme.typography.bodyMedium)
+            Column(Modifier.weight(1f).padding(start = 13.dp), verticalArrangement = Arrangement.Center) {
+                Text(label, style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
             }
-            Icon(Icons.AutoMirrored.Outlined.ArrowForwardIos, contentDescription = null, tint = LockrColors.TextSecondary, modifier = Modifier.size(15.dp))
+            Icon(Icons.AutoMirrored.Outlined.ArrowForwardIos, contentDescription = "Open $label", tint = LockrColors.TextSecondary, modifier = Modifier.size(15.dp))
         }
     }
 }

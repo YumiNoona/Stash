@@ -21,8 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,13 +35,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,24 +53,25 @@ private val cardPalettes = listOf(
 )
 
 @Composable
-fun CardsScreen(items: List<VaultItem>, onOpenItem: (VaultItem) -> Unit, modifier: Modifier = Modifier) {
+fun CardsScreen(items: List<VaultItem>, onBack: () -> Unit, onSearch: () -> Unit, onOpenItem: (VaultItem) -> Unit, modifier: Modifier = Modifier) {
     var filter by rememberSaveable { mutableStateOf("All") }
     val cards = items.filter { it.category == VaultCategory.CARD }
     val visibleCards = cards.filter { item ->
         filter == "All" || when (filter) {
-            "ID Cards" -> item.detail.contains("ID Card", ignoreCase = true)
-            else -> item.detail.equals(filter, ignoreCase = true)
+            "ID Cards" -> (item.metadata["cardType"] ?: item.detail).contains("ID Card", ignoreCase = true)
+            else -> (item.metadata["cardType"] ?: item.detail).equals(filter, ignoreCase = true)
         }
     }
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar("Cards", "${cards.size} saved", modifier = Modifier.padding(top = 3.dp))
+        StashTopBar("Cards", "${cards.size} saved", onBack = onBack,
+            trailing = { IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, contentDescription = "Search vault") } })
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("All", "Credit", "Debit", "ID Cards").forEach { option ->
                 FilterChip(selected = filter == option, onClick = { filter = option }, label = { Text(option) })
             }
         }
         if (visibleCards.isEmpty()) {
-            GlassPanel(Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp), radius = 24.dp) {
+            GlassPanel(Modifier.fillMaxWidth().height(230.dp).padding(top = 12.dp), radius = 24.dp) {
                 Column(Modifier.fillMaxSize().padding(26.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
                         IridescentOrb(orbSize = 84.dp)
@@ -92,8 +94,8 @@ fun CardsScreen(items: List<VaultItem>, onOpenItem: (VaultItem) -> Unit, modifie
 }
 
 @Composable
-fun CardDetailPreview(item: VaultItem, modifier: Modifier = Modifier) {
-    CardSurface(item, cardPalettes[item.id.hashCode().and(Int.MAX_VALUE) % cardPalettes.size], Modifier.fillMaxWidth().then(modifier), height = 216.dp, onClick = {})
+fun CardDetailPreview(item: VaultItem, modifier: Modifier = Modifier, height: androidx.compose.ui.unit.Dp = 216.dp, onClick: () -> Unit = {}) {
+    CardSurface(item, cardPalettes[item.id.hashCode().and(Int.MAX_VALUE) % cardPalettes.size], Modifier.fillMaxWidth().then(modifier), height = height, onClick = onClick)
 }
 
 @Composable
@@ -101,7 +103,8 @@ private fun CardSurface(item: VaultItem, colors: List<Color>, modifier: Modifier
     val shape = RoundedCornerShape(25.dp)
     Box(
         modifier.fillMaxWidth().height(height)
-            .shadow(12.dp, shape, ambientColor = Color(0x333A4A64))
+            .graphicsLayer { rotationY = -3.5f; rotationX = 2.2f; cameraDistance = 30f * density }
+            .shadow(18.dp, shape, ambientColor = Color(0x7746719A), spotColor = Color(0x556C83B3))
             .clip(shape).background(Brush.linearGradient(colors))
             .border(1.dp, Color.White.copy(alpha = 0.92f), shape)
             .clickable(onClick = onClick)
@@ -117,6 +120,11 @@ private fun CardSurface(item: VaultItem, colors: List<Color>, modifier: Modifier
             }
             drawPath(wave, Brush.linearGradient(listOf(Color.White.copy(alpha = 0.55f), Color(0x74FFFFFF), Color(0x22FFFFFF))))
             drawCircle(Color.White.copy(alpha = 0.29f), size.minDimension * 0.38f, Offset(size.width * 0.93f, size.height * 0.12f))
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color(0x99F8D6FF), Color(0x3388F1E8), Color.Transparent), center = Offset(size.width * 0.82f, size.height * 0.86f), radius = size.width * 0.52f),
+                radius = size.width * 0.52f, center = Offset(size.width * 0.82f, size.height * 0.86f)
+            )
+            drawLine(Color.White.copy(alpha = 0.66f), Offset(0f, size.height * 0.42f), Offset(size.width, size.height * 0.06f), 2.dp.toPx())
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {

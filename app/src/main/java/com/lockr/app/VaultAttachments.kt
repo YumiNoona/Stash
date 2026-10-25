@@ -284,7 +284,7 @@ private fun AttachmentPreviewDialog(attachment: VaultAttachment, onClose: () -> 
 private fun isPdfAttachment(attachment: VaultAttachment): Boolean =
     attachment.mimeType.equals("application/pdf", ignoreCase = true) || attachment.name.endsWith(".pdf", ignoreCase = true)
 
-private suspend fun renderPdfAttachmentPage(attachment: VaultAttachment, requestedPage: Int, context: Context): Pair<Bitmap?, Int> = withContext(Dispatchers.IO) {
+internal suspend fun renderPdfAttachmentPage(attachment: VaultAttachment, requestedPage: Int, context: Context): Pair<Bitmap?, Int> = withContext(Dispatchers.IO) {
     val bytes = try { Base64.decode(attachment.base64Data, Base64.DEFAULT) } catch (_: IllegalArgumentException) { return@withContext null to 0 }
     val temporaryPdf = File.createTempFile("stash-preview-", ".pdf", context.cacheDir)
     try {

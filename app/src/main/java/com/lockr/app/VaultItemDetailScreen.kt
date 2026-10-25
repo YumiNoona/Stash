@@ -219,6 +219,7 @@ private fun DetailField(label: String, value: String, onCopy: () -> Unit, onReve
 
 @Composable
 private fun OcrTextCard(text: String, onCopy: () -> Unit) {
+    var expanded by rememberSaveable(text) { mutableStateOf(false) }
     GlassPanel(Modifier.fillMaxWidth(), radius = 22.dp) {
         Column(Modifier.fillMaxWidth().padding(15.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -228,7 +229,12 @@ private fun OcrTextCard(text: String, onCopy: () -> Unit) {
                 }
                 IconButton(onClick = onCopy) { Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy extracted text") }
             }
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = LockrColors.TextPrimary, modifier = Modifier.padding(top = 9.dp))
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = LockrColors.TextPrimary,
+                maxLines = if (expanded) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 9.dp))
+            if (text.length > 240 || text.count { it == '\n' } > 5) {
+                TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Show less" else "Show all text") }
+            }
         }
     }
 }

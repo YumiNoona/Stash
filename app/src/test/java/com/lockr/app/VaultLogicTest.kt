@@ -27,6 +27,10 @@ class VaultLogicTest {
     @Test
     fun suggestsCategoriesAndReadableTitlesFromImportedFiles() {
         assertEquals(VaultCategory.CARD, suggestedVaultCategory("front.jpg", "Visa credit card"))
+        assertEquals(VaultCategory.CARD, suggestedVaultCategory("id-front.jpg", "National ID card"))
+        assertEquals("Credit", suggestedCardType("Visa credit"))
+        assertEquals("Debit", suggestedCardType("Debit card"))
+        assertEquals("ID Card", suggestedCardType("National identity card"))
         assertEquals(VaultCategory.DOCUMENT, suggestedVaultCategory("passport.pdf", "Passport"))
         assertEquals("Identity", suggestedDocumentGroup("passport.pdf", ""))
         assertEquals("family passport", suggestedItemTitle("family_passport.pdf", ""))

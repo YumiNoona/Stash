@@ -47,6 +47,7 @@ fun ReviewItemScreen(
     var title by remember(attachments) { mutableStateOf(suggestedItemTitle(attachments.firstOrNull()?.name.orEmpty(), "")) }
     var category by remember(attachments, categoryHint) { mutableStateOf(categoryHint ?: VaultCategory.DOCUMENT) }
     var documentGroup by remember(attachments) { mutableStateOf("Other") }
+    var cardType by remember(attachments) { mutableStateOf("Other") }
     var cardLastFour by remember(attachments) { mutableStateOf("") }
     var extractedText by remember(attachments) { mutableStateOf("") }
     var isRecognizing by remember(attachments) { mutableStateOf(true) }
@@ -77,6 +78,7 @@ fun ReviewItemScreen(
             category = suggestedVaultCategory(attachments.firstOrNull()?.name.orEmpty(), extractedText)
         }
         documentGroup = suggestedDocumentGroup(attachments.firstOrNull()?.name.orEmpty(), extractedText)
+        cardType = suggestedCardType(extractedText)
         cardLastFour = cardEndings.firstOrNull().orEmpty()
         title = suggestedItemTitle(attachments.firstOrNull()?.name.orEmpty(), extractedText)
         ocrMessage = when {
@@ -127,6 +129,18 @@ fun ReviewItemScreen(
                     }
                 }
             }
+            if (category == VaultCategory.CARD) {
+                Column {
+                    Text("Card type", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+                    Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("Credit", "Debit", "ID Card", "Other").forEach { type ->
+                            FilterChip(selected = cardType == type, onClick = { cardType = type },
+                                label = { Text(type, maxLines = 1, softWrap = false) })
+                        }
+                    }
+                }
+            }
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White.copy(alpha = 0.67f)).padding(14.dp)
             ) {
@@ -152,6 +166,7 @@ fun ReviewItemScreen(
                 val metadata = buildMap {
                     if (extractedText.isNotBlank() && category != VaultCategory.PASSWORD) put("ocrText", extractedText)
                     if (category == VaultCategory.DOCUMENT) put("documentCategory", documentGroup)
+                    if (category == VaultCategory.CARD) put("cardType", cardType)
                     if (category == VaultCategory.CARD && cardLastFour.isNotBlank()) put("lastFour", cardLastFour)
                 }
                 onSave(title.trim().ifBlank { "Imported item" }, category, metadata, attachments)
