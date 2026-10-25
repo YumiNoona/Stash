@@ -28,7 +28,15 @@ class LocalVaultStore(context: Context) {
         } catch (_: FileNotFoundException) {
             return null
         }
-        return decodeEncrypted(encoded)
+        val loaded = decodeEncrypted(encoded)
+        val safeItems = loaded.map { item ->
+            val safeMetadata = item.metadata.filterKeys { key ->
+                !key.equals("securityCode", true) && !key.equals("cvv", true) && !key.equals("cvc", true)
+            }
+            if (safeMetadata.size == item.metadata.size) item else item.copy(metadata = safeMetadata)
+        }
+        if (safeItems != loaded) save(safeItems)
+        return safeItems
     }
 
     /** Returns the encrypted vault bytes for a user-selected local backup destination. */
@@ -40,15 +48,16 @@ class LocalVaultStore(context: Context) {
     /** Validates first, then atomically replaces the current encrypted vault file. */
     fun restoreEncryptedBackup(encoded: ByteArray): List<VaultItem> {
         if (encoded.size > MAX_BACKUP_BYTES) throw IOException("Backup file is too large")
-        val restoredItems = decodeEncrypted(encoded)
-        val stream = atomicFile.startWrite()
-        try {
-            stream.write(encoded)
-            atomicFile.finishWrite(stream)
-        } catch (error: Throwable) {
-            atomicFile.failWrite(stream)
-            throw error
+        val decodedItems = decodeEncrypted(encoded)
+        // Re-encode restored records so backups created by older builds cannot reintroduce
+        // card verification codes that the current vault format intentionally discards.
+        val restoredItems = decodedItems.map { item ->
+            val safeMetadata = item.metadata.filterKeys { key ->
+                !key.equals("securityCode", true) && !key.equals("cvv", true) && !key.equals("cvc", true)
+            }
+            if (safeMetadata.size == item.metadata.size) item else item.copy(metadata = safeMetadata)
         }
+        save(restoredItems)
         return restoredItems
     }
 
@@ -129,6 +138,7 @@ class LocalVaultStore(context: Context) {
             }
             json.put(
                 JSONObject()
+                    .put("id", item.id)
                     .put("title", item.title)
                     .put("category", item.category.name)
                     .put("detail", item.detail)
@@ -165,7 +175,8 @@ class LocalVaultStore(context: Context) {
                                 base64Data = attachment.optString("base64Data")
                             )
                         }
-                    } ?: emptyList()
+                    } ?: emptyList(),
+                    id = json.optString("id").takeIf { it.isNotBlank() } ?: java.util.UUID.randomUUID().toString()
                 )
             }
         } finally {

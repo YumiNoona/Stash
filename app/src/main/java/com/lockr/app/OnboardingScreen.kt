@@ -163,9 +163,9 @@ private fun OnboardingPageContent(
                 Text(
                     data.title,
                     color = LockrColors.TextPrimary,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 22.sp,
-                        lineHeight = 29.sp,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = 24.sp,
+                        lineHeight = 31.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = (-0.8).sp
                     )
@@ -173,7 +173,7 @@ private fun OnboardingPageContent(
                 Text(
                     data.description,
                     color = LockrColors.TextSecondary,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp, lineHeight = 17.sp),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 21.sp),
                     modifier = Modifier.padding(top = 5.dp)
                 )
             }

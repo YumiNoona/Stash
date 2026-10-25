@@ -22,7 +22,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.ContentPaste
-import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Lock
@@ -55,8 +54,7 @@ data class LockrSettingsState(
     val autoLock: String = "After 1 minute",
     val revealTimeout: String = "30 seconds",
     val autoClearClipboard: Boolean = true,
-    val hideInRecents: Boolean = false,
-    val launcherStyle: String = "Stash"
+    val hideInRecents: Boolean = false
 )
 
 @Composable
@@ -72,17 +70,7 @@ fun SettingsScreen(
     var dialog by remember { mutableStateOf("") }
 
     Column(modifier.fillMaxSize().padding(horizontal = 22.dp)) {
-        Box(
-            Modifier.padding(top = 9.dp).size(42.dp).clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.78f)).clickable(onClick = onBack),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = LockrColors.TextPrimary)
-        }
-        Column(Modifier.padding(top = 7.dp, bottom = 9.dp)) {
-            Text("Settings", style = MaterialTheme.typography.headlineMedium)
-            Text("Manage security, backup and app preferences.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 2)
-        }
+        StashTopBar("Settings", "Security and local backup", onBack = onBack, modifier = Modifier.padding(top = 3.dp, bottom = 7.dp))
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             LocalOnlyBanner(Modifier.padding(top = 8.dp, bottom = 16.dp))
@@ -138,15 +126,10 @@ fun SettingsScreen(
                     iconTint = Color(0xFF4D6382), iconBg = Color(0xFFE6F5F7), last = true,
                     onToggle = { onSettingsChange(settings.copy(hideInRecents = it)) }
                 )
-                SettingsRow(
-                    Icons.Outlined.GridView, "Fake App Icon", "Use a discreet calculator icon", value = "›",
-                    iconTint = Color(0xFF4C526B), iconBg = Color(0xFFF1ECF8), last = true,
-                    onClick = { dialog = "icon" }
-                )
             }
             SettingsSection("About", modifier = Modifier.padding(top = 14.dp)) {
                 SettingsRow(
-                    Icons.Outlined.Info, "About Stash", "Version 0.1.0 · offline vault", value = "›",
+                    Icons.Outlined.Info, "About Stash", "Version 1.0.0 · offline vault", value = "›",
                     iconTint = Color(0xFF4C526B), iconBg = Color(0xFFF1ECF8), last = true,
                     onClick = { dialog = "about" }
                 )
@@ -172,29 +155,25 @@ fun SettingsScreen(
             onDismiss = { dialog = "" }
         )
         "about" -> InfoDialog(
-            "Stash · 0.1.0",
+            "Stash · 1.0.0",
             "Your vault is stored locally on this device. Stash has no account, cloud sync, or network connection.",
             onDismiss = { dialog = "" }
         )
-        "icon" -> ChoiceDialog(
-            "App Icon", listOf("Stash", "Calculator"), selected = settings.launcherStyle,
-            onDismiss = { dialog = "" }
-        ) { onSettingsChange(settings.copy(launcherStyle = it)); dialog = "" }
     }
 }
 
 @Composable
 private fun LocalOnlyBanner(modifier: Modifier = Modifier) {
     Row(
-        modifier.fillMaxWidth().height(126.dp).clip(RoundedCornerShape(24.dp))
+        modifier.fillMaxWidth().height(94.dp).clip(RoundedCornerShape(22.dp))
             .background(Brush.linearGradient(listOf(Color(0xD6DDEBFF), Color(0xCEF5E6F6), Color(0xD2D7F4EA))))
             .border(1.dp, Color.White, RoundedCornerShape(24.dp)).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(86.dp), contentAlignment = Alignment.Center) {
-            IridescentOrb(Modifier.align(Alignment.Center), orbSize = 79.dp)
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Color(0xEFFFFFFF)).border(1.dp, Color.White, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Lock, contentDescription = null, tint = Color(0xFF397E9C), modifier = Modifier.size(24.dp))
+        Box(Modifier.size(62.dp), contentAlignment = Alignment.Center) {
+            IridescentOrb(Modifier.align(Alignment.Center), orbSize = 58.dp)
+            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(Color(0xEFFFFFFF)).border(1.dp, Color.White, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Lock, contentDescription = null, tint = Color(0xFF397E9C), modifier = Modifier.size(20.dp))
             }
         }
         Column(Modifier.weight(1f).padding(start = 13.dp)) {

@@ -5,7 +5,6 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -36,30 +35,25 @@ private val LockrLightColors = lightColorScheme(
     outline = Color(0x337B8796)
 )
 
-private val JetBrainsMono = FontFamily(
-    Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
-    Font(R.font.jetbrains_mono_medium, FontWeight.Medium),
-    Font(R.font.jetbrains_mono_semibold, FontWeight.SemiBold),
-    Font(R.font.jetbrains_mono_bold, FontWeight.Bold)
-)
+private val StashSans = FontFamily.SansSerif
 
 private val LockrTypography = Typography().let { base ->
     base.copy(
-        displayLarge = base.displayLarge.copy(fontFamily = JetBrainsMono, fontSize = 34.sp, lineHeight = 42.sp),
-        displayMedium = base.displayMedium.copy(fontFamily = JetBrainsMono, fontSize = 30.sp, lineHeight = 38.sp),
-        displaySmall = base.displaySmall.copy(fontFamily = JetBrainsMono, fontSize = 26.sp, lineHeight = 34.sp),
-        headlineLarge = base.headlineLarge.copy(fontFamily = JetBrainsMono, fontSize = 26.sp, lineHeight = 34.sp, fontWeight = FontWeight.SemiBold),
-        headlineMedium = base.headlineMedium.copy(fontFamily = JetBrainsMono, fontSize = 22.sp, lineHeight = 29.sp, fontWeight = FontWeight.SemiBold),
-        headlineSmall = base.headlineSmall.copy(fontFamily = JetBrainsMono, fontSize = 20.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold),
-        titleLarge = base.titleLarge.copy(fontFamily = JetBrainsMono, fontSize = 17.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold),
-        titleMedium = base.titleMedium.copy(fontFamily = JetBrainsMono, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
-        titleSmall = base.titleSmall.copy(fontFamily = JetBrainsMono, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium),
-        bodyLarge = base.bodyLarge.copy(fontFamily = JetBrainsMono, fontSize = 14.sp, lineHeight = 21.sp),
-        bodyMedium = base.bodyMedium.copy(fontFamily = JetBrainsMono, fontSize = 12.sp, lineHeight = 18.sp),
-        bodySmall = base.bodySmall.copy(fontFamily = JetBrainsMono, fontSize = 10.sp, lineHeight = 15.sp),
-        labelLarge = base.labelLarge.copy(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
-        labelMedium = base.labelMedium.copy(fontFamily = JetBrainsMono, fontSize = 10.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium),
-        labelSmall = base.labelSmall.copy(fontFamily = JetBrainsMono, fontSize = 9.sp, lineHeight = 13.sp, fontWeight = FontWeight.Medium)
+        displayLarge = base.displayLarge.copy(fontFamily = StashSans, fontSize = 34.sp, lineHeight = 42.sp),
+        displayMedium = base.displayMedium.copy(fontFamily = StashSans, fontSize = 30.sp, lineHeight = 38.sp),
+        displaySmall = base.displaySmall.copy(fontFamily = StashSans, fontSize = 26.sp, lineHeight = 34.sp),
+        headlineLarge = base.headlineLarge.copy(fontFamily = StashSans, fontSize = 30.sp, lineHeight = 37.sp, fontWeight = FontWeight.SemiBold),
+        headlineMedium = base.headlineMedium.copy(fontFamily = StashSans, fontSize = 27.sp, lineHeight = 34.sp, fontWeight = FontWeight.SemiBold),
+        headlineSmall = base.headlineSmall.copy(fontFamily = StashSans, fontSize = 23.sp, lineHeight = 30.sp, fontWeight = FontWeight.SemiBold),
+        titleLarge = base.titleLarge.copy(fontFamily = StashSans, fontSize = 20.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold),
+        titleMedium = base.titleMedium.copy(fontFamily = StashSans, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium),
+        titleSmall = base.titleSmall.copy(fontFamily = StashSans, fontSize = 15.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium),
+        bodyLarge = base.bodyLarge.copy(fontFamily = StashSans, fontSize = 16.sp, lineHeight = 24.sp),
+        bodyMedium = base.bodyMedium.copy(fontFamily = StashSans, fontSize = 15.sp, lineHeight = 22.sp),
+        bodySmall = base.bodySmall.copy(fontFamily = StashSans, fontSize = 13.sp, lineHeight = 19.sp),
+        labelLarge = base.labelLarge.copy(fontFamily = StashSans, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
+        labelMedium = base.labelMedium.copy(fontFamily = StashSans, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium),
+        labelSmall = base.labelSmall.copy(fontFamily = StashSans, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
     )
 }
 
