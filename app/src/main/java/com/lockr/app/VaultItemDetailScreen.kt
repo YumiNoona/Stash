@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -38,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -74,13 +77,21 @@ fun VaultItemDetailScreen(
     var revealed by rememberSaveable(item.id) { mutableStateOf(false) }
     var confirmDelete by rememberSaveable(item.id) { mutableStateOf(false) }
     var editing by rememberSaveable(item.id) { mutableStateOf(false) }
+    var editValidationAttempted by rememberSaveable(item.id) { mutableStateOf(false) }
+    val editCardType = item.metadata["cardType"].orEmpty().ifBlank { item.detail }
+    val paymentCard = isPaymentCardType(editCardType)
     var editTitle by rememberSaveable(item.id) { mutableStateOf(item.title) }
     var editCategory by remember(item.id) { mutableStateOf(item.metadata["documentCategory"].orEmpty()) }
     var editCardholder by rememberSaveable(item.id) { mutableStateOf(item.metadata["cardholder"].orEmpty()) }
-    var editCardNumber by rememberSaveable(item.id) { mutableStateOf(item.metadata["cardNumber"].orEmpty()) }
-    var editExpiry by rememberSaveable(item.id) { mutableStateOf(item.metadata["expiry"].orEmpty()) }
+    var editCardNumber by rememberSaveable(item.id) { mutableStateOf(if (paymentCard)
+        formatPaymentCardNumber(item.metadata["cardNumber"].orEmpty(), item.metadata["network"].orEmpty())
+        else item.metadata["cardNumber"].orEmpty()) }
+    var editExpiryDigits by rememberSaveable(item.id) { mutableStateOf(cardExpiryDigits(item.metadata["expiry"].orEmpty())) }
     var editIssuer by rememberSaveable(item.id) { mutableStateOf(item.metadata["issuer"].orEmpty()) }
     var editNetwork by rememberSaveable(item.id) { mutableStateOf(item.metadata["network"].orEmpty()) }
+    var editNetworkSelectedByUser by rememberSaveable(item.id) { mutableStateOf(false) }
+    val editExpiry = formatCardExpiry(editExpiryDigits)
+    val editValidation = validateCardEntry(editTitle.trim(), editCardType, editCardNumber, editExpiry, editNetwork)
     var showMenu by rememberSaveable(item.id) { mutableStateOf(false) }
     var showOriginal by rememberSaveable(item.id) { mutableStateOf(false) }
     var feedback by rememberSaveable(item.id) { mutableStateOf("") }
@@ -123,7 +134,10 @@ fun VaultItemDetailScreen(
                         DropdownMenuItem(text = { Text("Edit card") }, leadingIcon = { Icon(Icons.Outlined.Edit, null) },
                             onClick = {
                                 showMenu = false
-                                if (item.metadata["cardNumber"].isNullOrBlank() || authorized) editing = true else onAuthenticate()
+                                if (item.metadata["cardNumber"].isNullOrBlank() || authorized) {
+                                    editValidationAttempted = false
+                                    editing = true
+                                } else onAuthenticate()
                             })
                         DropdownMenuItem(text = { Text("Delete card") }, leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null) },
                             onClick = { showMenu = false; confirmDelete = true })
@@ -248,19 +262,64 @@ fun VaultItemDetailScreen(
         )
     }
     if (editing) {
+        val editFieldColors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color.White, unfocusedContainerColor = Color.White,
+            errorContainerColor = Color.White,
+            focusedTextColor = LockrColors.TextPrimary, unfocusedTextColor = LockrColors.TextPrimary,
+            errorTextColor = LockrColors.TextPrimary,
+            focusedBorderColor = LockrColors.Accent, unfocusedBorderColor = Color(0xFFBACBD8))
         AlertDialog(
             onDismissRequest = { editing = false },
             containerColor = Color(0xF8FFFFFF),
-            title = { Text(if (item.category == VaultCategory.CARD) "Edit card" else "Edit item") },
+            title = {
+                Column {
+                    Text(if (item.category == VaultCategory.CARD) "Edit card" else "Edit item")
+                    if (item.category == VaultCategory.CARD && editValidationAttempted && !editValidation.isValid) {
+                        Text(editValidation.messages.joinToString(" · "),
+                            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
             text = {
                 Column(Modifier.heightIn(max = 470.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(value = editTitle, onValueChange = { editTitle = it.take(80) }, label = { Text("Title") }, singleLine = true, shape = RoundedCornerShape(15.dp))
+                    OutlinedTextField(value = editTitle, onValueChange = { editTitle = it.take(80) },
+                        label = { Text(if (item.category == VaultCategory.CARD) "Card name" else "Title") }, singleLine = true,
+                        isError = item.category == VaultCategory.CARD && editValidationAttempted && editValidation.titleError != null,
+                        colors = editFieldColors, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
                     if (item.category == VaultCategory.CARD) {
-                        OutlinedTextField(value = editIssuer, onValueChange = { editIssuer = it.take(60) }, label = { Text("Issuer") }, singleLine = true, shape = RoundedCornerShape(15.dp))
-                        OutlinedTextField(value = editCardholder, onValueChange = { editCardholder = it.take(60) }, label = { Text("Name on card") }, singleLine = true, shape = RoundedCornerShape(15.dp))
-                        OutlinedTextField(value = editCardNumber, onValueChange = { editCardNumber = it.filter(Char::isDigit).take(19) }, label = { Text("Card number") }, singleLine = true, shape = RoundedCornerShape(15.dp))
-                        OutlinedTextField(value = editExpiry, onValueChange = { editExpiry = it.take(10) }, label = { Text("Expiry") }, singleLine = true, shape = RoundedCornerShape(15.dp))
-                        OutlinedTextField(value = editNetwork, onValueChange = { editNetwork = it.take(20) }, label = { Text("Network") }, singleLine = true, shape = RoundedCornerShape(15.dp))
+                        OutlinedTextField(value = editIssuer, onValueChange = { editIssuer = it.take(60) },
+                            label = { Text("Issuer") }, singleLine = true, colors = editFieldColors,
+                            shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = editCardholder, onValueChange = { editCardholder = it.take(60) },
+                            label = { Text("Name on card") }, singleLine = true, colors = editFieldColors,
+                            shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = editCardNumber, onValueChange = { input ->
+                            if (paymentCard) {
+                                val digits = input.filter(Char::isDigit)
+                                if (!editNetworkSelectedByUser) editNetwork = cardNetwork(digits)
+                                editCardNumber = formatPaymentCardNumber(digits, editNetwork)
+                            } else editCardNumber = input.take(40)
+                        }, label = { Text(if (paymentCard) "Card number *" else "Card or ID number") },
+                            keyboardOptions = KeyboardOptions(keyboardType = if (paymentCard) KeyboardType.Number else KeyboardType.Text),
+                            isError = editValidationAttempted && editValidation.numberError != null,
+                            singleLine = true, colors = editFieldColors, shape = RoundedCornerShape(15.dp),
+                            modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = editExpiryDigits,
+                            onValueChange = { editExpiryDigits = cardExpiryDigits(it) },
+                            label = { Text(if (paymentCard) "Expiry *" else "Expiry") },
+                            placeholder = { Text("MM/YY") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            visualTransformation = ExpiryVisualTransformation,
+                            isError = editValidationAttempted && editValidation.expiryError != null,
+                            singleLine = true, colors = editFieldColors, shape = RoundedCornerShape(15.dp),
+                            modifier = Modifier.fillMaxWidth())
+                        CardNetworkDropdown(editNetwork, paymentCard,
+                            editValidationAttempted && editValidation.networkError != null,
+                            editFieldColors, Modifier.fillMaxWidth()) { selected ->
+                            editNetworkSelectedByUser = true
+                            editNetwork = selected
+                            if (paymentCard) editCardNumber = formatPaymentCardNumber(editCardNumber, editNetwork)
+                        }
                     }
                     if (item.category == VaultCategory.DOCUMENT) {
                         Text("Document group", style = MaterialTheme.typography.labelLarge)
@@ -275,15 +334,22 @@ fun VaultItemDetailScreen(
             dismissButton = { TextButton(onClick = { editing = false }) { Text("Cancel") } },
             confirmButton = {
                 TextButton(onClick = {
+                    if (item.category == VaultCategory.CARD && !editValidation.isValid) {
+                        editValidationAttempted = true
+                        return@TextButton
+                    }
+                    val digits = editCardNumber.filter(Char::isDigit)
+                    val lastFour = if (paymentCard) digits.takeLast(4) else editCardNumber.takeLast(4)
                     val metadata = when (item.category) {
                         VaultCategory.DOCUMENT -> item.metadata + ("documentCategory" to editCategory.ifBlank { "Other" })
                         VaultCategory.CARD -> item.metadata + mapOf("issuer" to editIssuer.trim(), "cardholder" to editCardholder.trim(),
-                            "cardNumber" to editCardNumber.trim(), "expiry" to editExpiry.trim(), "network" to editNetwork.trim(),
-                            "lastFour" to editCardNumber.takeLast(4).ifBlank { item.lastFour })
+                            "cardNumber" to (if (paymentCard) digits else editCardNumber.trim()),
+                            "expiry" to editExpiry, "network" to editNetwork.trim(),
+                            "lastFour" to lastFour.ifBlank { item.lastFour })
                         else -> item.metadata
                     }
                     onEdit(item.copy(title = editTitle.trim().ifBlank { item.title }, metadata = metadata,
-                        lastFour = if (item.category == VaultCategory.CARD) editCardNumber.takeLast(4).ifBlank { item.lastFour } else item.lastFour))
+                        lastFour = if (item.category == VaultCategory.CARD) lastFour.ifBlank { item.lastFour } else item.lastFour))
                     editing = false
                 }) { Text("Save") }
             }

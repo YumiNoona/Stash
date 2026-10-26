@@ -546,7 +546,7 @@ private fun LockrApp() {
                         onBack = { screen = returnScreen; showAdd = true },
                         onRead = { draft -> cardDraft = draft; importedAttachments = emptyList(); screen = LockrScreen.CARD_REVIEW },
                         onScanCard = { importCategoryHint = VaultCategory.CARD; screen = LockrScreen.SCANNER },
-                        onManual = { cardDraft = CardDraft(); importedAttachments = emptyList(); screen = LockrScreen.CARD_REVIEW }
+                        onManual = { cardDraft = CardDraft(cardType = "Credit"); importedAttachments = emptyList(); screen = LockrScreen.CARD_REVIEW }
                     )
                     LockrScreen.IMPORTING -> ImportProgressScreen()
                     LockrScreen.REVIEW -> ReviewItemScreen(
@@ -659,7 +659,7 @@ private fun LockrApp() {
                         fileLauncher.launch(arrayOf("application/pdf", "image/*", "text/plain"))
                     },
                     onNfc = { showAdd = false; screen = LockrScreen.NFC_CARD },
-                    onCardManual = { cardDraft = CardDraft(); importedAttachments = emptyList(); showAdd = false; screen = LockrScreen.CARD_REVIEW },
+                    onCardManual = { cardDraft = CardDraft(cardType = "Credit"); importedAttachments = emptyList(); showAdd = false; screen = LockrScreen.CARD_REVIEW },
                     onManual = { category -> manualCategory = category; showAdd = false; screen = LockrScreen.MANUAL }
                 )
             }

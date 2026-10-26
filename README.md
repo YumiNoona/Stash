@@ -38,6 +38,8 @@ Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works off
 
 NFC is optional and needs an NFC-equipped device and a card that exposes usable fields through the supported contactless interface. Stash does not authenticate to banks or guarantee that every card can be read. The emulator has no NFC reader, so use camera or manual entry there. Nothing is saved from a tap until you confirm the review screen.
 
+Manual credit and debit entry groups card numbers in fours, uses a numeric MM/YY expiry field, and offers a network picker. Save explains missing or invalid fields. Standard payment cards require 16 digits; Amex uses its 15-digit format.
+
 The profile screen lets you change the display name and choose or remove a photo. Both stay in app-private local storage.
 
 ## Export

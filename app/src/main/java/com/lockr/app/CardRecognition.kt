@@ -19,11 +19,14 @@ fun recognizeCardFields(text: String): CardDraft {
         .firstOrNull(::isPlausibleCardNumber).orEmpty()
     val expiryMatch = Regex("(?<!\\d)(0[1-9]|1[0-2])[/\\- ](\\d{2}|20\\d{2})(?!\\d)").find(text)
     val expiry = expiryMatch?.let { "${it.groupValues[1]}/${it.groupValues[2].takeLast(2)}" }.orEmpty()
-    val network = cardNetwork(number).ifBlank {
+    val network = if (text.contains("rupay", true)) "RuPay" else cardNetwork(number).ifBlank {
         when {
             text.contains("mastercard", true) -> "Mastercard"
             text.contains("visa", true) -> "Visa"
             text.contains("american express", true) || text.contains("amex", true) -> "Amex"
+            text.contains("discover", true) -> "Discover"
+            text.contains("unionpay", true) -> "UnionPay"
+            text.contains("jcb", true) -> "JCB"
             else -> ""
         }
     }
