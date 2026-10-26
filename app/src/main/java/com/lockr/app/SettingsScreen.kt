@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +50,7 @@ data class LockrSettingsState(
     val appLockEnabled: Boolean = false,
     val autoLock: String = "After 1 minute",
     val revealTimeout: String = "30 seconds",
+    val hideCardNumber: Boolean = true,
     val autoClearClipboard: Boolean = true,
     val hideInRecents: Boolean = false
 )
@@ -86,6 +88,12 @@ fun SettingsScreen(
                     Icons.Outlined.Visibility, "Reveal Timeout", "Hide revealed card details", value = settings.revealTimeout,
                     iconTint = Color(0xFF4F68D4), iconBg = Color(0xFFE9E6FF),
                     onClick = { dialog = "reveal" }
+                )
+                SettingsRow(
+                    Icons.Outlined.VisibilityOff, "Card number display",
+                    if (settings.hideCardNumber) "Hide number and CVC" else "Hide CVC only",
+                    value = "›", iconTint = Color(0xFF5065B5), iconBg = Color(0xFFE9EEFF),
+                    onClick = { dialog = "cardVisibility" }
                 )
                 SettingsRow(
                     Icons.Outlined.Key, "Vault Encryption", "Android Keystore · this device", value = "›",
@@ -128,7 +136,7 @@ fun SettingsScreen(
             }
             SettingsSection("About", modifier = Modifier.padding(top = 14.dp)) {
                 SettingsRow(
-                    Icons.Outlined.Info, "About Stash", "Version 1.0.0 · offline vault", value = "›",
+                    Icons.Outlined.Info, "About Stash", "Version 1.1.0 · offline vault", value = "›",
                     iconTint = Color(0xFF4C526B), iconBg = Color(0xFFF1ECF8), last = true,
                     onClick = { dialog = "about" }
                 )
@@ -152,13 +160,18 @@ fun SettingsScreen(
             selected = settings.revealTimeout,
             onDismiss = { dialog = "" }
         ) { onSettingsChange(settings.copy(revealTimeout = it)); dialog = "" }
+        "cardVisibility" -> ChoiceDialog(
+            "Card number display", listOf("Hide number and CVC", "Hide CVC only"),
+            selected = if (settings.hideCardNumber) "Hide number and CVC" else "Hide CVC only",
+            onDismiss = { dialog = "" }
+        ) { onSettingsChange(settings.copy(hideCardNumber = it == "Hide number and CVC")); dialog = "" }
         "encryption" -> InfoDialog(
             "On-device encryption",
             "Vault records are encrypted with AES-GCM. The encryption key is held by Android Keystore on this device; a master password is not used.",
             onDismiss = { dialog = "" }
         )
         "about" -> InfoDialog(
-            "Stash · 1.0.0",
+            "Stash · 1.1.0",
             "Your vault is stored locally on this device. Stash has no account, cloud sync, or network connection.",
             onDismiss = { dialog = "" }
         )

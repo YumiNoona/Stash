@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -150,6 +151,7 @@ private fun LockrApp() {
                 appLockEnabled = preferences.getBoolean("app_lock_enabled", false),
                 autoLock = preferences.getString("auto_lock", "After 1 minute") ?: "After 1 minute",
                 revealTimeout = preferences.getString("reveal_timeout", "30 seconds") ?: "30 seconds",
+                hideCardNumber = preferences.getBoolean("hide_card_number", true),
                 autoClearClipboard = preferences.getBoolean("auto_clear_clipboard", true),
                 hideInRecents = preferences.getBoolean("hide_in_recents", false)
             )
@@ -229,6 +231,7 @@ private fun LockrApp() {
                 .putBoolean("app_lock_enabled", updated.appLockEnabled)
                 .putString("auto_lock", updated.autoLock)
                 .putString("reveal_timeout", updated.revealTimeout)
+                .putBoolean("hide_card_number", updated.hideCardNumber)
                 .putBoolean("auto_clear_clipboard", updated.autoClearClipboard)
                 .putBoolean("hide_in_recents", updated.hideInRecents)
                 .apply()
@@ -469,6 +472,7 @@ private fun LockrApp() {
         }
     }
 
+    CompositionLocalProvider(LocalHideCardNumber provides settings.hideCardNumber) {
     Box(Modifier.fillMaxSize()) {
         if (!onboardingComplete) {
             OnboardingScreen(
@@ -689,6 +693,7 @@ private fun LockrApp() {
                 }
             )
         }
+    }
     }
 }
 

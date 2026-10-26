@@ -76,7 +76,17 @@ fun VaultItemDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val hideCardNumber = LocalHideCardNumber.current
     var revealed by rememberSaveable(item.id) { mutableStateOf(false) }
+    var cardNumberVisibleOverride by remember(item.id) { mutableStateOf<Boolean?>(null) }
+    var cardCvcRevealed by remember(item.id) { mutableStateOf(false) }
+    var pendingCardReveal by remember(item.id) { mutableStateOf("") }
+    val cardNumberVisible = (cardNumberVisibleOverride ?: !hideCardNumber) && (!hideCardNumber || authorized)
+    val toggleCardNumber: () -> Unit = {
+        if (cardNumberVisible) cardNumberVisibleOverride = false
+        else if (!hideCardNumber || authorized) cardNumberVisibleOverride = true
+        else { pendingCardReveal = "number"; onAuthenticate() }
+    }
     var confirmDelete by rememberSaveable(item.id) { mutableStateOf(false) }
     var editing by rememberSaveable(item.id) { mutableStateOf(false) }
     var editValidationAttempted by rememberSaveable(item.id) { mutableStateOf(false) }
@@ -92,6 +102,7 @@ fun VaultItemDetailScreen(
     var editIssuer by rememberSaveable(item.id) { mutableStateOf(item.metadata["issuer"].orEmpty()) }
     var editNetwork by rememberSaveable(item.id) { mutableStateOf(item.metadata["network"].orEmpty()) }
     var editCvc by remember(item.id) { mutableStateOf(item.metadata["cardCvc"].orEmpty()) }
+    var editCardArt by remember(item.id) { mutableStateOf(cardArtStyle(item)) }
     var showEditCvc by rememberSaveable(item.id) { mutableStateOf(false) }
     var editNetworkSelectedByUser by rememberSaveable(item.id) { mutableStateOf(false) }
     val editExpiry = formatCardExpiry(editExpiryDigits)
@@ -100,6 +111,22 @@ fun VaultItemDetailScreen(
     var showOriginal by rememberSaveable(item.id) { mutableStateOf(false) }
     var feedback by rememberSaveable(item.id) { mutableStateOf("") }
     BackHandler(onBack = onBack)
+
+    LaunchedEffect(authorized, pendingCardReveal) {
+        if (authorized && pendingCardReveal.isNotEmpty()) {
+            when (pendingCardReveal) {
+                "number" -> cardNumberVisibleOverride = true
+                "cvc" -> cardCvcRevealed = true
+            }
+            pendingCardReveal = ""
+        }
+    }
+    LaunchedEffect(authorized, hideCardNumber) {
+        if (!authorized) {
+            cardCvcRevealed = false
+            if (hideCardNumber) cardNumberVisibleOverride = null
+        }
+    }
 
     LaunchedEffect(authorized, revealTimeout) {
         if (authorized) {
@@ -111,6 +138,8 @@ fun VaultItemDetailScreen(
             }
             delay(timeout)
             revealed = false
+            cardCvcRevealed = false
+            if (hideCardNumber) cardNumberVisibleOverride = null
             onAuthorizationExpired()
         }
     }
@@ -159,20 +188,25 @@ fun VaultItemDetailScreen(
         )
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (item.category == VaultCategory.CARD) {
-                CardDetailPreview(item, Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 22.dp), height = 255.dp)
+                CardDetailPreview(item, Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 22.dp),
+                    height = 255.dp, showFullNumber = cardNumberVisible,
+                    onToggleNumber = if (item.metadata["cardNumber"].isNullOrBlank()) null else toggleCardNumber)
             }
             if (item.category == VaultCategory.CARD) {
                 GlassPanel(Modifier.fillMaxWidth(), radius = 26.dp) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 19.dp, vertical = 6.dp)) {
                         val number = item.metadata["cardNumber"].orEmpty()
                         val lastFour = item.lastFour.ifBlank { number.takeLast(4).ifBlank { item.metadata["lastFour"].orEmpty() } }
-                        DetailField("Card Number", "••••  ••••  ${lastFour.ifBlank { "••••" }}",
+                        DetailField("Card Number", if (cardNumberVisible && number.isNotBlank())
+                            if (paymentCard) formatPaymentCardNumber(number, item.metadata["network"].orEmpty()) else number
+                            else "••••  ••••  ••••  ${lastFour.ifBlank { "••••" }}",
                             onCopy = {
                                 if (number.isNotBlank()) {
-                                    if (authorized) { copyPrivateText(context, number, autoClearClipboard); feedback = "Card number copied" }
+                                    if (authorized || !hideCardNumber) { copyPrivateText(context, number, autoClearClipboard); feedback = "Card number copied" }
                                     else onAuthenticate()
                                 } else feedback = "Full card number was not saved"
-                            }, onReveal = null, revealed = false)
+                            }, onReveal = if (number.isBlank()) null else toggleCardNumber,
+                            revealed = cardNumberVisible)
                         CardDetailDivider()
                         DetailField("Card Holder Name", item.metadata["cardholder"].orEmpty().ifBlank { "Not added" },
                             onCopy = { item.metadata["cardholder"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard); feedback = "Name copied" } },
@@ -183,13 +217,17 @@ fun VaultItemDetailScreen(
                             onReveal = null, revealed = false)
                         CardDetailDivider()
                         val cvc = item.metadata["cardCvc"].orEmpty()
-                        DetailField("CVC", if (cvc.isBlank()) "Not added" else if (revealed && authorized) cvc else "•••",
+                        DetailField("CVC", if (cvc.isBlank()) "Not added" else if (cardCvcRevealed && authorized) cvc else "•••",
                             onCopy = if (cvc.isBlank()) null else ({
                                 if (authorized) { copyPrivateText(context, cvc, autoClearClipboard); feedback = "CVC copied" }
                                 else onAuthenticate()
                             }),
-                            onReveal = if (cvc.isBlank()) null else ({ if (authorized) revealed = !revealed else onAuthenticate() }),
-                            revealed = revealed && authorized)
+                            onReveal = if (cvc.isBlank()) null else ({
+                                if (cardCvcRevealed) cardCvcRevealed = false
+                                else if (authorized) cardCvcRevealed = true
+                                else { pendingCardReveal = "cvc"; onAuthenticate() }
+                            }),
+                            revealed = cardCvcRevealed && authorized)
                     }
                 }
             } else if (item.metadata.isNotEmpty()) {
@@ -342,6 +380,7 @@ fun VaultItemDetailScreen(
                                 } }, colors = editFieldColors, shape = RoundedCornerShape(15.dp),
                                 modifier = Modifier.fillMaxWidth())
                         }
+                        CardArtPicker(editCardArt) { editCardArt = it }
                     }
                     if (item.category == VaultCategory.DOCUMENT) {
                         Text("Document group", style = MaterialTheme.typography.labelLarge)
@@ -367,6 +406,7 @@ fun VaultItemDetailScreen(
                         VaultCategory.CARD -> item.metadata + mapOf("issuer" to editIssuer.trim(), "cardholder" to editCardholder.trim(),
                             "cardNumber" to (if (paymentCard) digits else editCardNumber.trim()),
                             "expiry" to editExpiry, "network" to editNetwork.trim(), "cardCvc" to (if (paymentCard) editCvc else ""),
+                            "cardArt" to editCardArt.name,
                             "lastFour" to lastFour.ifBlank { item.lastFour })
                         else -> item.metadata
                     }

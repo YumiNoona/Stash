@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,7 +66,7 @@ fun HomeScreen(
     Column(modifier.fillMaxSize().padding(horizontal = 17.dp)) {
         Row(Modifier.fillMaxWidth().height(91.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(54.dp).clip(CircleShape).clickable(onClick = onOpenProfile), contentAlignment = Alignment.Center) {
-                if (profilePhoto == null) IridescentOrb(orbSize = 52.dp) else ProfileAvatar(profilePhoto, 52.dp)
+                ProfileAvatar(profilePhoto, 52.dp)
             }
             Text(profileName, style = MaterialTheme.typography.headlineSmall,
                 color = LockrColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -131,19 +132,21 @@ private fun DashboardHero() {
 
 @Composable
 private fun RecentItemRow(item: VaultItem, onClick: () -> Unit, onMore: () -> Unit) {
-    GlassPanel(Modifier.fillMaxWidth().height(69.dp).clickable(onClick = onClick), radius = 21.dp) {
-        Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    GlassPanel(Modifier.fillMaxWidth().height(82.dp).clickable(onClick = onClick), radius = 23.dp) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             RecentThumbnail(item)
-            Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.Center) {
+            Column(Modifier.weight(1f).padding(start = 13.dp), verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start) {
                 Text(item.title, style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("${item.category.label} · ${item.time}", style = MaterialTheme.typography.bodySmall,
-                    color = LockrColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    color = LockrColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 3.dp))
             }
-            Box(Modifier.size(39.dp).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.74f))
+            Box(Modifier.size(34.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.66f))
                 .clickable(onClick = onMore), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.MoreVert, contentDescription = "More options for ${item.title}",
-                    tint = LockrColors.TextPrimary, modifier = Modifier.size(22.dp))
+                    tint = LockrColors.TextPrimary, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -151,26 +154,36 @@ private fun RecentItemRow(item: VaultItem, onClick: () -> Unit, onMore: () -> Un
 
 @Composable
 private fun RecentThumbnail(item: VaultItem) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(13.dp)
     val attachment = item.attachments.firstOrNull { it.mimeType.startsWith("image/") }
-    var thumbnail by remember(item.id, attachment?.name) { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(item.id, attachment?.name) {
-        thumbnail = attachment?.let { withContext(Dispatchers.IO) { decodeAttachmentPreview(it.base64Data) } }
+    var thumbnail by remember(item.id, attachment?.name, attachment?.byteCount) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(item.id, attachment?.name, attachment?.byteCount) {
+        thumbnail = if (item.category == VaultCategory.DOCUMENT) attachment?.let {
+            withContext(Dispatchers.IO) { decodeAttachmentPreview(it.base64Data, 220, 180) }
+        } else null
     }
-    Box(Modifier.size(50.dp).clip(shape).background(Color.White.copy(alpha = 0.8f)), contentAlignment = Alignment.Center) {
+    Box(Modifier.width(70.dp).height(53.dp).clip(shape)
+        .background(Brush.linearGradient(listOf(Color(0xFFE9F7FC), Color(0xFFEEE7FA))))
+        .border(1.dp, Color.White.copy(alpha = 0.93f), shape), contentAlignment = Alignment.Center) {
         val icon: ImageVector = when (item.category) {
             VaultCategory.CARD -> Icons.Outlined.CreditCard
             VaultCategory.DOCUMENT -> Icons.Outlined.Description
             VaultCategory.PASSWORD -> Icons.Outlined.Key
             VaultCategory.NOTE -> Icons.AutoMirrored.Outlined.Article
         }
-        if (thumbnail != null) {
+        if (item.category == VaultCategory.CARD) {
+            Image(painterResource(cardArtStyle(item).image), null,
+                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            Box(Modifier.align(Alignment.TopStart).padding(start = 7.dp, top = 8.dp)
+                .size(width = 14.dp, height = 10.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Brush.linearGradient(listOf(Color(0xFFFFE9B5), Color(0xFFE4B96B)))))
+            Text(item.lastFour.ifBlank { "••••" }, style = MaterialTheme.typography.labelSmall,
+                color = if (cardArtStyle(item).dark) Color.White else Color(0xFF0B2055),
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 5.dp, bottom = 4.dp))
+        } else if (thumbnail != null) {
             Image(thumbnail!!.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize())
-        } else if (item.category == VaultCategory.CARD) {
-            Image(painterResource(R.drawable.card_aurora_texture), null,
-                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        }
-        if (thumbnail == null) Icon(icon, contentDescription = null, tint = Color(0xFF17265C), modifier = Modifier.size(25.dp))
+        } else Icon(icon, contentDescription = null, tint = Color(0xFF3A598A), modifier = Modifier.size(27.dp))
     }
 }

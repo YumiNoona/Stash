@@ -2,6 +2,8 @@
 
 Stash is a local Android vault for cards, documents, passwords, and notes, built with Kotlin and Jetpack Compose. The interface uses JetBrains Mono, aurora artwork, and glass surfaces. Stash has no account, cloud service, or internet permission.
 
+Version 1.1 adds the Stash launcher logo, three selectable card finishes (Aurora, Opal, and an animated Midnight sheen), improved recent item previews, and expiry and reveal controls on the card detail. The **Card number display** setting lets you mask both the number and CVC or keep the number visible while the CVC stays masked. Revealing a masked value requires device authentication.
+
 ## Screenshots
 
 | Dashboard | Add to Stash |
@@ -44,6 +46,8 @@ NFC is optional and needs an NFC-equipped device and a card that exposes usable 
 
 Manual credit and debit entry groups card numbers in fours, uses a numeric MM/YY expiry field, and offers a network picker with recognizable marks. Save explains missing or invalid fields. Standard payment cards require 16 digits; Amex uses its 15-digit format. An unverified checksum or expired card shows a warning but can still be saved. CVC is optional. Password entry includes a local random generator with length, character type, and mixing controls.
 
+Card art can be chosen during review or changed when editing a saved card. The card collection uses masked numbers, while the detail screen shows the expiry, cardholder, network, and individual eye controls for saved number and CVC values. If no number or CVC was saved, its reveal control is omitted.
+
 The profile screen lets you change the display name and choose or remove a photo. Both stay in app-private local storage.
 
 ## Export
@@ -55,7 +59,7 @@ Settings offers readable JSON, PDF, Excel (`.xlsx`), and text exports, plus a se
 - Records and imported attachments are encrypted with AES-GCM in app-private storage. Android Keystore holds the device-bound encryption key.
 - Vault writes use atomic file replacement. Stash does not request broad photo or storage access; Android's pickers grant access only to items you choose.
 - An optional CVC is encrypted in the device vault, masked in the UI, and omitted from readable exports. OCR redacts likely full card numbers and labeled security codes before indexing.
-- Sensitive values are masked and require the device screen-lock credential to reveal. Clipboard clearing and app-lock preferences are available in Settings.
+- CVC is always masked and requires the device screen-lock credential to reveal. Card numbers are masked by default; Settings can show them without a reveal step. Clipboard clearing and app-lock preferences are available in Settings.
 - Encrypted backup files can be exported and restored locally, but the key is device-bound: a backup is restorable only on the device that created it.
 - Sharing an original attachment uses a temporary app-private cache file, which Stash removes after ten minutes or on next launch.
 - The vault starts empty. There are no demo records, sample cards, or seeded passwords.
@@ -68,6 +72,8 @@ Settings offers readable JSON, PDF, Excel (`.xlsx`), and text exports, plus a se
 - Data is local to this installation. There is no cloud sync or account recovery, and device-bound backups cannot be moved to another device.
 
 ## Build and test
+
+The installable APK is available from [the latest GitHub release](https://github.com/YumiNoona/Stash/releases/latest). Release APKs are currently debug signed; an official signing key has not been configured.
 
 Requirements: JDK 17 and Android SDK Platform 36. From PowerShell at the repository root:
 

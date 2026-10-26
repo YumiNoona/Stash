@@ -22,7 +22,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -43,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -50,10 +50,8 @@ import androidx.compose.ui.unit.dp
 fun ProfileAvatar(photo: Bitmap?, size: Dp, modifier: Modifier = Modifier) {
     Box(modifier.size(size).clip(CircleShape).border(2.dp, Color.White, CircleShape), contentAlignment = Alignment.Center) {
         if (photo != null) Image(photo.asImageBitmap(), contentDescription = "Profile photo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        else {
-            IridescentOrb(orbSize = size)
-            Icon(Icons.Outlined.Person, contentDescription = "Profile", tint = Color(0xFF517A98), modifier = Modifier.size(size * 0.45f))
-        }
+        else Image(painterResource(R.drawable.stash_logo), contentDescription = "Stash logo",
+            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
     }
 }
 

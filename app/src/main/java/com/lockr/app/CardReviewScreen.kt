@@ -81,6 +81,7 @@ fun CardReviewScreen(
     var issuer by remember(initial) { mutableStateOf(initial.issuer) }
     var network by remember(initial) { mutableStateOf(initial.network) }
     var cvc by remember(initial) { mutableStateOf("") }
+    var cardArt by remember(initial) { mutableStateOf(CardArtStyle.AURORA) }
     var showCvc by remember { mutableStateOf(false) }
     var recognizedText by remember(initial) { mutableStateOf(initial.ocrText) }
     var recognizing by remember(attachments) { mutableStateOf(attachments.isNotEmpty()) }
@@ -143,6 +144,7 @@ fun CardReviewScreen(
         if (issuer.isNotBlank()) put("issuer", issuer.trim())
         if (network.isNotBlank()) put("network", network.trim())
         if (payment && cvc.isNotBlank()) put("cardCvc", cvc)
+        put("cardArt", cardArt.name)
         if (recognizedText.isNotBlank()) put("ocrText", recognizedText)
     }
     val preview = VaultItem(title.ifBlank { "Your card" }, VaultCategory.CARD, cardType, "",
@@ -153,7 +155,8 @@ fun CardReviewScreen(
             subtitle = if (attachments.isEmpty()) "Enter the details you want to keep" else "Check the scan before saving",
             onBack = onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(13.dp)) {
-            CardDetailPreview(preview, height = 188.dp)
+            CardDetailPreview(preview, height = 198.dp, showFullNumber = false, animate = false)
+            CardArtPicker(cardArt) { cardArt = it }
             if (attachments.isNotEmpty()) {
                 Text("Original scan", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
                 VaultAttachmentPreview(attachments.first(), Modifier.fillMaxWidth().height(160.dp))

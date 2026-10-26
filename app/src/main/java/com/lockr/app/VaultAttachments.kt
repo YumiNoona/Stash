@@ -310,7 +310,7 @@ internal suspend fun renderPdfAttachmentPage(attachment: VaultAttachment, reques
     }
 }
 
-internal fun decodeAttachmentPreview(base64Data: String): Bitmap? {
+internal fun decodeAttachmentPreview(base64Data: String, maxWidth: Int = 1600, maxHeight: Int = 1900): Bitmap? {
     val bytes = try {
         Base64.decode(base64Data, Base64.DEFAULT)
     } catch (_: IllegalArgumentException) {
@@ -321,7 +321,7 @@ internal fun decodeAttachmentPreview(base64Data: String): Bitmap? {
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         var sampleSize = 1
-        while (bounds.outWidth / sampleSize > 1600 || bounds.outHeight / sampleSize > 1900) sampleSize *= 2
+        while (bounds.outWidth / sampleSize > maxWidth || bounds.outHeight / sampleSize > maxHeight) sampleSize *= 2
         BitmapFactory.decodeByteArray(
             bytes,
             0,
