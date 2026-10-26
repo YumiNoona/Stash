@@ -56,6 +56,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -89,9 +91,11 @@ fun VaultItemDetailScreen(
     var editExpiryDigits by rememberSaveable(item.id) { mutableStateOf(cardExpiryDigits(item.metadata["expiry"].orEmpty())) }
     var editIssuer by rememberSaveable(item.id) { mutableStateOf(item.metadata["issuer"].orEmpty()) }
     var editNetwork by rememberSaveable(item.id) { mutableStateOf(item.metadata["network"].orEmpty()) }
+    var editCvc by remember(item.id) { mutableStateOf(item.metadata["cardCvc"].orEmpty()) }
+    var showEditCvc by rememberSaveable(item.id) { mutableStateOf(false) }
     var editNetworkSelectedByUser by rememberSaveable(item.id) { mutableStateOf(false) }
     val editExpiry = formatCardExpiry(editExpiryDigits)
-    val editValidation = validateCardEntry(editTitle.trim(), editCardType, editCardNumber, editExpiry, editNetwork)
+    val editValidation = validateCardEntry(editTitle.trim(), editCardType, editCardNumber, editExpiry, editNetwork, cvc = editCvc)
     var showMenu by rememberSaveable(item.id) { mutableStateOf(false) }
     var showOriginal by rememberSaveable(item.id) { mutableStateOf(false) }
     var feedback by rememberSaveable(item.id) { mutableStateOf("") }
@@ -178,15 +182,21 @@ fun VaultItemDetailScreen(
                             onCopy = { item.metadata["expiry"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard); feedback = "Expiry copied" } },
                             onReveal = null, revealed = false)
                         CardDetailDivider()
-                        DetailField("Security Code", "Not stored", onCopy = { feedback = "Security code was not saved" },
-                            onReveal = null, revealed = false)
+                        val cvc = item.metadata["cardCvc"].orEmpty()
+                        DetailField("CVC", if (cvc.isBlank()) "Not added" else if (revealed && authorized) cvc else "•••",
+                            onCopy = if (cvc.isBlank()) null else ({
+                                if (authorized) { copyPrivateText(context, cvc, autoClearClipboard); feedback = "CVC copied" }
+                                else onAuthenticate()
+                            }),
+                            onReveal = if (cvc.isBlank()) null else ({ if (authorized) revealed = !revealed else onAuthenticate() }),
+                            revealed = revealed && authorized)
                     }
                 }
             } else if (item.metadata.isNotEmpty()) {
                 GlassPanel(Modifier.fillMaxWidth(), radius = 22.dp) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp)) {
                         item.metadata.entries
-                            .filter { it.key !in setOf("ocrText", "password", "securityCode", "cvv", "cvc", "content", "lastFour") && it.value.isNotBlank() }
+                            .filter { it.key !in setOf("ocrText", "password", "securityCode", "cvv", "cvc", "cardCvc", "content", "lastFour") && it.value.isNotBlank() }
                             .forEach { (key, value) ->
                                 val sensitive = key in setOf("cardNumber", "idNumber", "documentNumber")
                                 DetailField(
@@ -320,6 +330,18 @@ fun VaultItemDetailScreen(
                             editNetwork = selected
                             if (paymentCard) editCardNumber = formatPaymentCardNumber(editCardNumber, editNetwork)
                         }
+                        if (paymentCard) {
+                            OutlinedTextField(editCvc, onValueChange = { editCvc = it.filter(Char::isDigit).take(4) },
+                                label = { Text("CVC (optional)") }, singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                visualTransformation = if (showEditCvc) VisualTransformation.None else PasswordVisualTransformation(),
+                                isError = editValidationAttempted && editValidation.cvcError != null,
+                                trailingIcon = { IconButton(onClick = { showEditCvc = !showEditCvc }) {
+                                    Icon(if (showEditCvc) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                        contentDescription = if (showEditCvc) "Hide CVC" else "Show CVC")
+                                } }, colors = editFieldColors, shape = RoundedCornerShape(15.dp),
+                                modifier = Modifier.fillMaxWidth())
+                        }
                     }
                     if (item.category == VaultCategory.DOCUMENT) {
                         Text("Document group", style = MaterialTheme.typography.labelLarge)
@@ -344,7 +366,7 @@ fun VaultItemDetailScreen(
                         VaultCategory.DOCUMENT -> item.metadata + ("documentCategory" to editCategory.ifBlank { "Other" })
                         VaultCategory.CARD -> item.metadata + mapOf("issuer" to editIssuer.trim(), "cardholder" to editCardholder.trim(),
                             "cardNumber" to (if (paymentCard) digits else editCardNumber.trim()),
-                            "expiry" to editExpiry, "network" to editNetwork.trim(),
+                            "expiry" to editExpiry, "network" to editNetwork.trim(), "cardCvc" to (if (paymentCard) editCvc else ""),
                             "lastFour" to lastFour.ifBlank { item.lastFour })
                         else -> item.metadata
                     }
@@ -363,7 +385,7 @@ private fun CardDetailDivider() {
 }
 
 @Composable
-private fun DetailField(label: String, value: String, onCopy: () -> Unit, onReveal: (() -> Unit)?, revealed: Boolean) {
+private fun DetailField(label: String, value: String, onCopy: (() -> Unit)?, onReveal: (() -> Unit)?, revealed: Boolean) {
     Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = LockrColors.TextSecondary)
@@ -372,7 +394,9 @@ private fun DetailField(label: String, value: String, onCopy: () -> Unit, onReve
         if (onReveal != null) IconButton(onClick = onReveal, modifier = Modifier.size(42.dp)) {
             Icon(if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, contentDescription = if (revealed) "Hide $label" else "Reveal $label", modifier = Modifier.size(20.dp))
         }
-        IconButton(onClick = onCopy, modifier = Modifier.size(42.dp)) { Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy $label", modifier = Modifier.size(20.dp)) }
+        if (onCopy != null) IconButton(onClick = onCopy, modifier = Modifier.size(42.dp)) {
+            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy $label", modifier = Modifier.size(20.dp))
+        }
     }
 }
 

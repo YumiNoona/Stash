@@ -53,6 +53,8 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -78,6 +80,8 @@ fun CardReviewScreen(
     var expiryDigits by remember(initial) { mutableStateOf(cardExpiryDigits(initial.expiry)) }
     var issuer by remember(initial) { mutableStateOf(initial.issuer) }
     var network by remember(initial) { mutableStateOf(initial.network) }
+    var cvc by remember(initial) { mutableStateOf("") }
+    var showCvc by remember { mutableStateOf(false) }
     var recognizedText by remember(initial) { mutableStateOf(initial.ocrText) }
     var recognizing by remember(attachments) { mutableStateOf(attachments.isNotEmpty()) }
     var showNumber by remember { mutableStateOf(true) }
@@ -121,7 +125,7 @@ fun CardReviewScreen(
 
     val payment = isPaymentCardType(cardType)
     val expiry = formatCardExpiry(expiryDigits)
-    val validation = validateCardEntry(title.trim(), cardType, number, expiry, network)
+    val validation = validateCardEntry(title.trim(), cardType, number, expiry, network, cvc = cvc)
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedContainerColor = Color(0xF7FFFFFF), unfocusedContainerColor = Color(0xECFFFFFF),
         errorContainerColor = Color(0xF7FFFFFF),
@@ -138,6 +142,7 @@ fun CardReviewScreen(
         if (expiry.isNotBlank()) put("expiry", expiry.trim())
         if (issuer.isNotBlank()) put("issuer", issuer.trim())
         if (network.isNotBlank()) put("network", network.trim())
+        if (payment && cvc.isNotBlank()) put("cardCvc", cvc)
         if (recognizedText.isNotBlank()) put("ocrText", recognizedText)
     }
     val preview = VaultItem(title.ifBlank { "Your card" }, VaultCategory.CARD, cardType, "",
@@ -215,7 +220,22 @@ fun CardReviewScreen(
                     saveNotice = ""
                 }
             }
-            Spacer(Modifier.height(6.dp))
+            if (payment) {
+                OutlinedTextField(cvc, { cvc = it.filter(Char::isDigit).take(4); saveNotice = "" },
+                    label = { Text("CVC (optional)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = if (showCvc) VisualTransformation.None else PasswordVisualTransformation(),
+                    isError = saveAttempted && validation.cvcError != null,
+                    supportingText = validation.cvcError.takeIf { saveAttempted }?.let { error -> { Text(error) } },
+                    trailingIcon = { IconButton(onClick = { showCvc = !showCvc }) {
+                        Icon(if (showCvc) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = if (showCvc) "Hide CVC" else "Show CVC")
+                    } }, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+            }
+            validation.warnings.forEach { warning ->
+                Text(warning, style = MaterialTheme.typography.bodySmall, color = Color(0xFF436A8A))
+            }
+            Spacer(Modifier.height(28.dp))
         }
         if ((saveAttempted && !validation.isValid) || saveNotice.isNotBlank()) {
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
@@ -265,24 +285,10 @@ internal fun CardNetworkDropdown(
             containerColor = Color(0xFFF7FBFF), shape = RoundedCornerShape(19.dp)) {
             options.forEach { option ->
                 val selected = value == option || (option == "Not specified" && value.isBlank())
-                val accent = when (option) {
-                    "Visa" -> Color(0xFF3458A7)
-                    "Mastercard" -> Color(0xFFE87555)
-                    "RuPay" -> Color(0xFF428A75)
-                    "Amex" -> Color(0xFF458EC0)
-                    "JCB" -> Color(0xFF8B61AF)
-                    else -> Color(0xFF657893)
-                }
                 DropdownMenuItem(
                     text = { Text(option, color = LockrColors.TextPrimary,
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp)) },
-                    leadingIcon = {
-                        Box(Modifier.size(29.dp).clip(CircleShape).background(accent.copy(alpha = 0.14f)),
-                            contentAlignment = Alignment.Center) {
-                            Text(option.take(1), color = accent,
-                                style = MaterialTheme.typography.labelSmall)
-                        }
-                    },
+                    leadingIcon = { CardNetworkMark(option) },
                     trailingIcon = if (selected) ({ Icon(Icons.Outlined.Check, contentDescription = null,
                         tint = LockrColors.Accent, modifier = Modifier.size(18.dp)) }) else null,
                     onClick = {
@@ -291,6 +297,45 @@ internal fun CardNetworkDropdown(
                     }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CardNetworkMark(network: String) {
+    Box(Modifier.size(width = 38.dp, height = 30.dp).clip(RoundedCornerShape(9.dp))
+        .background(Color.White).border(1.dp, Color(0xFFE6ECF4), RoundedCornerShape(9.dp)),
+        contentAlignment = Alignment.Center) {
+        when (network) {
+            "Mastercard" -> {
+                Box(Modifier.size(18.dp).align(Alignment.CenterStart).padding(start = 2.dp)
+                    .background(Color(0xFFEB4F42), CircleShape))
+                Box(Modifier.size(18.dp).align(Alignment.CenterEnd).padding(end = 2.dp)
+                    .background(Color(0xFFF9B33D).copy(alpha = 0.88f), CircleShape))
+            }
+            "Visa" -> Text("VISA", color = Color(0xFF17479E), fontWeight = FontWeight.Black,
+                fontStyle = FontStyle.Italic, fontSize = 9.sp)
+            "RuPay" -> Text("RuPay", color = Color(0xFF2352A2), fontWeight = FontWeight.Bold,
+                fontStyle = FontStyle.Italic, fontSize = 7.sp)
+            "Amex" -> Box(Modifier.size(width = 30.dp, height = 23.dp).background(Color(0xFF2887C7), RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center) {
+                Text("AMEX", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 7.sp)
+            }
+            "JCB" -> Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                listOf(Color(0xFF2A70B6), Color(0xFFD64F66), Color(0xFF53A96A)).forEachIndexed { index, color ->
+                    Box(Modifier.size(width = 9.dp, height = 21.dp).background(color, RoundedCornerShape(3.dp)),
+                        contentAlignment = Alignment.Center) {
+                        Text("JCB"[index].toString(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 6.sp)
+                    }
+                }
+            }
+            "UnionPay" -> Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                listOf(Color(0xFFD44D53), Color(0xFF277DB9), Color(0xFF4BAF81)).forEach { color ->
+                    Box(Modifier.size(width = 8.dp, height = 21.dp).background(color, RoundedCornerShape(3.dp)))
+                }
+            }
+            "Discover" -> Text("DISC", color = Color(0xFFE5753E), fontWeight = FontWeight.Black, fontSize = 8.sp)
+            else -> Text(if (network == "Not specified") "—" else "•••", color = Color(0xFF64748B), fontSize = 10.sp)
         }
     }
 }

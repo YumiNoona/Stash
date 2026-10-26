@@ -27,11 +27,11 @@ fun writeReadableExport(output: OutputStream, items: List<VaultItem>, format: Da
     }
 }
 
-private val neverExport = setOf("securityCode", "cvv", "cvc")
+private val neverExport = setOf("securitycode", "cvv", "cvc", "cardcvc")
 private val privateFields = setOf("password", "cardNumber", "idNumber", "documentNumber", "ocrText", "content", "notes")
 
-private fun visibleMetadata(item: VaultItem, includePrivate: Boolean): Map<String, String> =
-    item.metadata.filterKeys { key -> key !in neverExport && (includePrivate || key !in privateFields) }
+internal fun visibleMetadata(item: VaultItem, includePrivate: Boolean): Map<String, String> =
+    item.metadata.filterKeys { key -> key.lowercase() !in neverExport && (includePrivate || key !in privateFields) }
 
 private fun writeJson(output: OutputStream, items: List<VaultItem>, includePrivate: Boolean) {
     JsonWriter(OutputStreamWriter(output, StandardCharsets.UTF_8)).use { json ->

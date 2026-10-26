@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -80,7 +81,9 @@ fun CardsScreen(items: List<VaultItem>, onBack: () -> Unit, onSearch: () -> Unit
                         Icon(Icons.Outlined.CreditCard, contentDescription = null, tint = Color(0xFF54799A), modifier = Modifier.size(35.dp))
                     }
                     Text(if (cards.isEmpty()) "Your cards will live here" else "No cards in this filter", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
-                    Text(if (cards.isEmpty()) "Import a card image or document using Add below." else "Choose a different card type.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 5.dp))
+                    Text(if (cards.isEmpty()) "Tap + to scan or import a card." else "Choose a different card type.",
+                        color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 5.dp))
                 }
             }
         } else {

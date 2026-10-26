@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.TextSnippet
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -202,6 +203,7 @@ fun ManualItemScreen(
     var password by remember(category) { mutableStateOf("") }
     var note by remember(category) { mutableStateOf("") }
     var showPassword by remember(category) { mutableStateOf(false) }
+    var showGenerator by remember(category) { mutableStateOf(false) }
     val isNote = category == VaultCategory.NOTE
 
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
@@ -230,6 +232,10 @@ fun ManualItemScreen(
                     shape = RoundedCornerShape(17.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
+                TextButton(onClick = { showGenerator = true }) {
+                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("Generate password", modifier = Modifier.padding(start = 8.dp))
+                }
                 Text("Passwords are encrypted and excluded from vault search.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -241,5 +247,11 @@ fun ManualItemScreen(
             enabled = title.isNotBlank() && if (isNote) note.isNotBlank() else password.isNotBlank(),
             modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp).height(54.dp)
         ) { Text("Save to vault") }
+    }
+    if (showGenerator) {
+        PasswordGeneratorDialog(
+            onDismiss = { showGenerator = false },
+            onUse = { generated -> password = generated; showPassword = false; showGenerator = false }
+        )
     }
 }

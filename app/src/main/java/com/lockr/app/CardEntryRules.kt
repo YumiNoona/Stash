@@ -26,9 +26,11 @@ data class CardEntryValidation(
     val titleError: String? = null,
     val numberError: String? = null,
     val expiryError: String? = null,
-    val networkError: String? = null
+    val networkError: String? = null,
+    val cvcError: String? = null,
+    val warnings: List<String> = emptyList()
 ) {
-    val messages: List<String> get() = listOfNotNull(titleError, numberError, expiryError, networkError)
+    val messages: List<String> get() = listOfNotNull(titleError, numberError, expiryError, networkError, cvcError)
     val isValid: Boolean get() = messages.isEmpty()
 }
 
@@ -38,30 +40,41 @@ fun validateCardEntry(
     number: String,
     expiry: String,
     network: String,
-    currentMonth: YearMonth = YearMonth.now()
+    currentMonth: YearMonth = YearMonth.now(),
+    cvc: String = ""
 ): CardEntryValidation {
     val payment = isPaymentCardType(cardType)
     val digits = number.filter(Char::isDigit)
     val expectedLength = paymentCardDigitLimit(network)
     val numberError = when {
         payment && digits.length != expectedLength -> "Enter a $expectedLength-digit card number"
-        payment && !isPlausibleCardNumber(digits) -> "Check the card number"
         else -> null
     }
     val expiryError = when {
         !payment && expiry.isBlank() -> null
         expiry.isBlank() -> "Enter an expiry date (MM/YY)"
         !Regex("^(0[1-9]|1[0-2])/(\\d{2})$").matches(expiry) -> "Enter a valid expiry (MM/YY)"
-        else -> {
+        else -> null
+    }
+    val cvcLength = if (network == "Amex") 4 else 3
+    val cvcError = if (payment && cvc.isNotBlank() && (cvc.length != cvcLength || !cvc.all(Char::isDigit)))
+        "Enter a $cvcLength-digit CVC, or leave it blank" else null
+    val warnings = buildList {
+        if (payment && numberError == null && !isPlausibleCardNumber(digits))
+            add("Card number could not be verified. You can still save it.")
+        if (expiryError == null && expiry.isNotBlank()) {
             val month = expiry.take(2).toInt()
             val year = 2000 + expiry.takeLast(2).toInt()
-            if (YearMonth.of(year, month).isBefore(currentMonth)) "This card has expired" else null
+            if (YearMonth.of(year, month).isBefore(currentMonth))
+                add("This card has expired. You can still save it.")
         }
     }
     return CardEntryValidation(
         titleError = if (title.isBlank()) "Enter a card name" else null,
         numberError = numberError,
         expiryError = expiryError,
-        networkError = if (payment && network.isBlank()) "Choose a card network" else null
+        networkError = if (payment && network.isBlank()) "Choose a card network" else null,
+        cvcError = cvcError,
+        warnings = warnings
     )
 }

@@ -18,19 +18,23 @@ Stash is a local Android vault for cards, documents, passwords, and notes, built
 
 | Cards | Card detail |
 | --- | --- |
-| ![Cards collection with a temporary test import](docs/screenshots/cards.jpg) | ![Card detail with a temporary test import](docs/screenshots/card-detail.jpg) |
+| ![Empty cards collection](docs/screenshots/cards.jpg) | ![Card detail with a temporary test import](docs/screenshots/card-detail.jpg) |
+
+| Password generator |
+| --- |
+| ![Local password generator settings](docs/screenshots/password-generator.jpg) |
 
 | Documents | Profile | Settings |
 | --- | --- | --- |
 | ![Documents collection](docs/screenshots/documents.jpg) | ![Local profile](docs/screenshots/profile.jpg) | ![Security and export settings](docs/screenshots/settings.jpg) |
 
-The card and document review screenshots use temporary files during emulator testing. They were deleted afterward; a new vault starts empty.
+The card detail and document review screenshots use temporary files during emulator testing. They were deleted afterward; a new vault starts empty.
 
 ## Add and review
 
 The center dock button first asks what you are adding:
 
-- **Documents & files:** Scan one or more pages with CameraX, choose images from Android's photo picker, or select an image, PDF, or text file. Review the preview, title, document group, and locally extracted text before saving.
+- **Documents:** Scan one or more pages with CameraX, choose images from Android's photo picker, or select an image, PDF, or text file. Review the preview, title, document group, and locally extracted text before saving.
 - **Cards:** Scan a card with the camera, import a card photo or file, tap a supported contactless card with NFC, or enter details manually. A card-specific review screen lets you check the type, number, name, expiry, issuer, and network before saving. The original imported image or file stays attached.
 - **Password** and **Note:** Open short manual forms.
 
@@ -38,7 +42,7 @@ Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works off
 
 NFC is optional and needs an NFC-equipped device and a card that exposes usable fields through the supported contactless interface. Stash does not authenticate to banks or guarantee that every card can be read. The emulator has no NFC reader, so use camera or manual entry there. Nothing is saved from a tap until you confirm the review screen.
 
-Manual credit and debit entry groups card numbers in fours, uses a numeric MM/YY expiry field, and offers a network picker. Save explains missing or invalid fields. Standard payment cards require 16 digits; Amex uses its 15-digit format.
+Manual credit and debit entry groups card numbers in fours, uses a numeric MM/YY expiry field, and offers a network picker with recognizable marks. Save explains missing or invalid fields. Standard payment cards require 16 digits; Amex uses its 15-digit format. An unverified checksum or expired card shows a warning but can still be saved. CVC is optional. Password entry includes a local random generator with length, character type, and mixing controls.
 
 The profile screen lets you change the display name and choose or remove a photo. Both stay in app-private local storage.
 
@@ -50,7 +54,7 @@ Settings offers readable JSON, PDF, Excel (`.xlsx`), and text exports, plus a se
 
 - Records and imported attachments are encrypted with AES-GCM in app-private storage. Android Keystore holds the device-bound encryption key.
 - Vault writes use atomic file replacement. Stash does not request broad photo or storage access; Android's pickers grant access only to items you choose.
-- Stash does not store a card CVV/CVC/security code. OCR redacts likely full card numbers and labeled security codes before indexing.
+- An optional CVC is encrypted in the device vault, masked in the UI, and omitted from readable exports. OCR redacts likely full card numbers and labeled security codes before indexing.
 - Sensitive values are masked and require the device screen-lock credential to reveal. Clipboard clearing and app-lock preferences are available in Settings.
 - Encrypted backup files can be exported and restored locally, but the key is device-bound: a backup is restorable only on the device that created it.
 - Sharing an original attachment uses a temporary app-private cache file, which Stash removes after ten minutes or on next launch.

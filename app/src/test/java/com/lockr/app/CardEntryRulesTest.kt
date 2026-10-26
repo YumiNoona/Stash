@@ -26,16 +26,24 @@ class CardEntryRulesTest {
         assertEquals("Enter a 16-digit card number", missing.numberError)
         assertEquals("Choose a card network", missing.networkError)
 
-        val invalid = validateCardEntry("My card", "Debit", "2222 2222 2222 2222", "09/26", "Mastercard", now)
-        assertEquals("Check the card number", invalid.numberError)
-        assertEquals("This card has expired", invalid.expiryError)
+        val warned = validateCardEntry("My card", "Debit", "2222 2222 2222 2222", "09/26", "Mastercard", now)
+        assertNull(warned.numberError)
+        assertNull(warned.expiryError)
+        assertEquals(2, warned.warnings.size)
+        assertTrue(warned.isValid)
+
+        val invalid = validateCardEntry("My card", "Debit", "2222 2222 2222 2222", "52/36", "Mastercard", now, "12")
+        assertEquals("Enter a valid expiry (MM/YY)", invalid.expiryError)
+        assertEquals("Enter a 3-digit CVC, or leave it blank", invalid.cvcError)
         assertFalse(invalid.isValid)
     }
 
     @Test
     fun acceptsValidPaymentCardsAndOptionalIdDetails() {
         assertTrue(validateCardEntry("Travel card", "Credit", "4111 1111 1111 1111", "12/27", "Visa", now).isValid)
+        assertTrue(validateCardEntry("Travel card", "Credit", "4111 1111 1111 1111", "12/27", "Visa", now, "123").isValid)
         assertTrue(validateCardEntry("Amex", "Credit", "3782 8224 6310 005", "12/27", "Amex", now).isValid)
+        assertTrue(validateCardEntry("Amex", "Credit", "3782 8224 6310 005", "12/27", "Amex", now, "1234").isValid)
         assertTrue(validateCardEntry("Passport card", "ID Card", "A12345", "", "", now).isValid)
         assertNull(validateCardEntry("ID", "ID Card", "", "", "", now).numberError)
         assertEquals("RuPay", recognizeCardFields("RuPay 4111 1111 1111 1111").network)
