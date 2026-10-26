@@ -17,6 +17,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,10 +63,12 @@ import kotlin.coroutines.resume
 
 @Composable
 fun CameraScannerScreen(
+    category: VaultCategory,
     onBack: () -> Unit,
     onReviewPages: (List<File>) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isCard = category == VaultCategory.CARD
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val capturedPages = remember { mutableStateListOf<File>() }
@@ -73,6 +76,7 @@ fun CameraScannerScreen(
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
     var cameraError by remember { mutableStateOf<String?>(null) }
+    var captureBusy by remember { mutableStateOf(false) }
     val capture = remember {
         val rotation = (context as? Activity)?.windowManager?.defaultDisplay?.rotation ?: Surface.ROTATION_0
         ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).setTargetRotation(rotation).build()
@@ -80,7 +84,7 @@ fun CameraScannerScreen(
     val previewView = remember(context) { PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER } }
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasPermission = granted
-        if (!granted) cameraError = "Allow camera access to scan a document."
+        if (!granted) cameraError = "Allow camera access to scan ${if (isCard) "a card" else "a document"}."
     }
 
     LaunchedEffect(Unit) {
@@ -102,23 +106,25 @@ fun CameraScannerScreen(
         }
     }
     DisposableEffect(provider) {
-        onDispose { provider?.unbindAll() }
+        val boundProvider = provider
+        onDispose { boundProvider?.unbindAll() }
     }
-    BackHandler {
+    val backAndClean: () -> Unit = {
         capturedPages.forEach(File::delete)
         onBack()
     }
+    BackHandler { backAndClean() }
 
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+            IconButton(onClick = backAndClean, modifier = Modifier.size(48.dp)) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = LockrColors.TextPrimary)
             }
             Column(Modifier.weight(1f).padding(start = 4.dp)) {
-                Text("Scan documents", style = MaterialTheme.typography.headlineSmall, color = LockrColors.TextPrimary)
-                Text("Capture each page, then review", style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
+                Text(if (isCard) "Scan card" else "Scan documents", style = MaterialTheme.typography.headlineSmall, color = LockrColors.TextPrimary)
+                Text(if (isCard) "Capture the front, then review" else "Capture each page, then review", style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
             }
-            if (capturedPages.isNotEmpty()) {
+            if (!isCard && capturedPages.isNotEmpty()) {
                 IconButton(onClick = { capturedPages.removeAt(capturedPages.lastIndex).delete() }) {
                     Icon(Icons.Outlined.DeleteOutline, contentDescription = "Remove last page", tint = LockrColors.TextPrimary)
                 }
@@ -134,16 +140,19 @@ fun CameraScannerScreen(
             cameraError?.takeIf { hasPermission }?.let {
                 Text(it, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Center).padding(24.dp))
             }
-            Box(Modifier.align(Alignment.Center).fillMaxWidth(0.82f).fillMaxSize(0.72f).border(1.dp, Color.White.copy(alpha = 0.75f), RoundedCornerShape(12.dp)))
+            Box(if (isCard) Modifier.align(Alignment.Center).fillMaxWidth(0.88f).aspectRatio(1.58f)
+                .border(2.dp, Color.White.copy(alpha = 0.87f), RoundedCornerShape(21.dp))
+            else Modifier.align(Alignment.Center).fillMaxWidth(0.82f).fillMaxSize(0.72f)
+                .border(1.dp, Color.White.copy(alpha = 0.75f), RoundedCornerShape(12.dp)))
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (capturedPages.isEmpty()) "Position the page in the frame" else "${capturedPages.size} page${if (capturedPages.size == 1) "" else "s"} captured",
+                if (isCard) "Position the card inside the frame" else if (capturedPages.isEmpty()) "Position the page in the frame" else "${capturedPages.size} page${if (capturedPages.size == 1) "" else "s"} captured",
                 style = MaterialTheme.typography.bodyMedium,
                 color = LockrColors.TextSecondary,
                 modifier = Modifier.weight(1f)
             )
-            if (capturedPages.isNotEmpty()) {
+            if (!isCard && capturedPages.isNotEmpty()) {
                 Button(onClick = { onReviewPages(capturedPages.toList()) }) {
                     Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text("Review", modifier = Modifier.padding(start = 6.dp))
@@ -157,21 +166,25 @@ fun CameraScannerScreen(
                 contentAlignment = Alignment.Center
             ) {
                 IconButton(onClick = {
+                    if (captureBusy) return@IconButton
+                    captureBusy = true
                     val file = File(context.cacheDir, "stash-scan-${UUID.randomUUID()}.jpg")
                     val options = ImageCapture.OutputFileOptions.Builder(file).build()
                     capture.takePicture(options, ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageSavedCallback {
                         override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                            capturedPages.add(file)
+                            if (isCard) onReviewPages(listOf(file)) else capturedPages.add(file)
                             cameraError = null
+                            captureBusy = false
                         }
 
                         override fun onError(exception: ImageCaptureException) {
                             file.delete()
                             cameraError = "Could not capture this page. Please try again."
+                            captureBusy = false
                         }
                     })
                 }, modifier = Modifier.fillMaxSize()) {
-                    Icon(Icons.Outlined.CameraAlt, contentDescription = "Capture page", tint = LockrColors.TextPrimary, modifier = Modifier.size(29.dp))
+                    Icon(Icons.Outlined.CameraAlt, contentDescription = if (isCard) "Capture card" else "Capture page", tint = LockrColors.TextPrimary, modifier = Modifier.size(29.dp))
                 }
             }
         }

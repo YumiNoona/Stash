@@ -9,6 +9,7 @@ import android.provider.Settings as AndroidSettings
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
@@ -80,7 +81,7 @@ class MainActivity : androidx.activity.ComponentActivity() {
     }
 }
 
-enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, PROFILE, SEARCH, SCANNER, IMPORTING, REVIEW, MANUAL, ITEM_DETAIL, ITEM_PREVIEW }
+enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, PROFILE, SEARCH, SCANNER, NFC_CARD, IMPORTING, REVIEW, CARD_REVIEW, MANUAL, ITEM_DETAIL, ITEM_PREVIEW }
 
 enum class VaultCategory(val label: String) {
     CARD("Card"), DOCUMENT("Document"), PASSWORD("Password"), NOTE("Note")
@@ -117,6 +118,7 @@ private fun LockrApp() {
     var returnFromDetail by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
     var returnFromPreview by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
     var showAdd by rememberSaveable { mutableStateOf(false) }
+    var addStage by rememberSaveable { mutableStateOf(AddStage.CHOOSE) }
     var savingItem by rememberSaveable { mutableStateOf(false) }
     var storageReady by remember { mutableStateOf(false) }
     var storageError by remember { mutableStateOf(false) }
@@ -126,12 +128,13 @@ private fun LockrApp() {
     var currentDetailItem by remember { mutableStateOf<VaultItem?>(null) }
     var manualCategory by remember { mutableStateOf(VaultCategory.PASSWORD) }
     var importCategoryHint by remember { mutableStateOf<VaultCategory?>(null) }
+    var cardDraft by remember { mutableStateOf(CardDraft()) }
     var importedAttachments by remember { mutableStateOf<List<VaultAttachment>>(emptyList()) }
     var backupStatus by rememberSaveable { mutableStateOf<String?>(null) }
     var restoreBytes by remember { mutableStateOf<ByteArray?>(null) }
     var restoreItemCount by rememberSaveable { mutableStateOf(0) }
 
-    val activity = LocalContext.current as? MainActivity
+    val activity = LocalActivity.current as? MainActivity
     val context = activity?.applicationContext ?: LocalContext.current.applicationContext
     val preferences = remember(context) { context.getSharedPreferences("lockr_preferences", Context.MODE_PRIVATE) }
     var onboardingComplete by rememberSaveable { mutableStateOf(preferences.getBoolean("onboarding_complete", false)) }
@@ -178,8 +181,9 @@ private fun LockrApp() {
                 screen = returnFromDetail
             }
             LockrScreen.ITEM_PREVIEW -> { currentDetailItem = null; authorizedItem = null; screen = returnFromPreview }
-            LockrScreen.REVIEW -> { importedAttachments = emptyList(); screen = returnScreen; showAdd = true }
+            LockrScreen.REVIEW, LockrScreen.CARD_REVIEW -> { importedAttachments = emptyList(); cardDraft = CardDraft(); screen = returnScreen; showAdd = true }
             LockrScreen.SCANNER -> { screen = returnScreen; showAdd = true }
+            LockrScreen.NFC_CARD -> { screen = returnScreen; showAdd = true }
             LockrScreen.MANUAL -> { screen = returnScreen; showAdd = true }
             LockrScreen.SETTINGS -> screen = returnFromSettings
             LockrScreen.PROFILE -> screen = returnFromProfile
@@ -303,7 +307,9 @@ private fun LockrApp() {
 
     val beginImport: (List<Uri>, VaultCategory?) -> Unit = { uris, categoryHint ->
         showAdd = false
-        if (uris.isNotEmpty()) {
+        if (uris.isEmpty()) {
+            showAdd = true
+        } else {
             screen = LockrScreen.IMPORTING
             importCategoryHint = categoryHint
             coroutineScope.launch {
@@ -328,7 +334,7 @@ private fun LockrApp() {
                 } else {
                     importedAttachments = imported
                     if (failure != null) snackbarHostState.showSnackbar(failure)
-                    screen = LockrScreen.REVIEW
+                    screen = if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
                 }
             }
         }
@@ -364,7 +370,7 @@ private fun LockrApp() {
                 if (imported.isNotEmpty()) {
                     importedAttachments = imported
                     if (failure != null) snackbarHostState.showSnackbar(failure)
-                    screen = LockrScreen.REVIEW
+                    screen = if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
                 } else {
                     screen = returnScreen
                     snackbarHostState.showSnackbar(failure ?: "The scan could not be opened.")
@@ -532,16 +538,33 @@ private fun LockrApp() {
                         onOpenItem = { item -> openItem(item, LockrScreen.SEARCH) }
                     )
                     LockrScreen.SCANNER -> CameraScannerScreen(
+                        category = importCategoryHint ?: VaultCategory.DOCUMENT,
                         onBack = { screen = returnScreen; showAdd = true },
                         onReviewPages = { files -> beginCameraImport(files, importCategoryHint) }
+                    )
+                    LockrScreen.NFC_CARD -> NfcImportScreen(
+                        onBack = { screen = returnScreen; showAdd = true },
+                        onRead = { draft -> cardDraft = draft; importedAttachments = emptyList(); screen = LockrScreen.CARD_REVIEW },
+                        onScanCard = { importCategoryHint = VaultCategory.CARD; screen = LockrScreen.SCANNER },
+                        onManual = { cardDraft = CardDraft(); importedAttachments = emptyList(); screen = LockrScreen.CARD_REVIEW }
                     )
                     LockrScreen.IMPORTING -> ImportProgressScreen()
                     LockrScreen.REVIEW -> ReviewItemScreen(
                         attachments = importedAttachments,
-                        categoryHint = importCategoryHint,
                         onBack = { screen = returnScreen; showAdd = true },
                         onSave = { title, category, metadata, attachments ->
                             if (!savingItem) persistNewItem(VaultItem(title, category, metadata["cardType"].orEmpty(), nowLabel(), lastFour = metadata["lastFour"].orEmpty(), metadata = metadata, attachments = attachments))
+                        }
+                    )
+                    LockrScreen.CARD_REVIEW -> CardReviewScreen(
+                        attachments = importedAttachments,
+                        initial = cardDraft,
+                        onBack = { importedAttachments = emptyList(); cardDraft = CardDraft(); screen = returnScreen; showAdd = true },
+                        onSave = { title, metadata, attachments ->
+                            if (!savingItem) persistNewItem(VaultItem(title, VaultCategory.CARD,
+                                metadata["cardType"].orEmpty(), nowLabel(),
+                                lastFour = metadata["lastFour"].orEmpty(), metadata = metadata,
+                                attachments = attachments))
                         }
                     )
                     LockrScreen.MANUAL -> ManualItemScreen(
@@ -607,7 +630,7 @@ private fun LockrApp() {
                             else -> null
                         },
                         onCards = { screen = LockrScreen.CARDS },
-                        onAdd = { returnScreen = screen; showAdd = true },
+                        onAdd = { returnScreen = screen; addStage = AddStage.CHOOSE; showAdd = true },
                         onDocuments = { screen = LockrScreen.DOCUMENTS }
                     )
                 }
@@ -624,9 +647,19 @@ private fun LockrApp() {
                 dragHandle = null
             ) {
                 AddSourceSheet(
-                    onCamera = { hint -> importCategoryHint = hint; showAdd = false; screen = LockrScreen.SCANNER },
-                    onPhotos = { hint -> importCategoryHint = hint; photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                    onFiles = { hint -> importCategoryHint = hint; fileLauncher.launch(arrayOf("application/pdf", "image/*", "text/plain", "*/*")) },
+                    stage = addStage,
+                    onStageChange = { addStage = it },
+                    onCamera = { category -> importCategoryHint = category; cardDraft = CardDraft(); showAdd = false; screen = LockrScreen.SCANNER },
+                    onPhotos = { category ->
+                        importCategoryHint = category; cardDraft = CardDraft(); showAdd = false
+                        photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onFiles = { category ->
+                        importCategoryHint = category; cardDraft = CardDraft(); showAdd = false
+                        fileLauncher.launch(arrayOf("application/pdf", "image/*", "text/plain"))
+                    },
+                    onNfc = { showAdd = false; screen = LockrScreen.NFC_CARD },
+                    onCardManual = { cardDraft = CardDraft(); importedAttachments = emptyList(); showAdd = false; screen = LockrScreen.CARD_REVIEW },
                     onManual = { category -> manualCategory = category; showAdd = false; screen = LockrScreen.MANUAL }
                 )
             }

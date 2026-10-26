@@ -3,7 +3,6 @@ package com.lockr.app
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,17 +37,13 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ReviewItemScreen(
     attachments: List<VaultAttachment>,
-    categoryHint: VaultCategory?,
     onBack: () -> Unit,
     onSave: (String, VaultCategory, Map<String, String>, List<VaultAttachment>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var title by remember(attachments) { mutableStateOf(suggestedItemTitle(attachments.firstOrNull()?.name.orEmpty(), "")) }
-    var category by remember(attachments, categoryHint) { mutableStateOf(categoryHint ?: VaultCategory.DOCUMENT) }
     var documentGroup by remember(attachments) { mutableStateOf("Other") }
-    var cardType by remember(attachments) { mutableStateOf("Other") }
-    var cardLastFour by remember(attachments) { mutableStateOf("") }
     var extractedText by remember(attachments) { mutableStateOf("") }
     var isRecognizing by remember(attachments) { mutableStateOf(true) }
     var ocrMessage by remember(attachments) { mutableStateOf("Reading text on this device…") }
@@ -57,14 +52,12 @@ fun ReviewItemScreen(
     LaunchedEffect(attachments) {
         isRecognizing = true
         val extracted = mutableListOf<String>()
-        val cardEndings = mutableListOf<String>()
         var anySupported = false
         attachments.forEach { attachment ->
             try {
                 val text = recognizeAttachmentText(context, attachment)
                 if (text.isNotBlank()) {
                     anySupported = true
-                    suggestedCardLastFour(text).takeIf { it.isNotBlank() }?.let(cardEndings::add)
                     extracted += "${attachment.name}\n${redactPaymentSecrets(text)}"
                 } else if (attachment.mimeType.startsWith("image/") || attachment.mimeType == "application/pdf" || attachment.mimeType.startsWith("text/")) {
                     anySupported = true
@@ -74,12 +67,7 @@ fun ReviewItemScreen(
             }
         }
         extractedText = extracted.joinToString("\n\n").take(120_000)
-        if (categoryHint == null) {
-            category = suggestedVaultCategory(attachments.firstOrNull()?.name.orEmpty(), extractedText)
-        }
         documentGroup = suggestedDocumentGroup(attachments.firstOrNull()?.name.orEmpty(), extractedText)
-        cardType = suggestedCardType(extractedText)
-        cardLastFour = cardEndings.firstOrNull().orEmpty()
         title = suggestedItemTitle(attachments.firstOrNull()?.name.orEmpty(), extractedText)
         ocrMessage = when {
             extractedText.isNotBlank() -> "Text extracted locally · review before saving"
@@ -90,7 +78,7 @@ fun ReviewItemScreen(
     }
 
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar(title = "Review item", subtitle = "Check the suggested details", onBack = onBack)
+        StashTopBar(title = "Review document", subtitle = "Check the file before saving", onBack = onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             attachments.firstOrNull()?.let { first ->
                 VaultAttachmentPreview(first, Modifier.fillMaxWidth().height(272.dp))
@@ -108,35 +96,13 @@ fun ReviewItemScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Column {
-                Text("Category", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-                Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 5.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(VaultCategory.CARD, VaultCategory.DOCUMENT, VaultCategory.PASSWORD, VaultCategory.NOTE).forEach { option ->
-                        FilterChip(selected = category == option, onClick = { category = option }, label = { Text(option.label, maxLines = 1, softWrap = false) })
-                    }
-                }
-            }
-            if (category == VaultCategory.DOCUMENT) {
-                Column {
-                    Text("Document group", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-                    Column(Modifier.padding(top = 5.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        listOf("Identity", "Medical", "Bills", "Insurance", "Other").chunked(3).forEach { groupRow ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                groupRow.forEach { group ->
-                                    FilterChip(selected = documentGroup == group, onClick = { documentGroup = group }, label = { Text(group, maxLines = 1, softWrap = false) })
-                                }
+                Text("Document group", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+                Column(Modifier.padding(top = 5.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    listOf("Identity", "Medical", "Bills", "Insurance", "Other").chunked(3).forEach { groupRow ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            groupRow.forEach { group ->
+                                FilterChip(selected = documentGroup == group, onClick = { documentGroup = group }, label = { Text(group, maxLines = 1, softWrap = false) })
                             }
-                        }
-                    }
-                }
-            }
-            if (category == VaultCategory.CARD) {
-                Column {
-                    Text("Card type", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-                    Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 5.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("Credit", "Debit", "ID Card", "Other").forEach { type ->
-                            FilterChip(selected = cardType == type, onClick = { cardType = type },
-                                label = { Text(type, maxLines = 1, softWrap = false) })
                         }
                     }
                 }
@@ -164,17 +130,15 @@ fun ReviewItemScreen(
         Button(
             onClick = {
                 val metadata = buildMap {
-                    if (extractedText.isNotBlank() && category != VaultCategory.PASSWORD) put("ocrText", extractedText)
-                    if (category == VaultCategory.DOCUMENT) put("documentCategory", documentGroup)
-                    if (category == VaultCategory.CARD) put("cardType", cardType)
-                    if (category == VaultCategory.CARD && cardLastFour.isNotBlank()) put("lastFour", cardLastFour)
+                    if (extractedText.isNotBlank()) put("ocrText", extractedText)
+                    put("documentCategory", documentGroup)
                 }
-                onSave(title.trim().ifBlank { "Imported item" }, category, metadata, attachments)
+                onSave(title.trim().ifBlank { "Imported document" }, VaultCategory.DOCUMENT, metadata, attachments)
             },
             enabled = title.isNotBlank() && !isRecognizing,
             modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp).height(54.dp)
         ) {
-            Text(if (isRecognizing) "Recognizing…" else "Save to vault")
+            Text(if (isRecognizing) "Recognizing…" else "Save document")
         }
     }
 }

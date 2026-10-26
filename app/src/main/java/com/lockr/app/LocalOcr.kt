@@ -69,6 +69,7 @@ private suspend fun recognizePdf(context: Context, bytes: ByteArray): String {
                             Bitmap.Config.ARGB_8888
                         )
                         try {
+                            bitmap.eraseColor(android.graphics.Color.WHITE)
                             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                             val text = recognizeBitmap(bitmap)
                             if (text.isNotBlank()) {

@@ -4,9 +4,13 @@ Stash is a local Android vault for cards, documents, passwords, and notes, built
 
 ## Screenshots
 
-| Dashboard | Add sources |
+| Dashboard | Add to Stash |
 | --- | --- |
-| ![Stash dashboard](docs/screenshots/dashboard.jpg) | ![Add source picker](docs/screenshots/add-source.jpg) |
+| ![Stash dashboard](docs/screenshots/dashboard.jpg) | ![Add to Stash choices](docs/screenshots/add-source.jpg) |
+
+| Card import | Card review |
+| --- | --- |
+| ![Card import methods](docs/screenshots/add-card.jpg) | ![Manual card review](docs/screenshots/card-review.jpg) |
 
 | Cards | Card detail |
 | --- | --- |
@@ -20,14 +24,15 @@ The card screenshots show a temporary file imported during emulator testing. It 
 
 ## Add and review
 
-The center dock button opens a compact source picker:
+The center dock button first asks what you are adding:
 
-- **Scan with camera** captures one or more pages using CameraX.
-- **Choose photos** opens Android's photo picker.
-- **Choose files** opens the Android file picker for PDFs, images, and text files.
-- **Password** and **Note** open short manual forms. Imported items can be reviewed, reclassified, and renamed before saving.
+- **Documents & files:** Scan one or more pages with CameraX, choose images from Android's photo picker, or select an image, PDF, or text file. Review the preview, title, document group, and locally extracted text before saving.
+- **Cards:** Scan a card with the camera, import a card photo or file, tap a supported contactless card with NFC, or enter details manually. A card-specific review screen lets you check the type, number, name, expiry, issuer, and network before saving. The original imported image or file stays attached.
+- **Password** and **Note:** Open short manual forms.
 
-Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works offline; PDF recognition is limited to the first 20 pages. The review step suggests a category, document group or card type, title, and (when a card number is detected) its last four digits. The original selected file is kept as an encrypted attachment. Tapping a saved image or PDF opens a preview with rename, extract text, send, details, and delete actions. OCR is a convenience and should be checked before saving.
+Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works offline; PDF recognition is limited to the first 20 pages. Card OCR suggests plausible numbers and other visible details, but every field remains editable. The original selected file is kept as an encrypted attachment. Tapping a saved image or PDF opens a preview with rename, extract text, send, details, and delete actions. OCR is a convenience and should be checked before saving.
+
+NFC is optional and needs an NFC-equipped device and a card that exposes usable fields through the supported contactless interface. Stash does not authenticate to banks or guarantee that every card can be read. The emulator has no NFC reader, so use camera or manual entry there. Nothing is saved from a tap until you confirm the review screen.
 
 The profile screen lets you change the display name and choose or remove a photo. Both stay in app-private local storage.
 
@@ -47,7 +52,7 @@ Settings offers readable JSON, PDF, Excel (`.xlsx`), and text exports, plus a se
 
 ## Current scope
 
-- Stash does not connect to a bank or read cards over NFC. NFC is not part of this release.
+- NFC import is best effort for readable ISO-DEP payment cards; it may return no details for some cards. Stash does not connect to a bank.
 - The scanner captures pages but does not include automatic edge detection, perspective correction, or crop/rotate editing.
 - OCR quality depends on the photo and supported text. For PDFs, only the first 20 pages are indexed; the original PDF remains attached.
 - Data is local to this installation. There is no cloud sync or account recovery, and device-bound backups cannot be moved to another device.
@@ -72,6 +77,6 @@ The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Gradle may ne
 ## Project structure
 
 - `app/src/main/java/com/lockr/app/` — Compose screens, navigation, import/OCR, encrypted storage, and settings.
-- `app/src/test/` — JVM unit tests for OCR privacy and vault search behavior.
+- `app/src/test/` — JVM unit tests for OCR privacy, vault search, card recognition, and NFC data parsing.
 - `docs/screenshots/` — emulator captures embedded above.
 - `docs/licenses/` — the JetBrains Mono font license.
