@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 enum class AddStage { CHOOSE, DOCUMENT, CARD }
 
@@ -73,11 +75,14 @@ fun AddSourceSheet(
         Spacer(Modifier.height(18.dp))
         when (stage) {
             AddStage.CHOOSE -> {
-                WideSource("Documents & files", "Scan, photos, PDFs and other files", Icons.Outlined.Description,
-                    Color(0xFFDBF1FF), Color(0xFF377CB2)) { onStageChange(AddStage.DOCUMENT) }
-                Spacer(Modifier.height(9.dp))
-                WideSource("Cards", "Camera, contactless NFC or manual", Icons.Outlined.CreditCard,
-                    Color(0xFFE9E1FC), Color(0xFF745CB6)) { onStageChange(AddStage.CARD) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    VaultTypeCard("Documents & files", "Images · PDFs · text", Icons.Outlined.Description,
+                        listOf(Color(0xFFF7FCFF), Color(0xFFD9F1FF), Color(0xFFE9F9F4)),
+                        Color(0xFF2F79A8), Modifier.weight(1f)) { onStageChange(AddStage.DOCUMENT) }
+                    VaultTypeCard("Cards", "Scan · NFC · manual", Icons.Outlined.CreditCard,
+                        listOf(Color(0xFFFFFAFF), Color(0xFFE9DDFB), Color(0xFFFBE9EF)),
+                        Color(0xFF7054A8), Modifier.weight(1f)) { onStageChange(AddStage.CARD) }
+                }
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     SmallSource("Password", Icons.Outlined.Key, Modifier.weight(1f)) { onManual(VaultCategory.PASSWORD) }
@@ -85,22 +90,13 @@ fun AddSourceSheet(
                 }
             }
             AddStage.DOCUMENT -> {
-                Text("Bring in one page or a whole document. Review the result before it is saved.",
-                    color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(bottom = 15.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     SourceTile("Camera", Icons.Outlined.CameraAlt, Color(0xFFDDF5EF), Color(0xFF278C82), Modifier.weight(1f)) { onCamera(VaultCategory.DOCUMENT) }
                     SourceTile("Photos", Icons.Outlined.Image, Color(0xFFE7F1FF), Color(0xFF477EB5), Modifier.weight(1f)) { onPhotos(VaultCategory.DOCUMENT) }
                     SourceTile("Files", Icons.Outlined.FolderOpen, Color(0xFFF2E8FB), Color(0xFF866BAE), Modifier.weight(1f)) { onFiles(VaultCategory.DOCUMENT) }
                 }
-                Text("Images, PDF and text files stay attached to the local item.",
-                    color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 14.dp))
             }
             AddStage.CARD -> {
-                Text("Choose how to add your card. Check every detected detail before saving.",
-                    color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(bottom = 15.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     SourceTile("Scan card", Icons.Outlined.CameraAlt, Color(0xFFDDF5EF), Color(0xFF278C82), Modifier.weight(1f)) { onCamera(VaultCategory.CARD) }
                     SourceTile("Photos", Icons.Outlined.Image, Color(0xFFE7F1FF), Color(0xFF477EB5), Modifier.weight(1f)) { onPhotos(VaultCategory.CARD) }
@@ -111,28 +107,33 @@ fun AddSourceSheet(
                     SmallSource("Tap with NFC", Icons.Outlined.Nfc, Modifier.weight(1f), onNfc)
                     SmallSource("Enter manually", Icons.Outlined.CreditCard, Modifier.weight(1f), onCardManual)
                 }
-                Text("NFC works only when a card exposes readable details. You can always scan or enter it manually.",
-                    color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 13.dp))
             }
         }
     }
 }
 
 @Composable
-private fun WideSource(title: String, subtitle: String, icon: ImageVector, glow: Color, tint: Color, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().height(74.dp)
-        .background(Brush.horizontalGradient(listOf(Color(0xF8FFFFFF), glow.copy(alpha = 0.78f))), RoundedCornerShape(23.dp))
-        .border(1.dp, Color.White, RoundedCornerShape(23.dp)).clickable(onClick = onClick)
-        .padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(45.dp).background(glow, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(25.dp))
+private fun VaultTypeCard(title: String, subtitle: String, icon: ImageVector, colors: List<Color>, tint: Color,
+                          modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(25.dp)
+    Column(modifier.height(170.dp).clip(shape).background(Brush.linearGradient(colors))
+        .border(1.dp, Color.White, shape).clickable(onClick = onClick).padding(15.dp),
+        verticalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top) {
+            Box(Modifier.size(56.dp).background(Color.White.copy(alpha = 0.76f), CircleShape),
+                contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(31.dp))
+            }
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = LockrColors.TextPrimary,
+                modifier = Modifier.size(21.dp))
         }
-        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
+        Column {
+            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 20.sp),
+                color = LockrColors.TextPrimary, maxLines = 2)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 16.sp),
+                color = Color(0xFF43536D), maxLines = 2, modifier = Modifier.padding(top = 3.dp))
         }
-        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = LockrColors.TextSecondary)
     }
 }
 
@@ -145,7 +146,7 @@ private fun SourceTile(label: String, icon: ImageVector, glow: Color, tint: Colo
         Box(Modifier.size(49.dp).background(glow, CircleShape), contentAlignment = Alignment.Center) {
             Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(26.dp))
         }
-        Text(label, style = MaterialTheme.typography.labelLarge, color = LockrColors.TextPrimary,
+        Text(label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp), color = LockrColors.TextPrimary,
             maxLines = 1, modifier = Modifier.padding(top = 7.dp))
     }
 }
@@ -156,7 +157,7 @@ private fun SmallSource(label: String, icon: ImageVector, modifier: Modifier, on
         .border(1.dp, Color.White, RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(horizontal = 11.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         Icon(icon, contentDescription = null, tint = LockrColors.Accent, modifier = Modifier.size(21.dp))
-        Text(label, color = LockrColors.TextPrimary, style = MaterialTheme.typography.labelLarge,
+        Text(label, color = LockrColors.TextPrimary, style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp),
             maxLines = 1, modifier = Modifier.padding(start = 7.dp))
     }
 }
