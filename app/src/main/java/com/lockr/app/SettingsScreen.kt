@@ -1,6 +1,7 @@
 package com.lockr.app
 
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.Wallpaper
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -74,6 +75,7 @@ fun SettingsScreen(
     onExportData: (DataExportFormat, Boolean) -> Unit,
     onImportBackup: () -> Unit,
     onOpenOrganization: () -> Unit,
+    onOpenBackdrop: () -> Unit,
     backupStatus: String?,
     modifier: Modifier = Modifier
 ) {
@@ -91,6 +93,7 @@ fun SettingsScreen(
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 88.dp)) {
                 SettingsSection("Appearance") {
+                    SettingsRow(Icons.Outlined.Wallpaper, "Backgrounds", "10 color styles or your photo", value = "›", onClick = onOpenBackdrop)
                     SettingsRow(Icons.Outlined.Animation, "Reduce motion", "Keep artwork and controls still", toggle = reducedMotion,
                         onToggle = { reducedMotion = it; preferences.edit().putBoolean("reduce_motion", it).apply() })
                     SettingsRow(Icons.Outlined.PlayCircle, "Animated card artwork", "Play saved GIF and video art", toggle = artworkAutoplay,

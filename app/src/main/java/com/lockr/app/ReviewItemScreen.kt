@@ -37,10 +37,20 @@ import androidx.compose.material.icons.outlined.TextSnippet
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.Crop
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -52,22 +62,33 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReviewItemScreen(
     attachments: List<VaultAttachment>,
+    initialTitle: String?,
+    initialGroup: String?,
+    onDraftChange: (String?, String?) -> Unit,
     onBack: () -> Unit,
+    onAddPhotos: () -> Unit,
+    onAddFiles: () -> Unit,
+    onAddCamera: () -> Unit,
+    onRemovePage: (Int) -> Unit,
+    onCorrectPage: (Int, VaultAttachment) -> Unit,
     onSave: (String, VaultCategory, Map<String, String>, List<VaultAttachment>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val ocrEnabled = LocalOcrOnImport.current
-    var title by remember(attachments) { mutableStateOf(suggestedItemTitle(attachments.firstOrNull()?.name.orEmpty(), "")) }
-    var titleTouched by remember(attachments) { mutableStateOf(false) }
-    var documentGroup by remember(attachments) { mutableStateOf("Other") }
-    var groupTouched by remember(attachments) { mutableStateOf(false) }
-    var extractedText by remember(attachments) { mutableStateOf("") }
-    var rawRecognizedText by remember(attachments) { mutableStateOf("") }
-    var isRecognizing by remember(attachments) { mutableStateOf(true) }
+    var title by remember { mutableStateOf(initialTitle ?: suggestedItemTitle(attachments.firstOrNull()?.name.orEmpty(), "")) }
+    var titleTouched by remember { mutableStateOf(initialTitle != null) }
+    var documentGroup by remember { mutableStateOf(initialGroup ?: "Other") }
+    var groupTouched by remember { mutableStateOf(initialGroup != null) }
+    var extractedText by remember { mutableStateOf("") }
+    var rawRecognizedText by remember { mutableStateOf("") }
+    var isRecognizing by remember { mutableStateOf(true) }
+    var showAddPages by remember { mutableStateOf(false) }
+    var correctIndex by remember { mutableIntStateOf(-1) }
 
     LaunchedEffect(attachments) {
         if (!ocrEnabled) { isRecognizing = false; return@LaunchedEffect }
@@ -98,14 +119,29 @@ fun ReviewItemScreen(
                     HorizontalPager(pageState, Modifier.fillMaxWidth().height(285.dp)) { index ->
                         DocumentPreviewCanvas(attachments[index], Modifier.fillMaxSize(), showPageControls = false)
                     }
-                    Text("${pageState.currentPage + 1} / ${attachments.size} · Saved together as one document", color = LockrColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Text("${pageState.currentPage + 1} / ${attachments.size} pages", color = LockrColors.TextSecondary,
+                            style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { showAddPages = true }) {
+                            Icon(Icons.Outlined.Add, "Add more pages", tint = LockrColors.Accent)
+                        }
+                        IconButton(onClick = { correctIndex = pageState.currentPage.coerceIn(0, attachments.lastIndex) },
+                            enabled = attachments[pageState.currentPage.coerceIn(0, attachments.lastIndex)].mimeType.startsWith("image/")) {
+                            Icon(Icons.Outlined.Crop, "Correct page edges", tint = LockrColors.Accent)
+                        }
+                        IconButton(onClick = { onRemovePage(pageState.currentPage.coerceIn(0, attachments.lastIndex)) },
+                            enabled = attachments.size > 1) {
+                            Icon(Icons.Outlined.DeleteOutline, "Remove this page",
+                                tint = if (attachments.size > 1) MaterialTheme.colorScheme.error else LockrColors.TextSecondary)
+                        }
+                    }
                 }
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp))
                     .background(LockrColors.Surface).border(1.dp, LockrColors.Surface, RoundedCornerShape(25.dp))
                     .padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text("Document name", style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
                         color = LockrColors.TextPrimary)
-                    OutlinedTextField(value = title, onValueChange = { title = it.take(80); titleTouched = true },
+                    OutlinedTextField(value = title, onValueChange = { title = it.take(80); titleTouched = true; onDraftChange(title, if (groupTouched) documentGroup else null) },
                         placeholder = { Text("Name this document", color = LockrColors.TextSecondary) },
                         singleLine = true, textStyle = MaterialTheme.typography.bodyLarge,
                         shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
@@ -115,7 +151,7 @@ fun ReviewItemScreen(
                             focusedBorderColor = LockrColors.Accent, unfocusedBorderColor = Color(0xFFBECBD8),
                             cursorColor = LockrColors.Accent))
                     TagEditor(VaultCategory.DOCUMENT, setOf(documentGroup),
-                        onChange = { documentGroup = it.firstOrNull() ?: "Other"; groupTouched = true }, single = true)
+                        onChange = { documentGroup = it.firstOrNull() ?: "Other"; groupTouched = true; onDraftChange(if (titleTouched) title else null, documentGroup) }, single = true)
 
                 }
                 Spacer(Modifier.height(8.dp))
@@ -137,6 +173,26 @@ fun ReviewItemScreen(
         }
         StashTopBar(title = "Review document", onBack = onBack)
     }
+
+    if (showAddPages) ModalBottomSheet(onDismissRequest = { showAddPages = false },
+        containerColor = LockrColors.Surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
+        Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 30.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Add pages", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 8.dp))
+            listOf(Triple(Icons.Outlined.CameraAlt, "Scan another page", onAddCamera),
+                Triple(Icons.Outlined.AddPhotoAlternate, "Choose photos", onAddPhotos),
+                Triple(Icons.Outlined.InsertDriveFile, "Choose files", onAddFiles)).forEach { (icon, label, action) ->
+                TextButton(onClick = { showAddPages = false; action() }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(icon, null); Text(label, modifier = Modifier.weight(1f).padding(start = 14.dp))
+                }
+            }
+        }
+    }
+    if (correctIndex in attachments.indices) DocumentEdgeCorrectionSheet(attachments[correctIndex],
+        onDismiss = { correctIndex = -1 }, onApply = { corrected ->
+            onCorrectPage(correctIndex, corrected)
+            correctIndex = -1
+        })
 
 }
 

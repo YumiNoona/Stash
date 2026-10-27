@@ -89,7 +89,7 @@ class MainActivity : androidx.activity.ComponentActivity() {
     }
 }
 
-enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, ORGANIZATION, PROFILE, SEARCH, SCANNER, NFC_CARD, IMPORTING, REVIEW, CARD_REVIEW, MANUAL, ITEM_DETAIL, ITEM_PREVIEW }
+enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, BACKDROP, ORGANIZATION, PROFILE, SEARCH, SCANNER, NFC_CARD, IMPORTING, REVIEW, CARD_REVIEW, MANUAL, ITEM_DETAIL, ITEM_PREVIEW }
 
 enum class VaultCategory(val label: String) {
     CARD("Card"), DOCUMENT("Document"), PASSWORD("Password"), NOTE("Note")
@@ -139,6 +139,9 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     var importCategoryHint by remember { mutableStateOf<VaultCategory?>(null) }
     var cardDraft by remember { mutableStateOf(CardDraft()) }
     var importedAttachments by remember { mutableStateOf<List<VaultAttachment>>(emptyList()) }
+    var appendToReview by remember { mutableStateOf(false) }
+    var reviewTitleDraft by remember { mutableStateOf<String?>(null) }
+    var reviewGroupDraft by remember { mutableStateOf<String?>(null) }
     var backupStatus by rememberSaveable { mutableStateOf<String?>(null) }
     var restoreBytes by remember { mutableStateOf<ByteArray?>(null) }
     var restoreItemCount by rememberSaveable { mutableStateOf(0) }
@@ -220,11 +223,12 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
             }
             LockrScreen.ITEM_PREVIEW -> { currentDetailItem = null; authorizedItem = null; screen = returnFromPreview }
             LockrScreen.REVIEW, LockrScreen.CARD_REVIEW -> { importedAttachments = emptyList(); cardDraft = CardDraft(); screen = returnScreen; showAdd = true }
-            LockrScreen.SCANNER -> { screen = returnScreen; showAdd = true }
+            LockrScreen.SCANNER -> { screen = if (appendToReview) LockrScreen.REVIEW else returnScreen; if (!appendToReview) showAdd = true; appendToReview = false }
             LockrScreen.NFC_CARD -> { screen = returnScreen; showAdd = true }
             LockrScreen.MANUAL -> { screen = returnScreen; showAdd = true }
             LockrScreen.SETTINGS -> screen = returnFromSettings
             LockrScreen.ORGANIZATION -> screen = LockrScreen.SETTINGS
+            LockrScreen.BACKDROP -> screen = LockrScreen.SETTINGS
             LockrScreen.PROFILE -> screen = returnFromProfile
             LockrScreen.SEARCH -> screen = returnFromSearch
             else -> screen = LockrScreen.HOME
@@ -348,16 +352,19 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     val beginImport: (List<Uri>, VaultCategory?) -> Unit = { uris, categoryHint ->
         showAdd = false
         if (uris.isEmpty()) {
-            showAdd = true
+            if (!appendToReview) showAdd = true
+            appendToReview = false
         } else {
-            screen = LockrScreen.IMPORTING
+            if (!appendToReview) { reviewTitleDraft = null; reviewGroupDraft = null }
+            if (!appendToReview) screen = LockrScreen.IMPORTING
             importCategoryHint = categoryHint
             coroutineScope.launch {
                 val imported = mutableListOf<VaultAttachment>()
                 var totalBytes = 0L
                 var failure: String? = null
-                for (uri in uris.take(MAX_IMPORT_ITEMS)) {
-                    val remaining = MAX_VAULT_TOTAL_ATTACHMENT_BYTES - totalBytes
+                for (uri in uris.take((MAX_IMPORT_ITEMS - if (appendToReview) importedAttachments.size else 0).coerceAtLeast(0))) {
+                    val remaining = MAX_VAULT_TOTAL_ATTACHMENT_BYTES - totalBytes -
+                        (if (appendToReview) importedAttachments.sumOf { it.byteCount } else 0L)
                     if (remaining <= 0) { failure = "The 24 MB per-item limit was reached."; break }
                     try {
                         val attachment = readVaultAttachment(context, uri, minOf(MAX_VAULT_ATTACHMENT_BYTES, remaining))
@@ -369,13 +376,14 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                     }
                 }
                 if (imported.isEmpty()) {
-                    screen = returnScreen
+                    screen = if (appendToReview) LockrScreen.REVIEW else returnScreen
                     snackbarHostState.showSnackbar(failure ?: "No files were selected.")
                 } else {
-                    importedAttachments = imported
+                    importedAttachments = if (appendToReview) importedAttachments + imported else imported
                     screen = if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
                     if (failure != null) snackbarHostState.showSnackbar(failure)
                 }
+                appendToReview = false
             }
         }
     }
@@ -393,6 +401,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     }
 
     val beginCameraImport: (List<File>, VaultCategory?) -> Unit = { files, categoryHint ->
+        if (!appendToReview) { reviewTitleDraft = null; reviewGroupDraft = null }
         screen = LockrScreen.IMPORTING
         importCategoryHint = categoryHint
         coroutineScope.launch {
@@ -401,14 +410,15 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
             var failure: String? = null
             try {
                 for (file in files.take(MAX_IMPORT_ITEMS)) {
-                    val remaining = MAX_VAULT_TOTAL_ATTACHMENT_BYTES - totalBytes
+                    val remaining = MAX_VAULT_TOTAL_ATTACHMENT_BYTES - totalBytes -
+                        (if (appendToReview) importedAttachments.sumOf { it.byteCount } else 0L)
                     if (remaining <= 0) { failure = "The 24 MB per-item limit was reached."; break }
                     val attachment = readFileVaultAttachment(file, minOf(MAX_VAULT_ATTACHMENT_BYTES, remaining))
                     imported += attachment
                     totalBytes += attachment.byteCount
                 }
                 if (imported.isNotEmpty()) {
-                    importedAttachments = imported
+                    importedAttachments = if (appendToReview) importedAttachments + imported else imported
                     screen = if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
                     if (failure != null) snackbarHostState.showSnackbar(failure)
                 } else {
@@ -420,6 +430,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                 snackbarHostState.showSnackbar(error.message ?: "The scan could not be opened.")
             } finally {
                 files.forEach(File::delete)
+                appendToReview = false
             }
         }
     }
@@ -651,7 +662,8 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                         onOpenAllItems = { screen = LockrScreen.ALL_ITEMS },
                         onOpenProfile = { returnFromProfile = LockrScreen.HOME; screen = LockrScreen.PROFILE },
                         onOpenItem = { item -> openItem(item, LockrScreen.HOME) },
-                        onOpenDetails = { item -> currentDetailItem = item; returnFromDetail = LockrScreen.HOME; screen = LockrScreen.ITEM_DETAIL }
+                        onOpenDetails = { item -> currentDetailItem = item; returnFromDetail = LockrScreen.HOME; screen = LockrScreen.ITEM_DETAIL },
+                        onRenameItem = { item, name -> persistUpdatedItem(item.copy(title = name)) }
                     )
                     LockrScreen.CARDS -> CardsScreen(items = items, onBack = { screen = LockrScreen.HOME }, onSearch = { returnFromSearch = LockrScreen.CARDS; screen = LockrScreen.SEARCH }, onOpenItem = { item -> openItem(item, LockrScreen.CARDS) })
                     LockrScreen.SETTINGS -> SettingsScreen(
@@ -670,8 +682,10 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                         },
                         onImportBackup = { importBackupLauncher.launch(arrayOf("*/*")) },
                         onOpenOrganization = { screen = LockrScreen.ORGANIZATION },
+                        onOpenBackdrop = { screen = LockrScreen.BACKDROP },
                         backupStatus = backupStatus
                     )
+                    LockrScreen.BACKDROP -> BackdropSettingsScreen(onBack = { screen = LockrScreen.SETTINGS })
                     LockrScreen.ORGANIZATION -> OrganizationScreen(onBack = { screen = LockrScreen.SETTINGS })
                     LockrScreen.PROFILE -> ProfileScreen(
                         name = profileName,
@@ -691,7 +705,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                     )
                     LockrScreen.SCANNER -> CameraScannerScreen(
                         category = importCategoryHint ?: VaultCategory.DOCUMENT,
-                        onBack = { screen = returnScreen; showAdd = true },
+                        onBack = { screen = if (appendToReview) LockrScreen.REVIEW else returnScreen; if (!appendToReview) showAdd = true; appendToReview = false },
                         onReviewPages = { files -> beginCameraImport(files, importCategoryHint) }
                     )
                     LockrScreen.NFC_CARD -> NfcImportScreen(
@@ -703,7 +717,15 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                     LockrScreen.IMPORTING -> ImportProgressScreen()
                     LockrScreen.REVIEW -> ReviewItemScreen(
                         attachments = importedAttachments,
+                        initialTitle = reviewTitleDraft,
+                        initialGroup = reviewGroupDraft,
+                        onDraftChange = { title, group -> reviewTitleDraft = title; reviewGroupDraft = group },
                         onBack = { screen = returnScreen; showAdd = true },
+                        onAddPhotos = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                        onAddFiles = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; fileLauncher.launch(arrayOf("application/pdf", "image/*", "text/*")) },
+                        onAddCamera = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; screen = LockrScreen.SCANNER },
+                        onRemovePage = { index -> importedAttachments = importedAttachments.filterIndexed { i, _ -> i != index } },
+                        onCorrectPage = { index, corrected -> importedAttachments = importedAttachments.toMutableList().apply { set(index, corrected) } },
                         onSave = { title, category, metadata, attachments ->
                             if (!savingItem) persistNewItem(VaultItem(title, category, metadata["cardType"].orEmpty(), nowLabel(), lastFour = metadata["lastFour"].orEmpty(), metadata = metadata, attachments = attachments))
                         }

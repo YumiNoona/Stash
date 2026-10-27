@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -198,6 +199,12 @@ fun ItemPreviewScreen(
             }
             Text("${item.attachments.size} ${if (item.attachments.size == 1) "file" else "files"} · Send a copy outside Stash",
                 style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
+            if (item.attachments.getOrNull(pager.currentPage)?.let {
+                it.mimeType.startsWith("image/") || it.mimeType == "application/pdf" || it.name.endsWith(".pdf", true)
+            } == true) OutlinedButton(onClick = { dialog = "redact" }, modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(18.dp)) {
+                Icon(Icons.Outlined.BorderColor, null, Modifier.size(19.dp)); Spacer(Modifier.width(9.dp)); Text("Redact text in this file")
+            }
             Button(onClick = {
                 dialog = ""
                 if (item.attachments.size > 1) scope.launch { shareVaultDocument(context, item) } else onSend()
@@ -205,6 +212,9 @@ fun ItemPreviewScreen(
                 Icon(Icons.Outlined.IosShare, null, Modifier.size(19.dp)); Spacer(Modifier.width(9.dp)); Text("Continue to share")
             }
         }
+    }
+    if (dialog == "redact") item.attachments.getOrNull(pager.currentPage)?.let { attachment ->
+        ShareRedactionSheet(attachment, onDismiss = { dialog = "" })
     }
     if (dialog == "delete") ModalBottomSheet(onDismissRequest = { dialog = "" },
         containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)) {

@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,8 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CategoryScreen(
     screen: LockrScreen,
@@ -75,6 +77,7 @@ fun CategoryScreen(
     var moving by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     var descending by rememberSaveable { mutableStateOf(true) }
+    var showFilters by remember { mutableStateOf(false) }
     BackHandler(selection.active) { selection = VaultSelection() }
     LaunchedEffect(folders) { if (folder !in folders && folder !in listOf("All folders", "Unfiled")) { folder = "All folders"; prefs.edit().putString("last_folder", folder).apply() } }
     val catalog = LocalTagCatalog.current
@@ -103,14 +106,21 @@ fun CategoryScreen(
     Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 88.dp, bottom = 124.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (screen == LockrScreen.ALL_ITEMS || screen == LockrScreen.DOCUMENTS) item {
+            if (screen == LockrScreen.ALL_ITEMS) item {
                 CollectionFilters(filters, selectedFilter, { selectedFilter = it })
             }
             if (screen == LockrScreen.DOCUMENTS) item {
                 Column {
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        (listOf("All folders", "Unfiled") + folders).distinct().forEach { f ->
-                            FilterChip(folder == f, { folder = f; prefs.edit().putString("last_folder", f).apply() }, label = { Text(f) })
+                    Surface(onClick = { showFilters = true }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(18.dp), color = LockrColors.Surface.copy(alpha = .72f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, LockrColors.Line)) {
+                        Row(Modifier.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.FilterList, "Filter documents", tint = LockrColors.Accent, modifier = Modifier.size(22.dp))
+                            Text("Filters", modifier = Modifier.padding(start = 12.dp).weight(1f),
+                                style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+                            Text(listOf(selectedFilter.takeUnless { it == "All" }, folder.takeUnless { it == "All folders" })
+                                .filterNotNull().joinToString(" · ").ifBlank { "All documents" },
+                                style = MaterialTheme.typography.labelMedium, color = LockrColors.TextSecondary)
                         }
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -160,7 +170,34 @@ fun CategoryScreen(
             trailing = { IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "Search vault") } })
     }
     if (moving) FolderPicker(folders, { moving = false }) { destination -> actions.move(selected, destination); moving = false; selection = VaultSelection() }
+    if (showFilters) ModalBottomSheet(onDismissRequest = { showFilters = false },
+        containerColor = LockrColors.Surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, bottom = 26.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Filter documents", style = MaterialTheme.typography.titleLarge)
+            Text("Tags", style = MaterialTheme.typography.titleSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                filters.forEach { label -> DocumentFilterChip(label, selectedFilter == label) { selectedFilter = label } }
+            }
+            Text("Folders", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                (listOf("All folders", "Unfiled") + folders).distinct().forEach { label ->
+                    DocumentFilterChip(label, folder == label) {
+                        folder = label; prefs.edit().putString("last_folder", label).apply()
+                    }
+                }
+            }
+            Button(onClick = { showFilters = false }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Show documents") }
+        }
+    }
     if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text("Delete ${selected.size} items?") }, text = { Text("The selected items and their files will be removed.") }, confirmButton = { TextButton(onClick = { actions.delete(selected); selection = VaultSelection(); deleting = false }) { Text("Delete") } }, dismissButton = { TextButton(onClick = { deleting = false }) { Text("Cancel") } })
+}
+
+@Composable
+private fun DocumentFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(selected = selected, onClick = onClick,
+        label = { Text(label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp)) },
+        shape = RoundedCornerShape(14.dp), modifier = Modifier.height(44.dp))
 }
 
 fun searchableText(item: VaultItem): String = buildString {

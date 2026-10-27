@@ -82,17 +82,7 @@ fun AuroraBackdrop(modifier: Modifier = Modifier) {
 
 @Composable
 fun VaultBackground(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(if (LocalDarkTheme.current) R.drawable.vault_dark_aurora_bg else R.drawable.vault_aurora_bg),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-            if (LocalDarkTheme.current) listOf(Color(0x10101929), Color(0x20101929), Color(0x10121B2C))
-            else listOf(Color(0x18E6DAFF), Color(0x0FFFD9C9), Color(0x16C6F3EA)))))
-    }
+    StashBackdrop(modifier)
 }
 
 @Composable

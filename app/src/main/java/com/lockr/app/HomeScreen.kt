@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +29,10 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +58,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.util.Base64
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     items: List<VaultItem>,
@@ -63,27 +75,77 @@ fun HomeScreen(
     onOpenProfile: () -> Unit,
     onOpenItem: (VaultItem) -> Unit,
     onOpenDetails: (VaultItem) -> Unit,
+    onRenameItem: (VaultItem, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var menuItem by remember { mutableStateOf<VaultItem?>(null) }
-    var moving by remember { mutableStateOf(false) }
-    var deleting by remember { mutableStateOf(false) }
+    var menuPage by remember { mutableStateOf("actions") }
+    var renameText by remember { mutableStateOf("") }
     val actions = LocalVaultActions.current
-    val folders = LocalVaultFolders.current
-    menuItem?.let { item ->
-        if (moving) FolderPicker(folders, { menuItem = null; moving = false }) { actions.move(setOf(item.id), it); menuItem = null; moving = false }
-        else if (deleting) AlertDialog(onDismissRequest = { menuItem = null; deleting = false }, title = { Text("Delete ${item.title}?") },
-            confirmButton = { TextButton(onClick = { actions.delete(setOf(item.id)); menuItem = null; deleting = false }) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = { menuItem = null; deleting = false }) { Text("Cancel") } })
-        else AlertDialog(onDismissRequest = { menuItem = null }, title = { Text(item.title) }, text = {
-            Column {
-                TextButton(onClick = { menuItem = null; onOpenItem(item) }) { Text("Open") }
-                TextButton(onClick = { menuItem = null; onOpenDetails(item) }) { Text("Information") }
-                if (item.category == VaultCategory.DOCUMENT) TextButton(onClick = { moving = true }) { Text("Move to folder") }
-                if (item.category == VaultCategory.DOCUMENT && item.attachments.isNotEmpty()) TextButton(onClick = { actions.download(listOf(item)); menuItem = null }) { Text("Download") }
-                TextButton(onClick = { deleting = true }) { Text("Delete") }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var downloadItem by remember { mutableStateOf<VaultItem?>(null) }
+    var cardDownloadItem by remember { mutableStateOf<VaultItem?>(null) }
+    val cardDownloadLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        val card = cardDownloadItem
+        cardDownloadItem = null
+        if (uri != null && card != null) scope.launch(Dispatchers.IO) {
+            val text = buildString {
+                appendLine(card.title)
+                listOf("issuer" to "Issuer", "cardType" to "Type", "network" to "Network",
+                    "cardNumber" to "Number", "cardholder" to "Cardholder", "expiry" to "Expiry")
+                    .forEach { (key, label) -> card.metadata[key]?.takeIf { it.isNotBlank() }?.let { appendLine("$label: $it") } }
             }
-        }, confirmButton = { TextButton(onClick = { menuItem = null }) { Text("Close") } })
+            context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+        }
+    }
+    val downloadLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        val attachment = downloadItem?.attachments?.firstOrNull()
+        downloadItem = null
+        if (uri != null && attachment != null) scope.launch(Dispatchers.IO) {
+            val bytes = Base64.decode(attachment.base64Data, Base64.DEFAULT)
+            try { context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
+            finally { bytes.fill(0) }
+        }
+    }
+    menuItem?.let { item ->
+        ModalBottomSheet(onDismissRequest = { menuItem = null; menuPage = "actions" },
+            containerColor = LockrColors.Surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
+            Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(when (menuPage) { "rename" -> "Rename item"; "delete" -> "Delete item?"; else -> item.title },
+                    style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary, maxLines = 2)
+                when (menuPage) {
+                    "rename" -> {
+                        OutlinedTextField(renameText, { renameText = it.take(80) }, label = { Text("Name") },
+                            singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Button(onClick = { onRenameItem(item, renameText.trim()); menuItem = null; menuPage = "actions" },
+                            enabled = renameText.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Save name") }
+                    }
+                    "delete" -> {
+                        Text("This item and its files will be removed from Stash.", color = LockrColors.TextSecondary)
+                        Button(onClick = { actions.delete(setOf(item.id)); menuItem = null; menuPage = "actions" },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            modifier = Modifier.fillMaxWidth()) { Text("Delete item") }
+                        TextButton(onClick = { menuPage = "actions" }, modifier = Modifier.fillMaxWidth()) { Text("Keep item") }
+                    }
+                    else -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HomeMenuAction(Icons.Outlined.Info, "Info", Modifier.weight(1f)) { menuItem = null; onOpenDetails(item) }
+                        HomeMenuAction(Icons.Outlined.Edit, "Rename", Modifier.weight(1f)) { renameText = item.title; menuPage = "rename" }
+                        HomeMenuAction(Icons.Outlined.Download, "Download", Modifier.weight(1f),
+                            item.category == VaultCategory.CARD || item.attachments.isNotEmpty()) {
+                            menuItem = null
+                            if (item.category == VaultCategory.CARD) {
+                                cardDownloadItem = item
+                                cardDownloadLauncher.launch(item.title.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".txt")
+                            } else if (item.category == VaultCategory.DOCUMENT) actions.download(listOf(item))
+                            else { downloadItem = item; downloadLauncher.launch(item.attachments.first().name) }
+                        }
+                        HomeMenuAction(Icons.Outlined.DeleteOutline, "Delete", Modifier.weight(1f)) { menuPage = "delete" }
+                    }
+                }
+            }
+        }
     }
     BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 17.dp)) {
         val recentLimit = if (maxHeight < 1000.dp) 3 else 4
@@ -110,7 +172,7 @@ fun HomeScreen(
                 }
             } else {
                 items.take(recentLimit).forEach { item ->
-                    RecentItemRow(item, onClick = { onOpenItem(item) }, onMore = { menuItem = item })
+                    RecentItemRow(item, onClick = { onOpenItem(item) }, onMore = { menuPage = "actions"; menuItem = item })
                 }
             }
             Spacer(Modifier.height(120.dp))
@@ -128,6 +190,22 @@ fun HomeScreen(
             }
         }
 
+    }
+}
+
+@Composable
+private fun HomeMenuAction(icon: ImageVector, label: String, modifier: Modifier = Modifier,
+                           enabled: Boolean = true, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(modifier.height(78.dp).clip(shape)
+        .background(if (enabled) LockrColors.Raised.copy(alpha = .65f) else LockrColors.Raised.copy(alpha = .25f))
+        .clickable(enabled = enabled, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Icon(icon, label, tint = if (label == "Delete") MaterialTheme.colorScheme.error else LockrColors.Accent,
+            modifier = Modifier.size(24.dp))
+        Spacer(Modifier.height(5.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall,
+            color = if (enabled) LockrColors.TextPrimary else LockrColors.TextSecondary)
     }
 }
 
