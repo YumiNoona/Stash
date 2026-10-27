@@ -1,6 +1,6 @@
 # Stash
 
-Stash is a local Android vault for cards, documents, passwords, and notes, built with Kotlin and Jetpack Compose. The interface uses JetBrains Mono, aurora artwork, and glass surfaces. Stash has no account, cloud service, or internet permission.
+Stash is a local Android vault for cards, documents, passwords, and notes, built with Kotlin and Jetpack Compose. The interface uses bundled Space Grotesk, aurora artwork, and translucent glass surfaces. Stash has no account, cloud service, or internet permission.
 
 Card appearance offers 15 distinct designs in a single swipe row, 10 separate motion effects, and custom image, GIF, or video artwork. Card entry groups digits visually so typing and cursor placement stay stable. Image extraction now offers a review step for specific fields such as an Aadhaar number or address. The **Card number display** setting lets you mask both the number and CVC or keep the number visible while the CVC stays masked. Revealing a masked value requires device authentication.
 
@@ -48,15 +48,15 @@ The center dock button first asks what you are adding:
 - **Cards:** Scan a card with the camera, import a card photo or file, tap a supported contactless card with NFC, or enter details manually. A card-specific review screen lets you check the type, number, name, expiry, issuer, and network before saving. The original imported image or file stays attached.
 - **Password** and **Note:** Open short manual forms.
 
-Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works offline; PDF recognition is limited to the first 20 pages. Card OCR suggests plausible numbers and other visible details, but every field remains editable. The original selected file is kept as an encrypted attachment. Tapping a saved image or PDF opens a preview with rename, extract fields, send, details, and delete actions. Extraction offers detected fields and individual OCR lines for review and editing before copying or saving; it never copies the whole result automatically. OCR is a convenience and should be checked before use.
+Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works offline; PDF recognition is limited to the first 20 pages. Card OCR suggests plausible numbers and other visible details, but every field remains editable. The original selected file is kept as an encrypted attachment. Tapping a saved image or PDF opens a full-screen viewer with four floating glass tools: Edit, Scan, Share, and Delete. An info button at the top right shows an image preview, added date and time, size in MB, file type, and encrypted-storage details. Extraction offers detected fields and individual OCR lines for review and editing before copying or saving; it never copies the whole result automatically. OCR is a convenience and should be checked before use.
 
 NFC is optional and needs an NFC-equipped device and a card that exposes usable fields through the supported contactless interface. Stash does not authenticate to banks or guarantee that every card can be read. The emulator has no NFC reader, so use camera or manual entry there. Nothing is saved from a tap until you confirm the review screen.
 
 Manual credit and debit entry groups card numbers in fours, uses a numeric MM/YY expiry field, and offers a network picker with recognizable marks. Save explains missing or invalid fields. Standard payment cards require 16 digits; Amex uses its 15-digit format. An unverified checksum or expired card shows a warning but can still be saved. CVC is optional. Password entry includes a local random generator with length, character type, and mixing controls.
 
-Card art can be chosen during review or changed when editing a saved card. Fifteen distinct designs include Aurora, Midnight, Opal, Solar, Lagoon, Bloom, Chrome, Amethyst, Neon, Comet, Citrus, Ice, Ember, Mosaic, and Prism. Choose Still or one of 10 motion effects separately: Light sweep, Float, Glow, Tilt, Drift, Breathe, Ripple, Aurora flow, Stardust, or Orbit. The artwork icon beside Card art imports a custom image, GIF, or video. Card titles are derived from brand, issuer, and last four digits, so no separate card name is needed. Custom images and GIFs can be up to 16 megapixels; custom videos can be up to 30 seconds. All custom media must be under 8 MB and fit within the item attachment limit. GIFs and videos loop silently and stay encrypted with the card. Light or dark lettering can be selected for custom art. Partner brand and issuer bank have separate fields. Cards keep the same landscape proportions in lists, review, and details. Raw extracted OCR text is omitted from saved card reviews and details; scanning still suggests editable fields. The card collection uses masked numbers by default, while the detail screen shows the expiry, cardholder, network, and individual eye controls for saved number and CVC values. If no number or CVC was saved, its reveal control is omitted.
+Card art can be chosen during review or changed when editing a saved card. Fifteen distinct designs include Aurora, Midnight, Opal, Coral Bloom, Lagoon, Flamingo, Chrome, Moon Garden, Arcade, Orbit Club, Sea Petals, Alpine, Night Fern, Petal Pop, and Prism. The collection mixes illustrations, graphic posters, landscape art, and liquid glass. Existing saved style identifiers remain compatible. Choose Still or one of 10 motion effects separately: Light sweep, Float, Glow, Tilt, Drift, Breathe, Ripple, Aurora flow, Stardust, or Orbit. The artwork icon beside Card art imports a custom image, GIF, or video. Card titles are derived from brand, issuer, and last four digits, so no separate card name is needed. Custom images and GIFs can be up to 16 megapixels; custom videos can be up to 30 seconds. All custom media must be under 8 MB and fit within the item attachment limit. GIFs and videos loop silently and stay encrypted with the card. Light or dark lettering can be selected for custom art. Partner brand and issuer bank have separate fields. Cards keep the same landscape proportions in lists, review, and details. Raw extracted OCR text is omitted from saved card reviews and details; scanning still suggests editable fields. The card collection uses masked numbers by default, while the detail screen shows the expiry, cardholder, network, and individual eye controls for saved number and CVC values. If no number or CVC was saved, its reveal control is omitted.
 
-Settings includes a light/dark toggle, a Follow device theme option, reduced motion, artwork autoplay, and local text recognition on import. Cards and Documents share aligned headers and larger tag filters. You can create and delete custom card tags and document groups; removing a tag keeps the items. Document file information shows its added date, size, file name, and type. Extraction remains available from the document preview.
+Settings includes a light/dark toggle, reduced motion, artwork autoplay, and local text recognition on import. Cards and Documents share aligned headers and larger tag filters. You can create and delete custom card tags and document groups; removing a tag keeps the items. Document file information shows its added date, size, file name, and type. Extraction remains available from the document preview.
 
 The profile screen lets you change the display name and choose or remove a photo. Both stay in app-private local storage.
 
@@ -106,3 +106,18 @@ The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Gradle may ne
 - `app/src/test/` — JVM unit tests for OCR privacy, vault search, card recognition, and NFC data parsing.
 - `docs/screenshots/` — emulator captures embedded above.
 - `docs/licenses/` — the JetBrains Mono font license.
+
+Space Grotesk is bundled from the font author's official repository, with its SIL
+Open Font License in `docs/licenses/Space-Grotesk-OFL.txt`. No font download is
+needed when running the app. The light/dark toggle is the single theme control in
+Settings. Dark mode uses soft charcoal, lavender, and teal lighting. Profile
+photos retain a visible gradient frame in both modes. The edit-card artwork and
+motion headings are hidden while their selection controls remain available.
+
+Version 1.5 refreshes Coral Bloom, Sea Petals, Night Fern, and Petal Pop with clean
+vector botanical artwork; Moon Garden remains available. The art picker displays
+full card compositions with a segmented metallic chip. Dark Add to Stash tiles
+use distinct teal and lilac glass colors with bright icons. Document information
+has no group editor; organization stays in the collection and import flow. The
+full-screen viewer supports pinch zoom, bounded pan, and multi-page PDF paging.
+Editable botanical masters are in `docs/artwork/`.

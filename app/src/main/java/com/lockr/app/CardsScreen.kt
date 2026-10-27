@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -120,7 +121,9 @@ private fun CardSurface(
     val custom = customCardArt(item)
     val dark = if (custom != null) item.metadata["cardArtLightText"] != "false" else art.dark
     val ink = if (dark) Color.White else Color(0xFF102039)
-    val secondaryInk = ink.copy(alpha = 0.75f)
+    val secondaryInk = ink.copy(alpha = 0.85f)
+    val letteringShadow = if (art.illustrated && custom == null) Shadow(
+        if (dark) Color.Black.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.8f), Offset(0f, 1f), 5f) else Shadow.None
     val number = item.metadata["cardNumber"].orEmpty()
     val lastFour = item.lastFour.ifBlank { number.takeLast(4).ifBlank { item.metadata["lastFour"].orEmpty() } }
     val numberVisible = showFullNumber ?: !LocalHideCardNumber.current
@@ -150,7 +153,10 @@ private fun CardSurface(
                 if (custom != null) CustomCardArtBackground(custom, Modifier.fillMaxSize(), animate && LocalArtworkAutoplay.current)
             }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-                if (dark) listOf(Color(0x99071222), Color(0x55071222), Color(0xAA071222))
+                if (art.illustrated && custom == null) {
+                    if (dark) listOf(Color(0x33000000), Color.Transparent, Color(0x44000000))
+                    else listOf(Color(0x33FFFFFF), Color.Transparent, Color(0x33FFFFFF))
+                } else if (dark) listOf(Color(0x99071222), Color(0x55071222), Color(0xAA071222))
                 else listOf(Color(0xCCFFFFFF), Color(0x88FFFFFF), Color(0xCCFFFFFF)))))
             if (motion == CardMotion.SHEEN) {
                 Box(Modifier.fillMaxHeight().width(90.dp).graphicsLayer {
@@ -166,10 +172,10 @@ private fun CardSurface(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(item.metadata["partner"].orEmpty().ifBlank { item.metadata["cardType"].orEmpty().ifBlank { "Card" } }, color = ink,
-                        style = MaterialTheme.typography.labelLarge, maxLines = 1,
+                        style = MaterialTheme.typography.labelLarge.copy(shadow = letteringShadow), maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Text(item.metadata["issuer"].orEmpty(), color = ink,
-                        style = MaterialTheme.typography.labelMedium, maxLines = 1,
+                        style = MaterialTheme.typography.labelMedium.copy(shadow = letteringShadow), maxLines = 1,
                         overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -178,7 +184,7 @@ private fun CardSurface(
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(numberText, color = ink, style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = if (numberText.length > 23) 13.sp else 16.sp, letterSpacing = 0.3.sp),
+                        fontSize = if (numberText.length > 23) 13.sp else 16.sp, letterSpacing = 0.3.sp, shadow = letteringShadow),
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     if (onToggleNumber != null) IconButton(onClick = onToggleNumber, modifier = Modifier.size(28.dp)) {
                         Icon(if (numberVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
@@ -195,10 +201,10 @@ private fun CardSurface(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(item.metadata["cardholder"].orEmpty().ifBlank { "CARDHOLDER" }.uppercase(),
-                        color = ink, style = MaterialTheme.typography.labelMedium, maxLines = 1,
+                        color = ink, style = MaterialTheme.typography.labelMedium.copy(shadow = letteringShadow), maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Text(item.metadata["network"].orEmpty().ifBlank { "STASH" }.uppercase(),
-                        color = ink, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                        color = ink, style = MaterialTheme.typography.labelLarge.copy(shadow = letteringShadow), maxLines = 1)
                 }
             }
         }
@@ -207,13 +213,27 @@ private fun CardSurface(
 
 @Composable
 private fun CardChip(modifier: Modifier = Modifier) {
-    Box(modifier.size(38.dp, 28.dp).clip(RoundedCornerShape(8.dp)).background(Brush.linearGradient(listOf(Color(0xFFFFE8B4), Color(0xFFE8C879), Color(0xFFFFEDC2)))).border(1.dp, Color.White.copy(alpha = 0.8f), RoundedCornerShape(8.dp))) {
+    val shape = RoundedCornerShape(6.dp)
+    Box(modifier.size(40.dp, 30.dp).clip(shape)
+        .background(Brush.linearGradient(listOf(Color(0xFFEFF3EF), Color(0xFFA3B0AD), Color(0xFFE9EFE9), Color(0xFFBCC7C1))))
+        .border(0.7.dp, Color(0x99718079), shape)) {
         Canvas(Modifier.fillMaxSize()) {
-            val line = Color(0x887B643A)
-            drawLine(line, Offset(size.width * 0.5f, 0f), Offset(size.width * 0.5f, size.height), 1.dp.toPx())
-            drawLine(line, Offset(0f, size.height * 0.5f), Offset(size.width, size.height * 0.5f), 1.dp.toPx())
-            drawLine(line, Offset(size.width * 0.25f, 0f), Offset(size.width * 0.25f, size.height), 1.dp.toPx())
-            drawLine(line, Offset(size.width * 0.75f, 0f), Offset(size.width * 0.75f, size.height), 1.dp.toPx())
+            val line = Color(0x99616F69)
+            val w = size.width; val h = size.height
+            val stroke = 0.65.dp.toPx()
+            drawRoundRect(line, Offset(w * 0.33f, h * 0.24f), androidx.compose.ui.geometry.Size(w * 0.34f, h * 0.52f),
+                androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+            drawLine(line, Offset(w * 0.5f, 0f), Offset(w * 0.5f, h * 0.24f), stroke)
+            drawLine(line, Offset(w * 0.5f, h * 0.76f), Offset(w * 0.5f, h), stroke)
+            for (y in listOf(0.33f, 0.67f)) {
+                drawLine(line, Offset(0f, h * y), Offset(w * 0.33f, h * y), stroke)
+                drawLine(line, Offset(w * 0.67f, h * y), Offset(w, h * y), stroke)
+            }
+            for (x in listOf(0.22f, 0.78f)) {
+                drawLine(line, Offset(w * x, 0f), Offset(w * x, h * 0.33f), stroke)
+                drawLine(line, Offset(w * x, h * 0.67f), Offset(w * x, h), stroke)
+            }
+            drawLine(Color.White.copy(alpha = 0.65f), Offset(2.dp.toPx(), 2.dp.toPx()), Offset(w - 2.dp.toPx(), 2.dp.toPx()), stroke)
         }
     }
 }

@@ -33,41 +33,43 @@ object LockrColors {
 }
 
 private val LockrLightColors = lightColorScheme(
-    primary = Color(0xFF398F89),
+    primary = Color(0xFF7251B5),
     onPrimary = Color.White,
-    secondary = Color(0xFF8294C5),
-    background = Color(0xFFF7F5F0),
-    onBackground = Color(0xFF182333),
+    secondary = Color(0xFF247F89),
+    tertiary = Color(0xFFCB724F),
+    primaryContainer = Color(0xFFE7DAFF), onPrimaryContainer = Color(0xFF34214F),
+    background = Color(0xFFF7F5FC),
+    onBackground = Color(0xFF17202D),
     surface = Color(0xFFF8FFFFFF),
-    onSurface = Color(0xFF182333),
+    onSurface = Color(0xFF17202D),
     surfaceVariant = Color(0xFFEFF3F8),
-    onSurfaceVariant = Color(0xFF66758C),
+    onSurfaceVariant = Color(0xFF4F5D70),
     outline = Color(0x337B8796)
 )
 
-private val StashMono = FontFamily(
-    Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
-    Font(R.font.jetbrains_mono_medium, FontWeight.Medium),
-    Font(R.font.jetbrains_mono_semibold, FontWeight.SemiBold)
+private val StashGrotesk = FontFamily(
+    Font(R.font.space_grotesk_regular, FontWeight.Normal),
+    Font(R.font.space_grotesk_medium, FontWeight.Medium),
+    Font(R.font.space_grotesk_bold, FontWeight.Bold)
 )
 
 private val LockrTypography = Typography().let { base ->
     base.copy(
-        displayLarge = base.displayLarge.copy(fontFamily = StashMono, fontSize = 30.sp, lineHeight = 39.sp),
-        displayMedium = base.displayMedium.copy(fontFamily = StashMono, fontSize = 27.sp, lineHeight = 36.sp),
-        displaySmall = base.displaySmall.copy(fontFamily = StashMono, fontSize = 24.sp, lineHeight = 32.sp),
-        headlineLarge = base.headlineLarge.copy(fontFamily = StashMono, fontSize = 27.sp, lineHeight = 35.sp, fontWeight = FontWeight.SemiBold),
-        headlineMedium = base.headlineMedium.copy(fontFamily = StashMono, fontSize = 25.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold),
-        headlineSmall = base.headlineSmall.copy(fontFamily = StashMono, fontSize = 21.sp, lineHeight = 29.sp, fontWeight = FontWeight.SemiBold),
-        titleLarge = base.titleLarge.copy(fontFamily = StashMono, fontSize = 18.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold),
-        titleMedium = base.titleMedium.copy(fontFamily = StashMono, fontSize = 15.sp, lineHeight = 23.sp, fontWeight = FontWeight.Medium),
-        titleSmall = base.titleSmall.copy(fontFamily = StashMono, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium),
-        bodyLarge = base.bodyLarge.copy(fontFamily = StashMono, fontSize = 14.sp, lineHeight = 22.sp),
-        bodyMedium = base.bodyMedium.copy(fontFamily = StashMono, fontSize = 13.sp, lineHeight = 21.sp),
-        bodySmall = base.bodySmall.copy(fontFamily = StashMono, fontSize = 11.sp, lineHeight = 18.sp),
-        labelLarge = base.labelLarge.copy(fontFamily = StashMono, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium),
-        labelMedium = base.labelMedium.copy(fontFamily = StashMono, fontSize = 11.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium),
-        labelSmall = base.labelSmall.copy(fontFamily = StashMono, fontSize = 10.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
+        displayLarge = base.displayLarge.copy(fontFamily = StashGrotesk, fontSize = 30.sp, lineHeight = 39.sp),
+        displayMedium = base.displayMedium.copy(fontFamily = StashGrotesk, fontSize = 27.sp, lineHeight = 36.sp),
+        displaySmall = base.displaySmall.copy(fontFamily = StashGrotesk, fontSize = 24.sp, lineHeight = 32.sp),
+        headlineLarge = base.headlineLarge.copy(fontFamily = StashGrotesk, fontSize = 27.sp, lineHeight = 35.sp, fontWeight = FontWeight.Bold),
+        headlineMedium = base.headlineMedium.copy(fontFamily = StashGrotesk, fontSize = 25.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold),
+        headlineSmall = base.headlineSmall.copy(fontFamily = StashGrotesk, fontSize = 21.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold),
+        titleLarge = base.titleLarge.copy(fontFamily = StashGrotesk, fontSize = 18.sp, lineHeight = 25.sp, fontWeight = FontWeight.Bold),
+        titleMedium = base.titleMedium.copy(fontFamily = StashGrotesk, fontSize = 16.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold),
+        titleSmall = base.titleSmall.copy(fontFamily = StashGrotesk, fontSize = 14.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold),
+        bodyLarge = base.bodyLarge.copy(fontFamily = StashGrotesk, fontSize = 14.sp, lineHeight = 22.sp),
+        bodyMedium = base.bodyMedium.copy(fontFamily = StashGrotesk, fontSize = 13.sp, lineHeight = 21.sp),
+        bodySmall = base.bodySmall.copy(fontFamily = StashGrotesk, fontSize = 11.sp, lineHeight = 18.sp),
+        labelLarge = base.labelLarge.copy(fontFamily = StashGrotesk, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium),
+        labelMedium = base.labelMedium.copy(fontFamily = StashGrotesk, fontSize = 11.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium),
+        labelSmall = base.labelSmall.copy(fontFamily = StashGrotesk, fontSize = 10.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
     )
 }
 
@@ -77,11 +79,12 @@ val LocalArtworkAutoplay = compositionLocalOf { true }
 val LocalOcrOnImport = compositionLocalOf { true }
 
 private val LockrDarkColors = darkColorScheme(
-    primary = Color(0xFF83D8CB), onPrimary = Color(0xFF003831),
-    background = Color(0xFF09121F), onBackground = Color(0xFFE9F1FF),
-    surface = Color(0xFF152234), onSurface = Color(0xFFE9F1FF),
-    surfaceVariant = Color(0xFF203147), onSurfaceVariant = Color(0xFFACBED3),
-    outline = Color(0xFF576C84), outlineVariant = Color(0xFF304258),
+    primary = Color(0xFFD5BCFF), onPrimary = Color(0xFF36244D),
+    primaryContainer = Color(0xFF5B4D72), onPrimaryContainer = Color(0xFFF5EBFF),
+    background = Color(0xFF2B2D3A), onBackground = Color(0xFFFFFAFF),
+    surface = Color(0xFF3A3D4E), onSurface = Color(0xFFFFFAFF),
+    surfaceVariant = Color(0xFF4A4C60), onSurfaceVariant = Color(0xFFD2D0E2),
+    outline = Color(0xFF9E9AB6), outlineVariant = Color(0xFF64637A),
     secondary = Color(0xFFB5B9FF), error = Color(0xFFFFB4AB))
 
 @Composable

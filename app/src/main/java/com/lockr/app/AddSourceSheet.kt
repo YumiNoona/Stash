@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
@@ -78,10 +80,10 @@ fun AddSourceSheet(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     VaultTypeCard("Documents", "Images · PDFs · text", Icons.Outlined.Description,
                         listOf(LockrColors.Surface, Color(0xFFD9F1FF), Color(0xFFE9F9F4)),
-                        Color(0xFF2F79A8), Modifier.weight(1f)) { onStageChange(AddStage.DOCUMENT) }
+                        Color(0xFF2F79A8), Color(0xFFA4EFE0), listOf(Color(0xFF234C52), Color(0xFF2B4058), Color(0xFF394561)), Modifier.weight(1f)) { onStageChange(AddStage.DOCUMENT) }
                     VaultTypeCard("Cards", "Scan · NFC · manual", Icons.Outlined.CreditCard,
                         listOf(LockrColors.Surface, Color(0xFFE9DDFB), Color(0xFFFBE9EF)),
-                        Color(0xFF7054A8), Modifier.weight(1f)) { onStageChange(AddStage.CARD) }
+                        Color(0xFF7054A8), Color(0xFFE0C9FF), listOf(Color(0xFF544069), Color(0xFF403C63), Color(0xFF344B5E)), Modifier.weight(1f)) { onStageChange(AddStage.CARD) }
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -114,47 +116,75 @@ fun AddSourceSheet(
 
 @Composable
 private fun VaultTypeCard(title: String, subtitle: String, icon: ImageVector, colors: List<Color>, tint: Color,
-                          modifier: Modifier, onClick: () -> Unit) {
+                          darkAccent: Color, darkColors: List<Color>, modifier: Modifier, onClick: () -> Unit) {
+    val dark = LocalDarkTheme.current
+    val accent = if (dark) darkAccent else tint
     val shape = RoundedCornerShape(25.dp)
-    Column(modifier.height(170.dp).clip(shape).background(Brush.linearGradient(if (LocalDarkTheme.current) listOf(LockrColors.Surface, LockrColors.Raised) else colors))
-        .border(1.dp, LockrColors.Surface, shape).clickable(onClick = onClick).padding(15.dp),
-        verticalArrangement = Arrangement.SpaceBetween) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top) {
-            Box(Modifier.size(56.dp).background(LockrColors.Surface.copy(alpha = 0.76f), CircleShape),
-                contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(31.dp))
+    val rim = Brush.linearGradient(if (dark)
+        listOf(darkAccent.copy(alpha = 0.55f), Color.White.copy(alpha = 0.12f), darkAccent.copy(alpha = 0.22f))
+        else listOf(Color.White, tint.copy(alpha = 0.16f), Color.White.copy(alpha = 0.9f)))
+    Box(modifier.height(176.dp).shadow(7.dp, shape, ambientColor = accent.copy(alpha = 0.14f))
+        .clip(shape).background(Brush.linearGradient(if (dark) darkColors else colors))
+        .border(1.dp, rim, shape).clickable(onClick = onClick)) {
+        Box(Modifier.size(145.dp).align(Alignment.TopEnd).offset(x = 37.dp, y = (-42).dp)
+            .background(Brush.radialGradient(listOf(accent.copy(alpha = if (dark) 0.19f else 0.10f), Color.Transparent)), CircleShape))
+        Column(Modifier.fillMaxWidth().height(176.dp).padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top) {
+                Box(Modifier.size(56.dp).background(Brush.linearGradient(
+                    if (dark) listOf(darkAccent.copy(alpha = 0.20f), darkAccent.copy(alpha = 0.06f))
+                    else listOf(Color.White.copy(alpha = 0.96f), Color.White.copy(alpha = 0.55f))), CircleShape)
+                    .border(1.dp, if (dark) darkAccent.copy(alpha = 0.45f) else Color.White, CircleShape),
+                    contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(30.dp))
+                }
+                Box(Modifier.size(28.dp).background(Color.White.copy(alpha = if (dark) 0.06f else 0.45f), CircleShape),
+                    contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = null,
+                        tint = if (dark) darkAccent.copy(alpha = 0.90f) else tint, modifier = Modifier.size(20.dp))
+                }
             }
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = LockrColors.TextPrimary,
-                modifier = Modifier.size(21.dp))
-        }
-        Column {
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 20.sp),
-                color = LockrColors.TextPrimary, maxLines = 2)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 16.sp),
-                color = LockrColors.TextSecondary, maxLines = 2, modifier = Modifier.padding(top = 3.dp))
+            Column {
+                Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, lineHeight = 21.sp),
+                    color = if (dark) Color(0xFFFAF8FF) else LockrColors.TextPrimary, maxLines = 2)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 16.sp),
+                    color = if (dark) Color(0xFFD7DFEE) else LockrColors.TextSecondary,
+                    maxLines = 2, modifier = Modifier.padding(top = 4.dp))
+            }
         }
     }
 }
 
 @Composable
 private fun SourceTile(label: String, icon: ImageVector, glow: Color, tint: Color, modifier: Modifier, onClick: () -> Unit) {
-    Column(modifier.height(110.dp).background(
-        Brush.linearGradient(listOf(LockrColors.Surface, if (LocalDarkTheme.current) LockrColors.Raised else glow.copy(alpha = 0.75f))), RoundedCornerShape(23.dp))
-        .border(1.dp, LockrColors.Surface, RoundedCornerShape(23.dp)).clickable(onClick = onClick).padding(8.dp),
+    val dark = LocalDarkTheme.current
+    val shape = RoundedCornerShape(23.dp)
+    val accent = if (dark) glow else tint
+    val fills = if (dark) listOf(
+        androidx.compose.ui.graphics.lerp(LockrColors.Surface, tint, 0.20f),
+        androidx.compose.ui.graphics.lerp(LockrColors.Raised, tint, 0.12f))
+        else listOf(Color.White.copy(alpha = 0.92f), glow.copy(alpha = 0.75f))
+    Column(modifier.height(116.dp).clip(shape).background(Brush.linearGradient(fills))
+        .border(1.dp, if (dark) glow.copy(alpha = 0.30f) else Color.White, shape)
+        .clickable(onClick = onClick).padding(9.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Box(Modifier.size(49.dp).background(glow, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(26.dp))
+        Box(Modifier.size(49.dp).background(if (dark) glow.copy(alpha = 0.12f) else glow, CircleShape)
+            .border(1.dp, if (dark) glow.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.7f), CircleShape),
+            contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(26.dp))
         }
         Text(label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp), color = LockrColors.TextPrimary,
-            maxLines = 1, modifier = Modifier.padding(top = 7.dp))
+            maxLines = 1, modifier = Modifier.padding(top = 8.dp))
     }
 }
 
 @Composable
 private fun SmallSource(label: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Row(modifier.height(53.dp).background(LockrColors.Surface.copy(alpha = 0.83f), RoundedCornerShape(18.dp))
-        .border(1.dp, LockrColors.Surface, RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(horizontal = 11.dp),
+    val shape = RoundedCornerShape(18.dp)
+    Row(modifier.height(55.dp).clip(shape)
+        .background(Brush.linearGradient(listOf(LockrColors.Surface.copy(alpha = 0.85f), LockrColors.Raised.copy(alpha = 0.50f))))
+        .border(1.dp, LockrColors.Accent.copy(alpha = if (LocalDarkTheme.current) 0.25f else 0.15f), shape)
+        .clickable(onClick = onClick).padding(horizontal = 11.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         Icon(icon, contentDescription = null, tint = LockrColors.Accent, modifier = Modifier.size(21.dp))
         Text(label, color = LockrColors.TextPrimary, style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp),

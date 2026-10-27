@@ -89,3 +89,42 @@ synthetic media only. Physical-device codec compatibility remains device depende
 Android 15 QA used a separate emulator and fabricated data. It covered theme
 switching, custom document tag creation/assignment/deletion, image import, file
 information, and extraction/save. The existing user emulator was not cleared.
+
+## Floating glass and illustrated-art follow-up
+
+- Bundle Space Grotesk Regular, Medium, and Bold from the official author repo,
+  with its OFL license. Strengthen titles and light-mode text contrast.
+- Use a floating translucent rounded dock with inset destination states, a raised
+  animated add orb, soft shadows, and a subtle gradient rim.
+- Replace near-black fills with charcoal/lavender/teal lighting and glass panels.
+- Give both Home and Profile avatars an inset gradient frame that stays visible
+  against light and dark surfaces.
+- Remove the duplicate Theme row and dialog; retain the top-right toggle.
+- Hide artwork/motion headings in edit-card and remove the swipe instruction.
+- Keep 15 selectable styles, replacing nine flowing textures with original
+  illustrated/poster designs. Prompt and asset provenance is in
+  card-art-v3-sources.json. Legacy style IDs still resolve correctly.
+
+Verification: all 31 unit tests and the debug APK build pass. Android 15 emulator
+checks cover light/dark switching, the floating dock, profile frame, typography,
+card artwork, and edit-card controls using fabricated data in a separate emulator.
+
+## Version 1.5 release validation
+
+- Replace four rejected mascot/geometric finishes with original vector botanical
+  card designs. Keep Moon Garden and stable saved style IDs.
+- Preview full card layouts in the art chooser, including a detailed silver chip.
+- Improve contrast and colored-glass styling for dark Add to Stash tiles.
+- Present documents on the full canvas with four floating tools: Edit, Scan,
+  Share, Delete. Info is at the top right.
+- Show image preview, date/time, MB size, file type, and storage in information;
+  remove document-group controls from that screen.
+- Bound zoom/pan, preserve PDF paging, and handle malformed previews safely.
+- Include the Space Grotesk, profile-frame, softer-theme, and dock refinements
+  from the preceding visual review in this release.
+
+Release checks passed: 31 JVM tests, debug APK assembly, and diff whitespace
+validation. Emulator checks covered the dark add sheet, full-canvas PNG view,
+four tool actions, image information without group controls, two-page PDF
+navigation to page 2, and opening a malformed PDF without a crash. Test records
+and files were fabricated and confined to the separate QA emulator.

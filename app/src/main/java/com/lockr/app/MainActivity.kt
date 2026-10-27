@@ -621,8 +621,7 @@ private fun LockrApp() {
                     )
                     LockrScreen.ITEM_DETAIL -> currentDetailItem?.let { item ->
                         if (item.category == VaultCategory.DOCUMENT) DocumentInfoScreen(item,
-                            onBack = { if (returnFromDetail != LockrScreen.ITEM_PREVIEW) currentDetailItem = null; screen = returnFromDetail },
-                            onGroupChange = { group -> persistUpdatedItem(item.copy(metadata = item.metadata + ("documentCategory" to group))) })
+                            onBack = { if (returnFromDetail != LockrScreen.ITEM_PREVIEW) currentDetailItem = null; screen = returnFromDetail })
                         else VaultItemDetailScreen(
                             item = item,
                             autoClearClipboard = settings.autoClearClipboard,

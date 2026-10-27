@@ -60,7 +60,8 @@ fun CardCustomization(
     art: CardArtStyle, onArt: (CardArtStyle) -> Unit,
     motion: CardMotion, onMotion: (CardMotion) -> Unit,
     media: VaultAttachment?, onMedia: (VaultAttachment?) -> Unit,
-    lightText: Boolean, onLightText: (Boolean) -> Unit
+    lightText: Boolean, onLightText: (Boolean) -> Unit,
+    showLabels: Boolean = true
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -80,7 +81,7 @@ fun CardCustomization(
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        CardArtPicker(art, customSelected = media != null,
+        CardArtPicker(art, customSelected = media != null, showLabels = showLabels,
             onImport = if (busy) null else ({ picker.launch(arrayOf("image/*", "video/*")) })) { onArt(it); onMedia(null) }
         if (busy) Text("Opening artwork…", style = MaterialTheme.typography.bodySmall)
         if (media != null) {
@@ -91,7 +92,7 @@ fun CardCustomization(
         }
         if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall)
-        Text("Motion", style = MaterialTheme.typography.titleSmall)
+        if (showLabels) Text("Motion", style = MaterialTheme.typography.titleSmall)
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CardMotion.entries.forEach { option ->
                 FilterChip(motion == option, { onMotion(option) }, label = { Text(option.label) })

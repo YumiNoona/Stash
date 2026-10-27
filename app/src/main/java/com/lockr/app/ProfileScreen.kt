@@ -39,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -48,7 +50,11 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ProfileAvatar(photo: Bitmap?, size: Dp, modifier: Modifier = Modifier) {
-    Box(modifier.size(size).clip(CircleShape).border(2.dp, LockrColors.Surface, CircleShape), contentAlignment = Alignment.Center) {
+    val rim = if (LocalDarkTheme.current) listOf(Color(0xFFE4D6FF), Color(0xFF91DDDD), Color(0xFFFFC6B0), Color(0xFFE4D6FF))
+        else listOf(Color.White, Color(0xFF9EE2DE), Color(0xFFB49BE2), Color.White)
+    Box(modifier.size(size).shadow(8.dp, CircleShape, ambientColor = LockrColors.Accent.copy(alpha = 0.25f))
+        .background(LockrColors.Surface, CircleShape).border(3.dp, Brush.sweepGradient(rim), CircleShape)
+        .padding(5.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
         if (photo != null) Image(photo.asImageBitmap(), contentDescription = "Profile photo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Image(painterResource(R.drawable.stash_logo), contentDescription = "Stash logo",
             modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)

@@ -18,21 +18,21 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 
-enum class CardArtStyle(val label: String, @DrawableRes val image: Int, val dark: Boolean = false) {
+enum class CardArtStyle(val label: String, @DrawableRes val image: Int, val dark: Boolean = false, val illustrated: Boolean = false) {
     AURORA("Aurora", R.drawable.card_aurora_art),
     MIDNIGHT("Midnight", R.drawable.card_midnight_art, dark = true),
     OPAL("Opal", R.drawable.card_opal_v2),
-    SOLAR("Solar", R.drawable.card_solar_v2),
+    SOLAR("Coral Bloom", R.drawable.card_solar_v4, illustrated = true),
     LAGOON("Lagoon", R.drawable.card_lagoon_v2, dark = true),
-    BLOOM("Bloom", R.drawable.card_bloom_v2),
+    BLOOM("Flamingo", R.drawable.card_bloom_v3, illustrated = true),
     CHROME("Chrome", R.drawable.card_chrome_v2),
-    AMETHYST("Amethyst", R.drawable.card_amethyst_v2, dark = true),
-    NEON("Neon", R.drawable.card_neon_v2, dark = true),
-    COMET("Comet", R.drawable.card_comet_v2, dark = true),
-    CITRUS("Citrus", R.drawable.card_citrus_v2),
-    ICE("Ice", R.drawable.card_ice_v2),
-    EMBER("Ember", R.drawable.card_ember_v2, dark = true),
-    MOSAIC("Mosaic", R.drawable.card_mosaic_v2, dark = true),
+    AMETHYST("Moon Garden", R.drawable.card_amethyst_v3, illustrated = true),
+    NEON("Arcade", R.drawable.card_neon_v3, dark = true, illustrated = true),
+    COMET("Orbit Club", R.drawable.card_comet_v3, dark = true, illustrated = true),
+    CITRUS("Sea Petals", R.drawable.card_citrus_v4, illustrated = true),
+    ICE("Alpine", R.drawable.card_ice_v3, illustrated = true),
+    EMBER("Night Fern", R.drawable.card_ember_v4, dark = true, illustrated = true),
+    MOSAIC("Petal Pop", R.drawable.card_mosaic_v4, illustrated = true),
     PRISM("Prism", R.drawable.card_prism_v2, dark = true)
 }
 
@@ -49,10 +49,11 @@ fun CardArtBackground(art: CardArtStyle, modifier: Modifier = Modifier) {
 val selectableCardArt = CardArtStyle.entries.toList()
 
 @Composable
-fun CardArtPicker(selected: CardArtStyle, customSelected: Boolean = false, onImport: (() -> Unit)? = null, onSelect: (CardArtStyle) -> Unit) {
+fun CardArtPicker(selected: CardArtStyle, customSelected: Boolean = false, onImport: (() -> Unit)? = null, showLabels: Boolean = true, onSelect: (CardArtStyle) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        Text("Card art · swipe to choose", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary, modifier = Modifier.weight(1f))
+        if (showLabels) Text("Card art", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary, modifier = Modifier.weight(1f))
+        else Spacer(Modifier.weight(1f))
         if (onImport != null) IconButton(onClick = onImport) { Icon(Icons.Outlined.AddPhotoAlternate, "Custom card art", tint = LockrColors.Accent) }
         }
         LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -62,7 +63,12 @@ fun CardArtPicker(selected: CardArtStyle, customSelected: Boolean = false, onImp
                     verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     val shape = RoundedCornerShape(16.dp)
                     Box(Modifier.fillMaxWidth().aspectRatio(1.586f).clip(shape)) {
-                        CardArtBackground(art, Modifier.fillMaxSize())
+                        val sample = VaultItem("Art preview", VaultCategory.CARD, "Debit", "",
+                            id = "art-preview-${art.name}", lastFour = "••••",
+                            metadata = mapOf("cardArt" to art.name, "cardType" to "Debit",
+                                "expiry" to "MM/YY", "cardholder" to "YOUR NAME"))
+                        CardDetailPreview(sample, Modifier.fillMaxSize(), animate = false,
+                            showFullNumber = false, onClick = { onSelect(art) })
                         Box(Modifier.fillMaxSize().border(if (chosen) 3.dp else 1.dp,
                             if (chosen) LockrColors.Accent else LockrColors.Line, shape))
                     }

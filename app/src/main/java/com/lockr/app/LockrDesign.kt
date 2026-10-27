@@ -29,7 +29,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.shape.CutCornerShape
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -88,7 +89,9 @@ fun VaultBackground(modifier: Modifier = Modifier) {
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
-        Box(Modifier.fillMaxSize().background(if (LocalDarkTheme.current) Color(0xEB08111E) else Color.White.copy(alpha = 0.035f)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+            if (LocalDarkTheme.current) listOf(Color(0xD52D3040), Color(0xDF363042), Color(0xD22D4148))
+            else listOf(Color(0x18E6DAFF), Color(0x0FFFD9C9), Color(0x16C6F3EA)))))
     }
 }
 
@@ -105,13 +108,13 @@ fun GlassPanel(
             .clip(shape)
             .background(
                 Brush.linearGradient(
-                    colors = if (LocalDarkTheme.current) listOf(Color(0xF21A2A3D), Color(0xED132033), Color(0xF21B2B40))
+                    colors = if (LocalDarkTheme.current) listOf(Color(0xDA4A465D), Color(0xCA353D50), Color(0xD6464A60))
                         else listOf(Color(0xDDFEFFFF), Color(0xCFF9FBFC), Color(0xE4FFFFFF)),
                     start = Offset.Zero,
                     end = Offset(520f, 860f)
                 )
             )
-            .border(1.dp, if (LocalDarkTheme.current) Color(0xFF34485D) else Color.White.copy(alpha = 0.82f), shape),
+            .border(1.dp, if (LocalDarkTheme.current) Color(0x887F8CA6) else Color.White.copy(alpha = 0.82f), shape),
         content = content
     )
 }
@@ -156,36 +159,47 @@ fun StashDock(
     onDocuments: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier.fillMaxWidth().height(100.dp).padding(start = 11.dp, end = 11.dp, bottom = 5.dp)) {
-        Box(Modifier.fillMaxWidth().height(78.dp).align(Alignment.BottomCenter)
-            .shadow(12.dp, CutCornerShape(18.dp)).clip(CutCornerShape(18.dp))
-            .background(Brush.verticalGradient(listOf(LockrColors.Surface.copy(alpha = 0.97f), LockrColors.Raised.copy(alpha = 0.95f))))
-            .border(1.dp, LockrColors.Line, CutCornerShape(18.dp))) {
-            Row(Modifier.fillMaxSize().padding(horizontal = 19.dp), verticalAlignment = Alignment.CenterVertically) {
+    val dark = LocalDarkTheme.current
+    val shape = RoundedCornerShape(36.dp)
+    val rim = Brush.linearGradient(if (dark) listOf(Color(0x99E4D6FF), Color(0x336ED8D3), Color(0x66FFFFFF))
+        else listOf(Color.White, Color(0x668DD5D0), Color(0x99C7B3F5)))
+    Box(modifier.fillMaxWidth().height(104.dp).padding(horizontal = 18.dp, vertical = 8.dp), contentAlignment = Alignment.BottomCenter) {
+        Box(Modifier.widthIn(max = 368.dp).fillMaxWidth().height(68.dp)
+            .shadow(16.dp, shape, ambientColor = Color(0x335D477A), spotColor = Color(0x335D477A))
+            .clip(shape).background(Brush.verticalGradient(
+                if (dark) listOf(Color(0xA65A566A), Color(0xB83A4354))
+                else listOf(Color(0xB8FFFFFF), Color(0x99EDEAF8))))
+            .border(1.dp, rim, shape)) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 DockAction("Cards", Icons.Outlined.CreditCard, selected == DockDestination.CARDS, onCards, Modifier.weight(1f))
-                Spacer(Modifier.width(84.dp))
+                Spacer(Modifier.width(82.dp))
                 DockAction("Documents", Icons.Outlined.Description, selected == DockDestination.DOCUMENTS, onDocuments, Modifier.weight(1f))
             }
         }
-        Box(Modifier.align(Alignment.TopCenter).size(74.dp).shadow(15.dp, CircleShape,
-            ambientColor = Color(0x7774A9DB)).clip(CircleShape).clickable(onClick = onAdd),
-            contentAlignment = Alignment.Center) {
-            IridescentOrb(orbSize = 74.dp)
-            Icon(Icons.Outlined.Add, contentDescription = "Add to Stash", tint = Color(0xFF08184B), modifier = Modifier.size(33.dp))
+        Box(Modifier.align(Alignment.TopCenter).size(72.dp)
+            .shadow(12.dp, CircleShape, ambientColor = Color(0x557E69C5))
+            .clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFFD8C1FF), Color(0xFFB0E7E1), Color(0xFFFFD2B2))))
+            .border(1.5.dp, rim, CircleShape).clickable(onClick = onAdd), contentAlignment = Alignment.Center) {
+            IridescentOrb(orbSize = 70.dp)
+            Icon(Icons.Outlined.Add, "Add to Stash", tint = Color(0xFF26213F), modifier = Modifier.size(31.dp))
         }
     }
 }
 
 @Composable
 private fun DockAction(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier.height(56.dp).clip(RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(horizontal = 2.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
-    ) {
-        Icon(icon, contentDescription = label, tint = if (selected) LockrColors.Accent else LockrColors.TextPrimary, modifier = Modifier.size(22.dp))
+    val shape = RoundedCornerShape(25.dp)
+    val dark = LocalDarkTheme.current
+    Column(modifier.height(54.dp).clip(shape)
+        .background(if (selected) Brush.verticalGradient(
+            if (dark) listOf(Color(0x99766A94), Color(0x55596D80)) else listOf(Color(0xCCF0E6FF), Color(0x99D7F0EB)))
+            else Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)))
+        .border(1.dp, if (selected) LockrColors.Accent.copy(alpha = 0.35f) else Color.Transparent, shape)
+        .clickable(onClick = onClick).padding(horizontal = 4.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Icon(icon, label, tint = if (selected) LockrColors.Accent else LockrColors.TextPrimary, modifier = Modifier.size(22.dp))
         Spacer(Modifier.height(3.dp))
-        Text(label, color = if (selected) LockrColors.Accent else LockrColors.TextSecondary,
+        Text(label, color = if (selected) LockrColors.TextPrimary else LockrColors.TextSecondary,
             style = MaterialTheme.typography.labelSmall, maxLines = 1, textAlign = TextAlign.Center)
     }
 }

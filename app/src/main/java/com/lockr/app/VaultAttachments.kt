@@ -286,8 +286,9 @@ private fun isPdfAttachment(attachment: VaultAttachment): Boolean =
 
 internal suspend fun renderPdfAttachmentPage(attachment: VaultAttachment, requestedPage: Int, context: Context): Pair<Bitmap?, Int> = withContext(Dispatchers.IO) {
     val bytes = try { Base64.decode(attachment.base64Data, Base64.DEFAULT) } catch (_: IllegalArgumentException) { return@withContext null to 0 }
-    val temporaryPdf = File.createTempFile("stash-preview-", ".pdf", context.cacheDir)
+    var temporaryPdf: File? = null
     try {
+        temporaryPdf = File.createTempFile("stash-preview-", ".pdf", context.cacheDir)
         temporaryPdf.outputStream().use { it.write(bytes) }
         val descriptor = ParcelFileDescriptor.open(temporaryPdf, ParcelFileDescriptor.MODE_READ_ONLY)
         descriptor.use { parcel ->
@@ -304,9 +305,13 @@ internal suspend fun renderPdfAttachmentPage(attachment: VaultAttachment, reques
                 }
             }
         }
+    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null to 0
     } finally {
         bytes.fill(0)
-        temporaryPdf.delete()
+        temporaryPdf?.delete()
     }
 }
 

@@ -1,42 +1,48 @@
 package com.lockr.app
 
-import android.text.format.Formatter
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import java.text.DateFormat
 import java.util.Date
+import java.util.Locale
 
 @Composable
-fun DocumentInfoScreen(item: VaultItem, onBack: () -> Unit, onGroupChange: (String) -> Unit) {
-    val context = LocalContext.current
-    val added = if (item.createdAt > 0) DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(item.createdAt)) else item.time
+fun DocumentInfoScreen(item: VaultItem, onBack: () -> Unit) {
+    val date = if (item.createdAt > 0) Date(item.createdAt) else null
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         StashTopBar("File information", onBack = onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            GlassPanel(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    Text(item.title, style = MaterialTheme.typography.titleMedium, color = LockrColors.TextPrimary)
-                    InfoEntry("Added to Stash", added.ifBlank { "Date unavailable" })
-                    InfoEntry("Total size", Formatter.formatFileSize(context, item.attachments.sumOf { it.byteCount }))
-                    InfoEntry("Files", item.attachments.size.toString())
-                    InfoEntry("Storage", "Encrypted on this device")
+            item.attachments.firstOrNull()?.let { attachment ->
+                GlassPanel(Modifier.fillMaxWidth().height(230.dp), radius = 24.dp) {
+                    DocumentPreviewCanvas(attachment, Modifier.fillMaxSize().padding(8.dp),
+                        gesturesEnabled = false, showPageControls = false)
                 }
             }
-            TagEditor(VaultCategory.DOCUMENT, setOf(item.metadata["documentCategory"].orEmpty().ifBlank { "Other" }),
-                onChange = { onGroupChange(it.firstOrNull() ?: "Other") }, single = true)
-            item.attachments.forEachIndexed { index, attachment ->
+            GlassPanel(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(17.dp)) {
+                    Text(item.title, style = MaterialTheme.typography.titleMedium, color = LockrColors.TextPrimary)
+                    item.attachments.firstOrNull()?.let { InfoEntry("File name", it.name); InfoEntry("Type", it.mimeType) }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        InfoEntry("Date added", date?.let { DateFormat.getDateInstance(DateFormat.MEDIUM).format(it) }
+                            ?: item.time.ifBlank { "Not recorded" }, Modifier.weight(1f))
+                        InfoEntry("Time added", date?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(it) }
+                            ?: "Not recorded", Modifier.weight(1f))
+                    }
+                    InfoEntry("Size", documentSizeMb(item.attachments.sumOf { it.byteCount }))
+                    InfoEntry("Storage", "Encrypted on this device")
+                    if (item.attachments.size > 1) InfoEntry("Files", item.attachments.size.toString())
+                }
+            }
+            if (item.attachments.size > 1) item.attachments.drop(1).forEachIndexed { index, attachment ->
                 GlassPanel(Modifier.fillMaxWidth(), radius = 20.dp) {
-                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("File ${index + 1}", style = MaterialTheme.typography.labelLarge, color = LockrColors.Accent)
-                        InfoEntry("Name", attachment.name)
-                        InfoEntry("Type", attachment.mimeType)
-                        InfoEntry("Size", Formatter.formatFileSize(context, attachment.byteCount))
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("File ${index + 2}", style = MaterialTheme.typography.labelLarge, color = LockrColors.Accent)
+                        InfoEntry(attachment.name, "${attachment.mimeType} · ${documentSizeMb(attachment.byteCount)}")
                     }
                 }
             }
@@ -45,9 +51,11 @@ fun DocumentInfoScreen(item: VaultItem, onBack: () -> Unit, onGroupChange: (Stri
     }
 }
 
+private fun documentSizeMb(bytes: Long): String = String.format(Locale.getDefault(), "%.2f MB", bytes.coerceAtLeast(0) / 1_000_000.0)
+
 @Composable
-private fun InfoEntry(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+private fun InfoEntry(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(label, color = LockrColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
         Text(value, color = LockrColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
     }

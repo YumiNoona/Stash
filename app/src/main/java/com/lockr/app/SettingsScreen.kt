@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Animation
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.DocumentScanner
@@ -95,8 +94,6 @@ fun SettingsScreen(
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             SettingsSection("Appearance") {
-                SettingsRow(Icons.Outlined.Palette, "Theme", when (themeMode) { "dark" -> "Dark"; "light" -> "Light"; else -> "Follow device" },
-                    value = "›", onClick = { dialog = "theme" })
                 SettingsRow(Icons.Outlined.Animation, "Reduce motion", "Keep artwork and controls still", toggle = reducedMotion,
                     onToggle = { reducedMotion = it; preferences.edit().putBoolean("reduce_motion", it).apply() })
                 SettingsRow(Icons.Outlined.PlayCircle, "Animated card artwork", "Play saved GIF and video art", toggle = artworkAutoplay,
@@ -184,12 +181,6 @@ fun SettingsScreen(
     when (dialog) {
         "cardTags" -> TagManagerDialog(VaultCategory.CARD, onDismiss = { dialog = "" })
         "documentTags" -> TagManagerDialog(VaultCategory.DOCUMENT, onDismiss = { dialog = "" })
-        "theme" -> ChoiceDialog("Theme", listOf("Follow device", "Light", "Dark"),
-            selected = when (themeMode) { "dark" -> "Dark"; "light" -> "Light"; else -> "Follow device" },
-            onDismiss = { dialog = "" }) {
-            themeMode = when (it) { "Dark" -> "dark"; "Light" -> "light"; else -> "system" }
-            preferences.edit().putString("theme_mode", themeMode).apply(); dialog = ""
-        }
         "export" -> ExportFormatDialog(onDismiss = { dialog = "" }) { format, includePrivate ->
             dialog = ""
             onExportData(format, includePrivate)

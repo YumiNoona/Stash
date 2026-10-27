@@ -436,7 +436,7 @@ fun VaultItemDetailScreen(
                             showFullNumber = false)
                         TagEditor(VaultCategory.CARD, editTags, { editTags = it })
                         CardCustomization(editCardArt, { editCardArt = it }, editMotion, { editMotion = it },
-                            editCustomArt, { editCustomArt = it; editAppearanceError = "" }, editLightText, { editLightText = it })
+                            editCustomArt, { editCustomArt = it; editAppearanceError = "" }, editLightText, { editLightText = it }, showLabels = false)
                         if (editAppearanceError.isNotBlank()) Text(editAppearanceError,
                             color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
