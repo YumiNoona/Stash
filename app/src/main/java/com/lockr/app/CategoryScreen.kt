@@ -74,9 +74,6 @@ fun CategoryScreen(
     val selected = selection.ids
     var moving by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
-    var managing by remember { mutableStateOf(false) }
-    var folderToEdit by remember { mutableStateOf("") }
-    var newName by remember { mutableStateOf("__closed__") }
     var descending by rememberSaveable { mutableStateOf(true) }
     BackHandler(selection.active) { selection = VaultSelection() }
     LaunchedEffect(folders) { if (folder !in folders && folder !in listOf("All folders", "Unfiled")) { folder = "All folders"; prefs.edit().putString("last_folder", folder).apply() } }
@@ -107,8 +104,7 @@ fun CategoryScreen(
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 88.dp, bottom = 124.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (screen == LockrScreen.ALL_ITEMS || screen == LockrScreen.DOCUMENTS) item {
-                CollectionFilters(filters, selectedFilter, { selectedFilter = it },
-                    if (screen == LockrScreen.DOCUMENTS) VaultCategory.DOCUMENT else null)
+                CollectionFilters(filters, selectedFilter, { selectedFilter = it })
             }
             if (screen == LockrScreen.DOCUMENTS) item {
                 Column {
@@ -118,7 +114,6 @@ fun CategoryScreen(
                         }
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { managing = true }) { Text("Folders") }
                         TextButton(onClick = { descending = !descending }) { Text(if (descending) "Newest first" else "Name A–Z") }
                         Spacer(Modifier.weight(1f))
                         IconButton(onClick = { selection = if (selection.active) VaultSelection() else selection.enter() }) {
@@ -166,21 +161,6 @@ fun CategoryScreen(
     }
     if (moving) FolderPicker(folders, { moving = false }) { destination -> actions.move(selected, destination); moving = false; selection = VaultSelection() }
     if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text("Delete ${selected.size} items?") }, text = { Text("The selected items and their files will be removed.") }, confirmButton = { TextButton(onClick = { actions.delete(selected); selection = VaultSelection(); deleting = false }) { Text("Delete") } }, dismissButton = { TextButton(onClick = { deleting = false }) { Text("Cancel") } })
-    if (managing) AlertDialog(onDismissRequest = { managing = false }, title = { Text("Folders") }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState())) {
-            folders.forEach { f -> Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(f, modifier = Modifier.weight(1f))
-                TextButton(onClick = { folderToEdit = f; newName = f; managing = false }) { Text("Edit") }
-            } }
-            TextButton(onClick = { folderToEdit = ""; newName = ""; managing = false }) { Text("Create folder") }
-        }
-    }, confirmButton = { TextButton(onClick = { managing = false }) { Text("Done") } })
-    if (!managing && newName != "__closed__" && (folderToEdit.isNotBlank() || newName == "")) {
-        AlertDialog(onDismissRequest = { newName = "__closed__"; folderToEdit = "" }, title = { Text(if (folderToEdit.isBlank()) "Create folder" else "Edit folder") }, text = { Column {
-            OutlinedTextField(newName, { newName = it.take(40) }, label = { Text("Folder name") }, singleLine = true)
-            if (folderToEdit.isNotBlank()) TextButton(onClick = { actions.folderChanged(folderToEdit, null); folderToEdit = ""; newName = "__closed__" }) { Text("Delete folder · keep documents in Unfiled") }
-        } }, confirmButton = { TextButton(enabled = newName.isNotBlank() && newName !in listOf("All folders", "Unfiled", "__closed__"), onClick = { actions.folderChanged(folderToEdit, newName.trim()); folderToEdit = ""; newName = "__closed__" }) { Text("Save") } }, dismissButton = { TextButton(onClick = { folderToEdit = ""; newName = "__closed__" }) { Text("Cancel") } })
-    }
 }
 
 fun searchableText(item: VaultItem): String = buildString {

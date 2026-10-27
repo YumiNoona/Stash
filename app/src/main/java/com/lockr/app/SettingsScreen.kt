@@ -60,7 +60,7 @@ data class LockrSettingsState(
     val appLockEnabled: Boolean = false,
     val autoLock: String = "After 1 minute",
     val revealTimeout: String = "30 seconds",
-    val hideCardNumber: Boolean = true,
+    val hideCardNumber: Boolean = false,
     val autoClearClipboard: Boolean = true,
     val hideInRecents: Boolean = false
 )
@@ -73,6 +73,7 @@ fun SettingsScreen(
     onExportBackup: () -> Unit,
     onExportData: (DataExportFormat, Boolean) -> Unit,
     onImportBackup: () -> Unit,
+    onOpenOrganization: () -> Unit,
     backupStatus: String?,
     modifier: Modifier = Modifier
 ) {
@@ -97,8 +98,7 @@ fun SettingsScreen(
                     SettingsRow(Icons.Outlined.CreditCard, "Home-screen widgets", "Add a wallet or document folder", last = true, onClick = { dialog = "widgets" })
                 }
                 SettingsSection("Organization", modifier = Modifier.padding(top = 14.dp)) {
-                    SettingsRow(Icons.Outlined.Label, "Card tags", "Create or remove custom labels", value = "›", onClick = { dialog = "cardTags" })
-                    SettingsRow(Icons.Outlined.Label, "Document tags", "Organize your document groups", value = "›", onClick = { dialog = "documentTags" })
+                    SettingsRow(Icons.Outlined.Label, "Custom tags and folders", "Manage your labels and folders", value = "›", onClick = onOpenOrganization)
                     SettingsRow(Icons.Outlined.DocumentScanner, "Read text on import", "Suggest fields locally from scans", toggle = ocrEnabled,
                         last = true, onToggle = { ocrEnabled = it; preferences.edit().putBoolean("ocr_on_import", it).apply() })
                 }
@@ -121,7 +121,7 @@ fun SettingsScreen(
                     )
                     SettingsRow(
                         Icons.Outlined.VisibilityOff, "Card number display",
-                        if (settings.hideCardNumber) "Hide number and CVC" else "Hide CVC only",
+                        if (settings.hideCardNumber) "Number hidden · CVV hidden" else "Number shown · CVV hidden",
                         value = "›", iconTint = Color(0xFF5065B5), iconBg = Color(0xFFE9EEFF),
                         onClick = { dialog = "cardVisibility" }
                     )
@@ -175,7 +175,7 @@ fun SettingsScreen(
             }
 
         }
-        StashTopBar("Settings", "Appearance, privacy and storage", onBack = onBack,
+        StashTopBar("Settings", onBack = onBack,
             trailing = { IconButton(onClick = {
                 themeMode = if (dark) "light" else "dark"
                 preferences.edit().putString("theme_mode", themeMode).apply()
@@ -190,8 +190,6 @@ fun SettingsScreen(
                 TextButton(onClick = { dialog = ""; pinStashWidget(context, false) }) { Text("Wallet widget") }
                 TextButton(onClick = { dialog = ""; pinStashWidget(context, true) }) { Text("Documents widget") }
             } }, confirmButton = { TextButton(onClick = { dialog = "" }) { Text("Done") } })
-        "cardTags" -> TagManagerDialog(VaultCategory.CARD, onDismiss = { dialog = "" })
-        "documentTags" -> TagManagerDialog(VaultCategory.DOCUMENT, onDismiss = { dialog = "" })
         "export" -> ExportFormatDialog(onDismiss = { dialog = "" }) { format, includePrivate ->
             dialog = ""
             onExportData(format, includePrivate)
@@ -207,10 +205,10 @@ fun SettingsScreen(
             onDismiss = { dialog = "" }
         ) { onSettingsChange(settings.copy(revealTimeout = it)); dialog = "" }
         "cardVisibility" -> ChoiceDialog(
-            "Card number display", listOf("Hide number and CVC", "Hide CVC only"),
-            selected = if (settings.hideCardNumber) "Hide number and CVC" else "Hide CVC only",
+            "Card number display", listOf("Show card number", "Hide card number"),
+            selected = if (settings.hideCardNumber) "Hide card number" else "Show card number",
             onDismiss = { dialog = "" }
-        ) { onSettingsChange(settings.copy(hideCardNumber = it == "Hide number and CVC")); dialog = "" }
+        ) { onSettingsChange(settings.copy(hideCardNumber = it == "Hide card number")); dialog = "" }
         "encryption" -> InfoDialog(
             "On-device encryption",
             "Vault records are encrypted with AES-GCM. The encryption key is held by Android Keystore on this device; a master password is not used.",

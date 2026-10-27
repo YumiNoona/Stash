@@ -1,13 +1,21 @@
 package com.lockr.app
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.RotateRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.util.Base64
@@ -35,7 +43,7 @@ fun uniqueItem(item: VaultItem, others: List<VaultItem>): VaultItem = item.copy(
 class VaultActions(val move: (Set<String>, String) -> Unit = { _, _ -> },
     val delete: (Set<String>) -> Unit = {}, val download: (List<VaultItem>) -> Unit = {},
     val folderChanged: (String, String?) -> Unit = { _, _ -> })
-val LocalVaultFolders = staticCompositionLocalOf { listOf("School", "Personal") }
+val LocalVaultFolders = staticCompositionLocalOf { emptyList<String>() }
 val LocalVaultActions = staticCompositionLocalOf { VaultActions() }
 
 @Composable
@@ -52,20 +60,42 @@ fun FolderPicker(folders: List<String>, onDismiss: () -> Unit, onMove: (String) 
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocumentPagesDialog(attachments: List<VaultAttachment>, onDismiss: () -> Unit, onSave: (List<VaultAttachment>) -> Unit) {
     var pages by remember { mutableStateOf(attachments) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    AlertDialog(onDismissRequest = { if (!busy) onDismiss() }, title = { Text("Organize pages") }, text = {
-        Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())) {
+    ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Organize pages", style = MaterialTheme.typography.headlineSmall)
+            Text("Reorder, rotate or remove pages before saving.", style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.heightIn(max = 390.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             pages.forEachIndexed { i, page ->
-                Text("${i + 1}. ${page.name}", style = MaterialTheme.typography.labelLarge)
-                Row {
-                    TextButton(enabled = !busy && i > 0, onClick = { pages = pages.toMutableList().apply { add(i - 1, removeAt(i)) } }) { Text("Up") }
-                    TextButton(enabled = !busy && i < pages.lastIndex, onClick = { pages = pages.toMutableList().apply { add(i + 1, removeAt(i)) } }) { Text("Down") }
-                    TextButton(enabled = !busy && page.mimeType.startsWith("image/"), onClick = {
+                Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .65f)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Description, null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("Page ${i + 1}", style = MaterialTheme.typography.titleSmall)
+                                Text(page.name, style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(enabled = !busy && i > 0, onClick = { pages = pages.toMutableList().apply { add(i - 1, removeAt(i)) } }) {
+                                Icon(Icons.Outlined.ArrowUpward, "Move page ${i + 1} up")
+                            }
+                            IconButton(enabled = !busy && i < pages.lastIndex, onClick = { pages = pages.toMutableList().apply { add(i + 1, removeAt(i)) } }) {
+                                Icon(Icons.Outlined.ArrowDownward, "Move page ${i + 1} down")
+                            }
+                            IconButton(enabled = !busy && page.mimeType.startsWith("image/"), onClick = {
                         busy = true
                         scope.launch {
                             try {
@@ -82,14 +112,20 @@ fun DocumentPagesDialog(attachments: List<VaultAttachment>, onDismiss: () -> Uni
                             } catch (_: Exception) { error = "Could not rotate this page within the document size limit." }
                             finally { busy = false }
                         }
-                    }) { Text("Rotate") }
+                            }) { Icon(Icons.Outlined.RotateRight, "Rotate page ${i + 1}") }
+                            IconButton(enabled = !busy && pages.size > 1, onClick = { pages = pages.toMutableList().apply { removeAt(i) } }) {
+                                Icon(Icons.Outlined.DeleteOutline, "Remove page ${i + 1}", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
                 }
-                TextButton(enabled = !busy && pages.size > 1, onClick = { pages = pages.toMutableList().apply { removeAt(i) } }) { Text("Remove page") }
-                HorizontalDivider()
             }
-            if (busy) Text("Rotating…")
-            if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+            }
+            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall)
+            Button(enabled = !busy, onClick = { onSave(pages) }, modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(18.dp)) { Text("Save pages") }
         }
-    }, confirmButton = { TextButton(enabled = !busy, onClick = { onSave(pages) }) { Text("Save") } },
-        dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text("Cancel") } })
+    }
 }

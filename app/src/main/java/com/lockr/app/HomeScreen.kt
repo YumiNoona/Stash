@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -84,7 +85,8 @@ fun HomeScreen(
             }
         }, confirmButton = { TextButton(onClick = { menuItem = null }) { Text("Close") } })
     }
-    Box(modifier.fillMaxSize().padding(horizontal = 17.dp)) {
+    BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 17.dp)) {
+        val recentLimit = if (maxHeight < 1000.dp) 3 else 4
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 96.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
             DashboardHero()
             Row(Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -107,7 +109,7 @@ fun HomeScreen(
                     }
                 }
             } else {
-                items.take(4).forEach { item ->
+                items.take(recentLimit).forEach { item ->
                     RecentItemRow(item, onClick = { onOpenItem(item) }, onMore = { menuItem = item })
                 }
             }
@@ -115,12 +117,11 @@ fun HomeScreen(
         }
         Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().height(84.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FloatingGlass(Modifier.weight(1f)) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onOpenProfile), contentAlignment = Alignment.Center) { ProfileAvatar(profilePhoto, 46.dp) }
-                    Text(profileName, style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp, end = 6.dp))
-                }
+            Row(Modifier.weight(1f).clip(RoundedCornerShape(25.dp)).clickable(onClick = onOpenProfile)
+                .padding(horizontal = 2.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                ProfileAvatar(profilePhoto, 46.dp)
+                Text(profileName, style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp, end = 6.dp))
             }
             FloatingGlass(Modifier.size(48.dp), RoundedCornerShape(24.dp)) {
                 IconButton(onClick = onOpenSettings, modifier = Modifier.fillMaxSize()) { Icon(Icons.Outlined.Settings, "Settings", tint = LockrColors.TextPrimary) }

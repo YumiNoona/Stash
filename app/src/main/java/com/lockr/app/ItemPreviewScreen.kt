@@ -15,6 +15,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
@@ -28,6 +30,8 @@ import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.IosShare
+import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +58,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.min
 import kotlin.math.max
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemPreviewScreen(
     item: VaultItem,
@@ -140,7 +145,7 @@ fun ItemPreviewScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     PreviewAction(Icons.Outlined.Edit, "Edit", "Edit document", modifier = Modifier.weight(1f)) { useControls(); title = item.title; dialog = "edit" }
                     PreviewAction(Icons.Outlined.DocumentScanner, if (extracting) "Reading" else "Scan", "Scan document", !extracting, extracting, Modifier.weight(1f)) { useControls(); scan() }
-                    PreviewAction(Icons.Outlined.IosShare, "Share", "Share document", modifier = Modifier.weight(1f)) { useControls(); if (item.attachments.size > 1) scope.launch { shareVaultDocument(context, item) } else onSend() }
+                    PreviewAction(Icons.Outlined.IosShare, "Share", "Share document", modifier = Modifier.weight(1f)) { useControls(); dialog = "share" }
                     PreviewAction(Icons.Outlined.DeleteOutline, "Delete", "Delete document", modifier = Modifier.weight(1f)) { useControls(); dialog = "delete" }
                 }
             }
@@ -149,22 +154,78 @@ fun ItemPreviewScreen(
     if (dialog == "extract") ExtractFieldsDialog(recognizedText, onDismiss = { dialog = "" },
         onCopy = { copyPrivateText(context, it, autoClearClipboard) },
         onSave = { key, value -> onSaveField(key, value); dialog = "" })
-    if (dialog == "edit") AlertDialog(onDismissRequest = { dialog = "" }, title = { Text("Edit document") },
-        text = { Column {
-            TextButton(onClick = { dialog = "rename" }) { Text("Rename document") }
-            TextButton(onClick = { dialog = "pages" }) { Text("Organize pages") }
-        } }, confirmButton = { TextButton(onClick = { dialog = "" }) { Text("Done") } })
+    if (dialog == "edit") ModalBottomSheet(onDismissRequest = { dialog = "" },
+        containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState())
+            .padding(start = 22.dp, end = 22.dp, bottom = 26.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text("Edit document", style = MaterialTheme.typography.headlineSmall, color = LockrColors.TextPrimary)
+            Text("Give this item a clear name and arrange its pages.", style = MaterialTheme.typography.bodyMedium, color = LockrColors.TextSecondary)
+            OutlinedTextField(title, { title = it.take(80) }, modifier = Modifier.fillMaxWidth(),
+                singleLine = true, label = { Text("Document name") }, shape = RoundedCornerShape(18.dp))
+            Button(onClick = { onRename(title.trim()); dialog = "" },
+                enabled = title.isNotBlank() && title.trim() != item.title,
+                modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(18.dp)) {
+                Icon(Icons.Outlined.Save, null, Modifier.size(19.dp)); Spacer(Modifier.width(9.dp)); Text("Save name")
+            }
+            Surface(onClick = { dialog = "pages" }, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .7f)) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Tune, null, tint = LockrColors.Accent, modifier = Modifier.size(23.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Organize pages", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+                        Text("Reorder, rotate or remove · ${item.attachments.size} ${if (item.attachments.size == 1) "page" else "pages"}",
+                            style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
+                    }
+                    Icon(Icons.Outlined.ChevronRight, null, tint = LockrColors.TextSecondary)
+                }
+            }
+        }
+    }
     if (dialog == "pages") DocumentPagesDialog(item.attachments, { dialog = "" }) { onUpdatePages(it); dialog = "" }
-    if (dialog == "rename") AlertDialog(
-        onDismissRequest = { dialog = "" }, title = { Text("Edit document") },
-        text = { OutlinedTextField(title, { title = it.take(80) }, singleLine = true, label = { Text("Name") }) },
-        dismissButton = { TextButton(onClick = { dialog = "" }) { Text("Cancel") } },
-        confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { onRename(title.trim()); dialog = "" }) { Text("Save") } })
-    if (dialog == "delete") AlertDialog(
-        onDismissRequest = { dialog = "" }, title = { Text("Delete this item?") },
-        text = { Text("This removes the item and its files from Stash.") },
-        dismissButton = { TextButton(onClick = { dialog = "" }) { Text("Cancel") } },
-        confirmButton = { TextButton(onClick = { dialog = ""; onDelete() }) { Text("Delete") } })
+    if (dialog == "share") ModalBottomSheet(onDismissRequest = { dialog = "" },
+        containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, bottom = 25.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp)) {
+            Text("Share document", style = MaterialTheme.typography.headlineSmall, color = LockrColors.TextPrimary)
+            Text(item.title, style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (item.attachments.isNotEmpty()) Surface(Modifier.fillMaxWidth().height(180.dp),
+                shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                DocumentPreviewCanvas(item.attachments.first(), gesturesEnabled = false, showPageControls = false)
+            }
+            Text("${item.attachments.size} ${if (item.attachments.size == 1) "file" else "files"} · Send a copy outside Stash",
+                style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
+            Button(onClick = {
+                dialog = ""
+                if (item.attachments.size > 1) scope.launch { shareVaultDocument(context, item) } else onSend()
+            }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(18.dp)) {
+                Icon(Icons.Outlined.IosShare, null, Modifier.size(19.dp)); Spacer(Modifier.width(9.dp)); Text("Continue to share")
+            }
+        }
+    }
+    if (dialog == "delete") ModalBottomSheet(onDismissRequest = { dialog = "" },
+        containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 22.dp, end = 22.dp, bottom = 26.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.errorContainer) {
+                Icon(Icons.Outlined.DeleteOutline, null, tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(15.dp).size(27.dp))
+            }
+            Text("Delete document?", style = MaterialTheme.typography.headlineSmall, color = LockrColors.TextPrimary)
+            Text(item.title, style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text("This removes the document and its attached files from Stash. This cannot be undone.",
+                style = MaterialTheme.typography.bodyMedium, color = LockrColors.TextSecondary)
+            Button(onClick = { dialog = ""; onDelete() }, modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                Text("Delete document")
+            }
+            TextButton(onClick = { dialog = "" }, modifier = Modifier.fillMaxWidth()) { Text("Keep document") }
+        }
+    }
 }
 
 @Composable

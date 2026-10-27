@@ -145,13 +145,11 @@ fun StashTopBar(
                 Icon(Icons.Outlined.ChevronLeft, "Back", tint = LockrColors.TextPrimary, modifier = Modifier.size(27.dp))
             }
         }
-        FloatingGlass(Modifier.weight(1f)) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary,
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = LockrColors.TextSecondary,
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            }
+        Column(Modifier.weight(1f).padding(start = 5.dp, end = 2.dp), verticalArrangement = Arrangement.Center) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary,
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = LockrColors.TextSecondary,
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
         if (trailing != null) FloatingGlass(shape = RoundedCornerShape(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) { trailing() }

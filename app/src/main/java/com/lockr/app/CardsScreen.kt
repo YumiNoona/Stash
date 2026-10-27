@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,7 +61,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-val LocalHideCardNumber = compositionLocalOf { true }
+val LocalHideCardNumber = compositionLocalOf { false }
 
 @Composable
 fun CardsScreen(items: List<VaultItem>, onBack: () -> Unit, onSearch: () -> Unit, onOpenItem: (VaultItem) -> Unit, modifier: Modifier = Modifier) {
@@ -97,9 +98,10 @@ fun CardDetailPreview(
     onToggleNumber: (() -> Unit)? = null,
     animate: Boolean = true,
     showCvc: Boolean = false,
+    onToggleCvc: (() -> Unit)? = null,
     onClick: () -> Unit = {}
 ) {
-    CardSurface(item, modifier, showFullNumber, onToggleNumber, animate, showCvc, onClick)
+    CardSurface(item, modifier, showFullNumber, onToggleNumber, animate, showCvc, onToggleCvc, onClick)
 }
 
 @Composable
@@ -110,6 +112,7 @@ private fun CardSurface(
     onToggleNumber: (() -> Unit)? = null,
     animate: Boolean = true,
     showCvc: Boolean = false,
+    onToggleCvc: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(18.dp)
@@ -123,6 +126,14 @@ private fun CardSurface(
     val number = item.metadata["cardNumber"].orEmpty()
     val lastFour = item.lastFour.ifBlank { number.takeLast(4).ifBlank { item.metadata["lastFour"].orEmpty() } }
     val numberVisible = showFullNumber ?: !LocalHideCardNumber.current
+    var cardListCvcVisible by rememberSaveable(item.id) { mutableStateOf(false) }
+    LaunchedEffect(cardListCvcVisible) {
+        if (cardListCvcVisible) {
+            kotlinx.coroutines.delay(30_000)
+            cardListCvcVisible = false
+        }
+    }
+    val cvcVisible = if (onToggleCvc != null) showCvc else cardListCvcVisible
     val numberText = if (numberVisible && number.isNotBlank())
         if (isPaymentCardType(item.metadata["cardType"].orEmpty())) formatPaymentCardNumber(number, item.metadata["network"].orEmpty()) else number
     else "••••  ••••  ••••  ${lastFour.ifBlank { "••••" }}"
@@ -182,12 +193,21 @@ private fun CardSurface(
                             if (numberVisible) "Hide card number" else "Show card number", tint = ink, modifier = Modifier.size(17.dp))
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("EXP  ${item.metadata["expiry"].orEmpty().ifBlank { "MM/YY" }}",
-                        color = secondaryInk, style = MaterialTheme.typography.labelMedium)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    item.metadata["expiry"].orEmpty().takeIf(String::isNotBlank)?.let { expiry ->
+                        Text("EXP  $expiry", color = secondaryInk, style = MaterialTheme.typography.labelMedium)
+                    }
                     val cvc = item.metadata["cardCvc"].orEmpty()
-                    Text("CVV  ${if (cvc.isBlank()) "—" else if (showCvc) cvc else "•••"}",
-                        color = secondaryInk, style = MaterialTheme.typography.labelMedium)
+                    if (cvc.isNotBlank()) Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("CVV  ${if (cvcVisible) cvc else "•••"}",
+                            color = secondaryInk, style = MaterialTheme.typography.labelMedium)
+                        IconButton(onClick = { if (onToggleCvc != null) onToggleCvc() else cardListCvcVisible = !cardListCvcVisible },
+                            modifier = Modifier.size(27.dp)) {
+                            Icon(if (cvcVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                if (cvcVisible) "Hide CVV" else "Show CVV", tint = secondaryInk, modifier = Modifier.size(17.dp))
+                        }
+                    }
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {

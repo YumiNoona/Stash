@@ -93,6 +93,11 @@ fun VaultItemDetailScreen(
         else if (!hideCardNumber || authorized) cardNumberVisibleOverride = true
         else { pendingCardReveal = "number"; onAuthenticate() }
     }
+    val toggleCardCvc: () -> Unit = {
+        if (cardCvcRevealed) cardCvcRevealed = false
+        else if (authorized) cardCvcRevealed = true
+        else { pendingCardReveal = "cvc"; onAuthenticate() }
+    }
     var confirmDelete by rememberSaveable(item.id) { mutableStateOf(false) }
     var editing by rememberSaveable(item.id) { mutableStateOf(false) }
     var editValidationAttempted by rememberSaveable(item.id) { mutableStateOf(false) }
@@ -167,7 +172,8 @@ fun VaultItemDetailScreen(
                 if (item.category == VaultCategory.CARD) {
                     CardDetailPreview(item, Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 22.dp),
                         showFullNumber = cardNumberVisible, showCvc = cardCvcRevealed && authorized,
-                        onToggleNumber = if (item.metadata["cardNumber"].isNullOrBlank()) null else toggleCardNumber)
+                        onToggleNumber = if (item.metadata["cardNumber"].isNullOrBlank()) null else toggleCardNumber,
+                        onToggleCvc = if (item.metadata["cardCvc"].isNullOrBlank()) null else toggleCardCvc)
                 }
                 if (item.category == VaultCategory.CARD) {
                     GlassPanel(Modifier.fillMaxWidth(), radius = 26.dp) {
@@ -203,11 +209,7 @@ fun VaultItemDetailScreen(
                                     if (authorized) { copyPrivateText(context, cvc, autoClearClipboard); feedback = "CVC copied" }
                                     else onAuthenticate()
                                 }),
-                                onReveal = if (cvc.isBlank()) null else ({
-                                    if (cardCvcRevealed) cardCvcRevealed = false
-                                    else if (authorized) cardCvcRevealed = true
-                                    else { pendingCardReveal = "cvc"; onAuthenticate() }
-                                }),
+                                onReveal = if (cvc.isBlank()) null else toggleCardCvc,
                                 revealed = cardCvcRevealed && authorized)
                         }
                     }

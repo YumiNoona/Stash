@@ -89,7 +89,7 @@ class MainActivity : androidx.activity.ComponentActivity() {
     }
 }
 
-enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, PROFILE, SEARCH, SCANNER, NFC_CARD, IMPORTING, REVIEW, CARD_REVIEW, MANUAL, ITEM_DETAIL, ITEM_PREVIEW }
+enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, ORGANIZATION, PROFILE, SEARCH, SCANNER, NFC_CARD, IMPORTING, REVIEW, CARD_REVIEW, MANUAL, ITEM_DETAIL, ITEM_PREVIEW }
 
 enum class VaultCategory(val label: String) {
     CARD("Card"), DOCUMENT("Document"), PASSWORD("Password"), NOTE("Note")
@@ -154,7 +154,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     val store = remember(context) { LocalVaultStore(context) }
     val profileStore = remember(context) { LocalProfileStore(context) }
     var profileName by remember { mutableStateOf(profileStore.name()) }
-    var profilePhoto by remember { mutableStateOf(profileStore.photo()) }
+    var profilePhoto by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var pendingExport by remember { mutableStateOf<Pair<DataExportFormat, Boolean>?>(null) }
     val items = remember { mutableStateListOf<VaultItem>() }
     var settings by remember(context) {
@@ -163,7 +163,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                 appLockEnabled = preferences.getBoolean("app_lock_enabled", false),
                 autoLock = preferences.getString("auto_lock", "After 1 minute") ?: "After 1 minute",
                 revealTimeout = preferences.getString("reveal_timeout", "30 seconds") ?: "30 seconds",
-                hideCardNumber = preferences.getBoolean("hide_card_number", true),
+                hideCardNumber = preferences.getBoolean("hide_card_number", false),
                 autoClearClipboard = preferences.getBoolean("auto_clear_clipboard", true),
                 hideInRecents = preferences.getBoolean("hide_in_recents", false)
             )
@@ -224,6 +224,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
             LockrScreen.NFC_CARD -> { screen = returnScreen; showAdd = true }
             LockrScreen.MANUAL -> { screen = returnScreen; showAdd = true }
             LockrScreen.SETTINGS -> screen = returnFromSettings
+            LockrScreen.ORGANIZATION -> screen = LockrScreen.SETTINGS
             LockrScreen.PROFILE -> screen = returnFromProfile
             LockrScreen.SEARCH -> screen = returnFromSearch
             else -> screen = LockrScreen.HOME
@@ -434,7 +435,6 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     }
 
     LaunchedEffect(store) {
-        withContext(Dispatchers.IO) { clearSharedAttachmentCache(context) }
         try {
             val storedItems = withContext(Dispatchers.IO) { store.loadOrNull() }
             if (storedItems != null) items.addAll(storedItems)
@@ -443,6 +443,10 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
             storageError = true
             storageReady = true
         }
+        launch(Dispatchers.IO) { runCatching { clearSharedAttachmentCache(context) } }
+    }
+    LaunchedEffect(profileStore) {
+        profilePhoto = withContext(Dispatchers.IO) { profileStore.photo() }
     }
 
     val persistNewItem: (VaultItem) -> Unit = save@{ item ->
@@ -450,7 +454,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
         savingItem = true
         coroutineScope.launch {
             try {
-                val lastFolder = preferences.getString("last_folder", "All folders").orEmpty().takeIf { it in preferences.getStringSet("vault_folders", setOf("School", "Personal")).orEmpty() }.orEmpty()
+                val lastFolder = preferences.getString("last_folder", "All folders").orEmpty().takeIf { it in preferences.getStringSet("vault_folders", emptySet()).orEmpty() }.orEmpty()
                 val target = if (item.category == VaultCategory.DOCUMENT && "folder" !in item.metadata)
                     item.copy(metadata = item.metadata + ("folder" to lastFolder)) else item
                 val updatedItems = items.toList().toMutableList().apply { add(0, uniqueItem(target, items.toList())) }
@@ -524,7 +528,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
         }
     }
 
-    var folders by remember { mutableStateOf(preferences.getStringSet("vault_folders", setOf("School", "Personal"))!!.toList().sorted()) }
+    var folders by remember { mutableStateOf(preferences.getStringSet("vault_folders", emptySet())!!.toList().sorted()) }
     LaunchedEffect(items.toList()) {
         val recovered = (folders + items.mapNotNull { it.metadata["folder"]?.takeIf(String::isNotBlank) }).distinct().sorted()
         if (recovered != folders) { folders = recovered; preferences.edit().putStringSet("vault_folders", recovered.toSet()).apply() }
@@ -634,7 +638,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                 })
             } else Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                 if (!storageReady) {
-                    LocalVaultMessage("Opening your local vault…", "Your records stay on this device.")
+                    // The backdrop remains visible during the short local vault read.
                 } else if (storageError) {
                     LocalVaultMessage("Vault could not be opened", "The encrypted file was left untouched. This device needs its original app key.")
                 } else Box(Modifier.fillMaxSize()) {
@@ -665,8 +669,10 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                             exportDataLauncher.launch(intent)
                         },
                         onImportBackup = { importBackupLauncher.launch(arrayOf("*/*")) },
+                        onOpenOrganization = { screen = LockrScreen.ORGANIZATION },
                         backupStatus = backupStatus
                     )
+                    LockrScreen.ORGANIZATION -> OrganizationScreen(onBack = { screen = LockrScreen.SETTINGS })
                     LockrScreen.PROFILE -> ProfileScreen(
                         name = profileName,
                         photo = profilePhoto,

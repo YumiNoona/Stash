@@ -78,7 +78,7 @@ fun CollectionEmptyState(title: String, message: String, icon: androidx.compose.
 @Composable
 fun CollectionFilters(options: List<String>, selected: String, onSelect: (String) -> Unit,
                       category: VaultCategory? = null) {
-    var manage by remember { mutableStateOf(false) }
+    // Tag and folder management lives in Settings so filters remain focused on browsing.
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             options.forEach { label ->
@@ -93,11 +93,7 @@ fun CollectionFilters(options: List<String>, selected: String, onSelect: (String
                 }
             }
         }
-        if (category != null) IconButton(onClick = { manage = true }) {
-            Icon(Icons.Outlined.Label, "Manage tags", tint = LockrColors.Accent)
-        }
     }
-    if (manage && category != null) TagManagerDialog(category, onDismiss = { manage = false })
 }
 
 @Composable

@@ -2,6 +2,7 @@ package com.lockr.app
 
 import android.content.Context
 import android.content.Intent
+import android.content.ClipData
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
@@ -21,7 +22,9 @@ fun shareVaultAttachment(context: Context, attachment: VaultAttachment) {
         val send = Intent(Intent.ACTION_SEND).apply {
             type = attachment.mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(Intent.EXTRA_TITLE, attachment.name)
+            clipData = ClipData.newRawUri(attachment.name, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(send, "Send from Stash").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         Handler(Looper.getMainLooper()).postDelayed({ target.delete() }, 10 * 60 * 1000L)
@@ -47,7 +50,9 @@ suspend fun shareVaultDocument(context: Context, item: VaultItem) {
         val mime = if (target.name.endsWith(".pdf")) "application/pdf" else "application/zip"
         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = mime; putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(Intent.EXTRA_TITLE, item.title)
+            clipData = ClipData.newRawUri(item.title, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }, "Share document").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         Handler(Looper.getMainLooper()).postDelayed({ target.delete() }, 10 * 60 * 1000L)
     } catch (_: Exception) { Toast.makeText(context, "Could not share this document.", Toast.LENGTH_SHORT).show() }
