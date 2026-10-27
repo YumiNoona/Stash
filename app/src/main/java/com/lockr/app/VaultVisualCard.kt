@@ -26,14 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun VaultVisualCard(item: VaultItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
     if (item.category == VaultCategory.CARD) {
-        CardDetailPreview(item, modifier, height = 176.dp, onClick = onClick)
+        CardDetailPreview(item, modifier, onClick = onClick)
         return
     }
     val (icon, tint, colors) = when (item.category) {

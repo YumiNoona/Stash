@@ -1,6 +1,8 @@
 package com.lockr.app
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -75,111 +77,56 @@ private val onboardingPages = listOf(
 fun OnboardingScreen(onFinish: () -> Unit, modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { onboardingPages.size })
     val scope = rememberCoroutineScope()
-    BackHandler(enabled = pagerState.currentPage > 0) {
-        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-    }
-
-    Box(modifier.fillMaxSize().background(LockrColors.Pearl)) {
-        AuroraBackdrop()
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            beyondViewportPageCount = 1
-        ) { page ->
-            OnboardingPageContent(
-                page = page,
-                currentPage = pagerState.currentPage,
-                onBack = { scope.launch { pagerState.animateScrollToPage((page - 1).coerceAtLeast(0)) } },
-                onSkip = onFinish,
-                onNext = {
-                    if (page == onboardingPages.lastIndex) onFinish()
-                    else scope.launch { pagerState.animateScrollToPage(page + 1) }
-                }
-            )
+    val navigate: (Int) -> Unit = { target ->
+        if (!pagerState.isScrollInProgress) scope.launch {
+            pagerState.animateScrollToPage(target.coerceIn(0, onboardingPages.lastIndex),
+                animationSpec = tween(420, easing = FastOutSlowInEasing))
         }
     }
-}
-
-@Composable
-private fun OnboardingPageContent(
-    page: Int,
-    currentPage: Int,
-    onBack: () -> Unit,
-    onSkip: () -> Unit,
-    onNext: () -> Unit
-) {
-    val data = onboardingPages[page]
-    Box(Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(data.image),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0f to Color.White.copy(alpha = 0.62f),
-                        0.24f to Color.White.copy(alpha = 0.30f),
-                        0.52f to Color.Transparent,
-                        0.80f to Color.Transparent,
-                        1f to Color.White.copy(alpha = 0.42f)
-                    )
-                )
-            )
-        )
-
-        Column(
-            Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)
-        ) {
-            Row(
-                Modifier.fillMaxWidth().height(54.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                if (page == 0) {
-                    Spacer(Modifier.size(42.dp))
-                } else {
-                    Box(
-                        Modifier.size(42.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.75f))
-                            .border(1.dp, Color.White.copy(alpha = 0.92f), CircleShape).clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Previous page", tint = LockrColors.TextPrimary, modifier = Modifier.size(20.dp))
-                    }
+    BackHandler(enabled = pagerState.currentPage > 0) { navigate(pagerState.currentPage - 1) }
+    Box(modifier.fillMaxSize().background(LockrColors.Pearl)) {
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 2) { page ->
+            val data = onboardingPages[page]
+            Box(Modifier.fillMaxSize()) {
+                Image(painterResource(data.image), null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize())
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+                    Color.White.copy(alpha = 0.75f), Color.Transparent, Color.White.copy(alpha = 0.3f)))))
+                Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp, vertical = 78.dp)) {
+                    Text(data.title, color = LockrColors.TextPrimary,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 24.sp,
+                            lineHeight = 31.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.8).sp))
+                    Text(data.description, color = LockrColors.TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 21.sp),
+                        modifier = Modifier.padding(top = 5.dp))
                 }
-
-                Text(
-                    if (page == onboardingPages.lastIndex) "Get Started" else "Skip",
-                    modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable(onClick = onSkip).padding(horizontal = 8.dp, vertical = 9.dp),
-                    color = LockrColors.TextPrimary,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
-                )
             }
-
-            Column(Modifier.padding(top = 12.dp)) {
-                Text(
-                    data.title,
-                    color = LockrColors.TextPrimary,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontSize = 24.sp,
-                        lineHeight = 31.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = (-0.8).sp
-                    )
-                )
-                Text(
-                    data.description,
-                    color = LockrColors.TextSecondary,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 21.sp),
-                    modifier = Modifier.padding(top = 5.dp)
-                )
+        }
+        // Navigation stays still while the artwork and copy slide together.
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
+            Row(Modifier.fillMaxWidth().height(54.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                if (pagerState.currentPage > 0) {
+                    Box(Modifier.size(42.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.75f))
+                        .clickable(enabled = !pagerState.isScrollInProgress) { navigate(pagerState.currentPage - 1) },
+                        contentAlignment = Alignment.Center) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Previous page", modifier = Modifier.size(20.dp))
+                    }
+                } else Spacer(Modifier.size(42.dp))
+                if (pagerState.currentPage < onboardingPages.lastIndex) {
+                    Text("Skip", Modifier.clip(RoundedCornerShape(16.dp))
+                        .clickable(enabled = !pagerState.isScrollInProgress, onClick = onFinish)
+                        .padding(horizontal = 8.dp, vertical = 9.dp), color = LockrColors.TextPrimary)
+                }
             }
-
             Spacer(Modifier.weight(1f))
-            OnboardingFooter(currentPage = currentPage, page = page, onNext = onNext)
+            OnboardingFooter(pagerState.currentPage, pagerState.currentPage) {
+                if (!pagerState.isScrollInProgress) {
+                    if (pagerState.currentPage == onboardingPages.lastIndex) onFinish()
+                    else navigate(pagerState.currentPage + 1)
+                }
+            }
         }
     }
 }

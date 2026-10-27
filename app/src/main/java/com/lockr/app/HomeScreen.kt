@@ -173,6 +173,7 @@ private fun RecentThumbnail(item: VaultItem) {
         }
         if (item.category == VaultCategory.CARD) {
             CardArtBackground(cardArtStyle(item), Modifier.fillMaxSize())
+            customCardArt(item)?.let { CustomCardArtBackground(it, Modifier.fillMaxSize(), animate = false) }
             Box(Modifier.align(Alignment.TopStart).padding(start = 7.dp, top = 8.dp)
                 .size(width = 14.dp, height = 10.dp)
                 .clip(RoundedCornerShape(3.dp))

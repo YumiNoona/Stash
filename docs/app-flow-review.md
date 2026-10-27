@@ -37,9 +37,29 @@ local exports and backup restore; profile changes stay on the device.
 
 ## Automated verification
 
-- All 21 JVM unit tests passed with `testDebugUnitTest`.
+- All 26 JVM unit tests passed with `testDebugUnitTest`.
 - `:app:assembleDebug` produced the installable debug APK.
 - `git diff --check` passed.
 
 This is a source review, not a completed device certification. Camera, NFC,
 credential prompts, and file pickers need checks on a device or emulator.
+
+## Onboarding and card appearance follow-up
+
+- Keep onboarding navigation stationary and use a 420 ms eased page slide; ignore
+  repeat Next taps during a transition. The third page has no top-right action.
+- Use the same 1.586:1 card ratio in lists, review, and saved detail screens.
+- Give partner brand and issuer separate fields, keep chip/contactless together,
+  and place number, expiry/CVV, and holder/network in consistent rows.
+- Replace the two-row finish grid with one swipe row of eight distinct designs.
+  Motion is a separate Still, Light sweep, Float, or Glow choice.
+- Import custom images, GIFs, and videos into the encrypted attachment store.
+  Video playback uses an in-memory media source, without decrypted cache files.
+- Keep custom artwork separate from original scans. Do not persist raw OCR text
+  on new cards or show the extraction block on existing card detail pages.
+
+Android 15 emulator checks passed for all three onboarding steps, manual card
+entry, save and reopen, detail proportions and field order, GIF import, and MP4
+import/playback after save. Successive video frames differed and no Android
+runtime or media errors were recorded. Tests used fabricated card details and
+synthetic media only. Physical-device codec compatibility remains device dependent.

@@ -43,14 +43,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -109,6 +109,11 @@ fun VaultItemDetailScreen(
     var editIssuer by rememberSaveable(item.id) { mutableStateOf(item.metadata["issuer"].orEmpty()) }
     var editNetwork by rememberSaveable(item.id) { mutableStateOf(item.metadata["network"].orEmpty()) }
     var editCvc by remember(item.id) { mutableStateOf(item.metadata["cardCvc"].orEmpty()) }
+    var editPartner by remember(item.id) { mutableStateOf(item.metadata["partner"].orEmpty()) }
+    var editMotion by remember(item.id) { mutableStateOf(cardMotion(item)) }
+    var editCustomArt by remember(item.id) { mutableStateOf(customCardArt(item)) }
+    var editLightText by remember(item.id) { mutableStateOf(item.metadata["cardArtLightText"] != "false") }
+    var editAppearanceError by remember(item.id) { mutableStateOf("") }
     var editCardArt by remember(item.id) { mutableStateOf(cardArtStyle(item)) }
     var showEditCvc by rememberSaveable(item.id) { mutableStateOf(false) }
     var editNetworkSelectedByUser by rememberSaveable(item.id) { mutableStateOf(false) }
@@ -154,6 +159,7 @@ fun VaultItemDetailScreen(
         }
     }
 
+    val originalFiles = item.attachments.filterNot { it.name == item.metadata["cardArtAttachment"] }
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         if (item.category == VaultCategory.CARD) {
             Row(Modifier.fillMaxWidth().height(69.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -172,7 +178,7 @@ fun VaultItemDetailScreen(
                         Icon(Icons.Outlined.MoreVert, contentDescription = "Card options")
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        if (item.attachments.isNotEmpty()) DropdownMenuItem(text = { Text("View original file") },
+                        if (originalFiles.isNotEmpty()) DropdownMenuItem(text = { Text("View original file") },
                             onClick = { showMenu = false; showOriginal = true; if (!authorized) onAuthenticate() })
                         DropdownMenuItem(text = { Text("Edit card") }, leadingIcon = { Icon(Icons.Outlined.Edit, null) },
                             onClick = {
@@ -199,7 +205,7 @@ fun VaultItemDetailScreen(
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (item.category == VaultCategory.CARD) {
                 CardDetailPreview(item, Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 22.dp),
-                    height = 255.dp, showFullNumber = cardNumberVisible,
+                    showFullNumber = cardNumberVisible, showCvc = cardCvcRevealed && authorized,
                     onToggleNumber = if (item.metadata["cardNumber"].isNullOrBlank()) null else toggleCardNumber)
             }
             if (item.category == VaultCategory.CARD) {
@@ -220,6 +226,10 @@ fun VaultItemDetailScreen(
                         CardDetailDivider()
                         DetailField("Card Holder Name", item.metadata["cardholder"].orEmpty().ifBlank { "Not added" },
                             onCopy = { item.metadata["cardholder"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard); feedback = "Name copied" } },
+                            onReveal = null, revealed = false)
+                        CardDetailDivider()
+                        DetailField("Issuer / Bank", item.metadata["issuer"].orEmpty().ifBlank { "Not added" },
+                            onCopy = { item.metadata["issuer"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard) } },
                             onReveal = null, revealed = false)
                         CardDetailDivider()
                         DetailField("Expiry Date", item.metadata["expiry"].orEmpty().ifBlank { "Not added" },
@@ -288,7 +298,7 @@ fun VaultItemDetailScreen(
                     }
                 }
             }
-            item.metadata["ocrText"]?.takeIf { it.isNotBlank() }?.let { text ->
+            item.metadata["ocrText"]?.takeIf { item.category != VaultCategory.CARD && it.isNotBlank() }?.let { text ->
                 OcrTextCard(text, extracting = extractingFields,
                     onExtractFields = {
                         if (!extractingFields) scope.launch {
@@ -307,10 +317,10 @@ fun VaultItemDetailScreen(
                         feedback = "Full extracted text copied"
                     })
             }
-            if (item.attachments.isNotEmpty() && (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) || (authorized && (item.category != VaultCategory.CARD || showOriginal)))) {
+            if (originalFiles.isNotEmpty() && (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) || (authorized && (item.category != VaultCategory.CARD || showOriginal)))) {
                 Column {
                     Text("Original files", style = MaterialTheme.typography.titleMedium, color = LockrColors.TextPrimary, modifier = Modifier.padding(bottom = 7.dp))
-                    VaultAttachmentsSection(item.attachments, Modifier.fillMaxWidth())
+                    VaultAttachmentsSection(originalFiles, Modifier.fillMaxWidth())
                 }
             } else if (item.attachments.isNotEmpty() && item.category != VaultCategory.CARD) {
                 Button(onClick = onAuthenticate, modifier = Modifier.fillMaxWidth()) { Text("Unlock attached file") }
@@ -365,11 +375,14 @@ fun VaultItemDetailScreen(
                         isError = item.category == VaultCategory.CARD && editValidationAttempted && editValidation.titleError != null,
                         colors = editFieldColors, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
                     if (item.category == VaultCategory.CARD) {
+                        OutlinedTextField(value = editCardholder, onValueChange = { editCardholder = it.take(60) },
+                            label = { Text("Name on card") }, singleLine = true, colors = editFieldColors,
+                            shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = editIssuer, onValueChange = { editIssuer = it.take(60) },
                             label = { Text("Issuer") }, singleLine = true, colors = editFieldColors,
                             shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = editCardholder, onValueChange = { editCardholder = it.take(60) },
-                            label = { Text("Name on card") }, singleLine = true, colors = editFieldColors,
+                        OutlinedTextField(editPartner, { editPartner = it.take(60) },
+                            label = { Text("Partner brand (optional)") }, singleLine = true, colors = editFieldColors,
                             shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = editCardNumberField, onValueChange = { input ->
                             if (paymentCard) {
@@ -413,7 +426,17 @@ fun VaultItemDetailScreen(
                                 } }, colors = editFieldColors, shape = RoundedCornerShape(15.dp),
                                 modifier = Modifier.fillMaxWidth())
                         }
-                        CardArtPicker(editCardArt) { editCardArt = it }
+                        CardDetailPreview(item.copy(metadata = item.metadata + mapOf(
+                            "cardArt" to editCardArt.name, "partner" to editPartner, "issuer" to editIssuer,
+                            "cardholder" to editCardholder, "cardNumber" to editCardNumber, "expiry" to editExpiry,
+                            "network" to editNetwork, "cardMotion" to editMotion.name,
+                            "cardArtLightText" to editLightText.toString(), "cardArtAttachment" to editCustomArt?.name.orEmpty()),
+                            attachments = withCardArt(item.attachments, item.metadata["cardArtAttachment"], editCustomArt)),
+                            showFullNumber = false)
+                        CardCustomization(editCardArt, { editCardArt = it }, editMotion, { editMotion = it },
+                            editCustomArt, { editCustomArt = it; editAppearanceError = "" }, editLightText, { editLightText = it })
+                        if (editAppearanceError.isNotBlank()) Text(editAppearanceError,
+                            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                     if (item.category == VaultCategory.DOCUMENT) {
                         Text("Document group", style = MaterialTheme.typography.labelLarge)
@@ -436,14 +459,21 @@ fun VaultItemDetailScreen(
                     val lastFour = if (paymentCard) digits.takeLast(4) else editCardNumber.takeLast(4)
                     val metadata = when (item.category) {
                         VaultCategory.DOCUMENT -> item.metadata + ("documentCategory" to editCategory.ifBlank { "Other" })
-                        VaultCategory.CARD -> item.metadata + mapOf("issuer" to editIssuer.trim(), "cardholder" to editCardholder.trim(),
+                        VaultCategory.CARD -> (item.metadata - "ocrText") + mapOf("issuer" to editIssuer.trim(), "cardholder" to editCardholder.trim(),
                             "cardNumber" to (if (paymentCard) digits else editCardNumber.trim()),
                             "expiry" to editExpiry, "network" to editNetwork.trim(), "cardCvc" to (if (paymentCard) editCvc else ""),
-                            "cardArt" to editCardArt.name,
+                            "cardArt" to editCardArt.name, "partner" to editPartner.trim(), "cardMotion" to editMotion.name,
+                            "cardArtAttachment" to editCustomArt?.name.orEmpty(), "cardArtLightText" to editLightText.toString(),
                             "lastFour" to lastFour.ifBlank { item.lastFour })
                         else -> item.metadata
                     }
-                    onEdit(item.copy(title = editTitle.trim().ifBlank { item.title }, metadata = metadata,
+                    val updatedAttachments = if (item.category == VaultCategory.CARD)
+                        withCardArt(item.attachments, item.metadata["cardArtAttachment"], editCustomArt) else item.attachments
+                    if (updatedAttachments.size > MAX_VAULT_ATTACHMENT_COUNT || updatedAttachments.sumOf { it.byteCount } > MAX_VAULT_TOTAL_ATTACHMENT_BYTES) {
+                        editAppearanceError = "Scans and artwork must fit within 20 files and 24 MB"
+                        return@TextButton
+                    }
+                    onEdit(item.copy(attachments = updatedAttachments, title = editTitle.trim().ifBlank { item.title }, metadata = metadata,
                         lastFour = if (item.category == VaultCategory.CARD) lastFour.ifBlank { item.lastFour } else item.lastFour))
                     editing = false
                 }) { Text("Save") }

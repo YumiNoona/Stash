@@ -36,12 +36,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -81,6 +81,10 @@ fun CardReviewScreen(
         else initial.cardNumber)) }
     var holder by remember(initial) { mutableStateOf(initial.cardholder) }
     var expiryDigits by remember(initial) { mutableStateOf(cardExpiryDigits(initial.expiry)) }
+    var partner by remember(initial) { mutableStateOf("") }
+    var motion by remember(initial) { mutableStateOf(CardMotion.NONE) }
+    var customArt by remember(initial) { mutableStateOf<VaultAttachment?>(null) }
+    var lightText by remember(initial) { mutableStateOf(true) }
     var issuer by remember(initial) { mutableStateOf(initial.issuer) }
     var network by remember(initial) { mutableStateOf(initial.network) }
     var cvc by remember(initial) { mutableStateOf("") }
@@ -152,18 +156,22 @@ fun CardReviewScreen(
         if (network.isNotBlank()) put("network", network.trim())
         if (payment && cvc.isNotBlank()) put("cardCvc", cvc)
         put("cardArt", cardArt.name)
-        if (recognizedText.isNotBlank()) put("ocrText", recognizedText)
+        if (partner.isNotBlank()) put("partner", partner.trim())
+        put("cardMotion", motion.name)
+        put("cardArtLightText", lightText.toString())
+        customArt?.let { put("cardArtAttachment", it.name) }
     }
     val preview = VaultItem(title.ifBlank { "Your card" }, VaultCategory.CARD, cardType, "",
-        lastFour = number.filter(Char::isDigit).takeLast(4), metadata = metadata, id = "card-draft")
+        lastFour = number.filter(Char::isDigit).takeLast(4), metadata = metadata, attachments = listOfNotNull(customArt), id = "card-draft")
 
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         StashTopBar(if (attachments.isEmpty()) "Add a card" else "Review card",
             subtitle = if (attachments.isEmpty()) "Enter the details you want to keep" else "Check the scan before saving",
             onBack = onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(13.dp)) {
-            CardDetailPreview(preview, height = 198.dp, showFullNumber = false, animate = false)
-            CardArtPicker(cardArt) { cardArt = it }
+            CardDetailPreview(preview, showFullNumber = showNumber)
+            CardCustomization(cardArt, { cardArt = it }, motion, { motion = it },
+                customArt, { customArt = it }, lightText, { lightText = it })
             if (attachments.isNotEmpty()) {
                 Text("Original scan", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
                 VaultAttachmentPreview(attachments.first(), Modifier.fillMaxWidth().height(160.dp))
@@ -191,8 +199,13 @@ fun CardReviewScreen(
                     }
                 }
             }
+            OutlinedTextField(holder, { holder = it.take(60) }, label = { Text("Name on card (optional)") },
+                singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
             OutlinedTextField(issuer, { issuer = it.take(60) }, label = { Text("Issuer or bank (optional)") },
                 singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(partner, { partner = it.take(60) }, label = { Text("Partner brand (optional)") },
+                placeholder = { Text("Amazon Pay, for example") }, singleLine = true,
+                colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
             OutlinedTextField(numberField, {
                 if (payment) {
                     val digits = it.text.filter(Char::isDigit)
@@ -213,8 +226,7 @@ fun CardReviewScreen(
                     Icon(if (showNumber) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                         contentDescription = if (showNumber) "Hide number" else "Show number")
                 } }, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(holder, { holder = it.take(60) }, label = { Text("Name on card (optional)") },
-                singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 OutlinedTextField(expiryDigits, { expiryDigits = cardExpiryDigits(it); saveNotice = "" },
                     label = { Text(if (payment) "Expiry *" else "Expiry") },
@@ -264,7 +276,12 @@ fun CardReviewScreen(
         Button(onClick = {
             if (recognizing) saveNotice = "Wait for the card scan to finish"
             else if (!validation.isValid) saveAttempted = true
-            else onSave(title.trim(), metadata, attachments)
+            else {
+                val allAttachments = withCardArt(attachments, null, customArt)
+                if (allAttachments.size > MAX_VAULT_ATTACHMENT_COUNT || allAttachments.sumOf { it.byteCount } > MAX_VAULT_TOTAL_ATTACHMENT_BYTES)
+                    saveNotice = "Original scans and artwork together must fit within 20 files and 24 MB. Choose smaller artwork."
+                else onSave(title.trim(), metadata, allAttachments)
+            }
         },
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 10.dp).height(54.dp)) {
             Text("Save card to Stash")

@@ -3,27 +3,22 @@ package com.lockr.app
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -265,38 +260,28 @@ fun CardArtBackground(art: CardArtStyle, modifier: Modifier = Modifier, phase: F
     }
 }
 
+// A compact set of distinct compositions; legacy names remain readable for saved cards.
+val selectableCardArt = listOf(CardArtStyle.AURORA, CardArtStyle.MIDNIGHT,
+    CardArtStyle.SOLAR, CardArtStyle.LAGOON, CardArtStyle.BLOOM, CardArtStyle.CHROME,
+    CardArtStyle.AMETHYST, CardArtStyle.MOSAIC)
+
 @Composable
-fun CardArtPicker(selected: CardArtStyle, onSelect: (CardArtStyle) -> Unit) {
+fun CardArtPicker(selected: CardArtStyle, customSelected: Boolean = false, onSelect: (CardArtStyle) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Card art  ·  ${CardArtStyle.entries.size} finishes",
-                style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-            Spacer(Modifier.weight(1f))
-            Text("SWIPE →", style = MaterialTheme.typography.labelSmall,
-                color = LockrColors.Accent)
-        }
-        LazyHorizontalGrid(rows = GridCells.Fixed(2), modifier = Modifier.fillMaxWidth().height(175.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(CardArtStyle.entries) { art ->
-                Column(Modifier.width(98.dp).clickable { onSelect(art) },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val shape = RoundedCornerShape(13.dp)
-                    Box(Modifier.width(96.dp).height(60.dp).clip(shape)) {
+        Text("Card art · swipe to choose", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+        LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(selectableCardArt) { art ->
+                val chosen = !customSelected && selected == art
+                Column(Modifier.width(216.dp).clickable { onSelect(art) },
+                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val shape = RoundedCornerShape(16.dp)
+                    Box(Modifier.fillMaxWidth().aspectRatio(1.586f).clip(shape)) {
                         CardArtBackground(art, Modifier.fillMaxSize())
-                        Box(Modifier.fillMaxSize().border(if (selected == art) 3.dp else 1.dp,
-                            if (selected == art) LockrColors.Accent else Color.White, shape))
-                        if (art.animated) {
-                            Text("MOTION", style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                modifier = Modifier.align(Alignment.TopEnd)
-                                    .background(Color(0x991D2057), RoundedCornerShape(bottomStart = 7.dp))
-                                    .padding(horizontal = 4.dp, vertical = 2.dp))
-                        }
+                        Box(Modifier.fillMaxSize().border(if (chosen) 3.dp else 1.dp,
+                            if (chosen) LockrColors.Accent else Color.White.copy(alpha = 0.6f), shape))
                     }
-                    Text(art.label, style = MaterialTheme.typography.labelSmall,
-                        color = if (selected == art) LockrColors.Accent else LockrColors.TextSecondary)
+                    Text(art.label, style = MaterialTheme.typography.labelMedium,
+                        color = if (chosen) LockrColors.Accent else LockrColors.TextSecondary)
                 }
             }
         }

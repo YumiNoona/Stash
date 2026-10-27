@@ -2,7 +2,7 @@
 
 Stash is a local Android vault for cards, documents, passwords, and notes, built with Kotlin and Jetpack Compose. The interface uses JetBrains Mono, aurora artwork, and glass surfaces. Stash has no account, cloud service, or internet permission.
 
-Version 1.2 includes 15 selectable card finishes, five with subtle motion. Card entry groups digits visually so typing and cursor placement stay stable. Image extraction now offers a review step for specific fields such as an Aadhaar number or address. The **Card number display** setting lets you mask both the number and CVC or keep the number visible while the CVC stays masked. Revealing a masked value requires device authentication.
+Card appearance offers eight distinct designs in a single swipe row, separate motion controls, and custom image, GIF, or video artwork. Card entry groups digits visually so typing and cursor placement stay stable. Image extraction now offers a review step for specific fields such as an Aadhaar number or address. The **Card number display** setting lets you mask both the number and CVC or keep the number visible while the CVC stays masked. Revealing a masked value requires device authentication.
 
 ## Screenshots
 
@@ -54,7 +54,7 @@ NFC is optional and needs an NFC-equipped device and a card that exposes usable 
 
 Manual credit and debit entry groups card numbers in fours, uses a numeric MM/YY expiry field, and offers a network picker with recognizable marks. Save explains missing or invalid fields. Standard payment cards require 16 digits; Amex uses its 15-digit format. An unverified checksum or expired card shows a warning but can still be saved. CVC is optional. Password entry includes a local random generator with length, character type, and mixing controls.
 
-Card art can be chosen during review or changed when editing a saved card. The 15 finishes include Aurora, Opal, Midnight, and twelve additional themes; five animate. The card collection uses masked numbers by default, while the detail screen shows the expiry, cardholder, network, and individual eye controls for saved number and CVC values. If no number or CVC was saved, its reveal control is omitted.
+Card art can be chosen during review or changed when editing a saved card. Eight distinct designs include Aurora, Midnight, Solar, Lagoon, Bloom, Chrome, Amethyst, and Mosaic. Choose Still, Light sweep, Float, or Glow separately. Custom images and GIFs can be up to 16 megapixels; custom videos can be up to 30 seconds. All custom media must be under 8 MB and fit within the item attachment limit. GIFs and videos loop silently and stay encrypted with the card. Light or dark lettering can be selected for custom art. Partner brand and issuer bank have separate fields. Cards keep the same landscape proportions in lists, review, and details. Raw extracted OCR text is omitted from saved card reviews and details; scanning still suggests editable fields. The card collection uses masked numbers by default, while the detail screen shows the expiry, cardholder, network, and individual eye controls for saved number and CVC values. If no number or CVC was saved, its reveal control is omitted.
 
 The profile screen lets you change the display name and choose or remove a photo. Both stay in app-private local storage.
 

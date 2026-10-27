@@ -5,12 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,17 +40,16 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -106,108 +107,105 @@ fun CardsScreen(items: List<VaultItem>, onBack: () -> Unit, onSearch: () -> Unit
 fun CardDetailPreview(
     item: VaultItem,
     modifier: Modifier = Modifier,
-    height: androidx.compose.ui.unit.Dp = 216.dp,
     showFullNumber: Boolean? = null,
     onToggleNumber: (() -> Unit)? = null,
     animate: Boolean = true,
+    showCvc: Boolean = false,
     onClick: () -> Unit = {}
 ) {
-    CardSurface(item, modifier, height, showFullNumber, onToggleNumber, animate, onClick)
+    CardSurface(item, modifier, showFullNumber, onToggleNumber, animate, showCvc, onClick)
 }
 
 @Composable
 private fun CardSurface(
     item: VaultItem,
     modifier: Modifier = Modifier,
-    height: androidx.compose.ui.unit.Dp = 194.dp,
     showFullNumber: Boolean? = null,
     onToggleNumber: (() -> Unit)? = null,
     animate: Boolean = true,
+    showCvc: Boolean = false,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(27.dp)
+    val shape = RoundedCornerShape(18.dp)
     val art = cardArtStyle(item)
-    val ink = if (art.dark) Color.White else Color(0xFF09194E)
-    val secondaryInk = if (art.dark) Color(0xFFDCEAFF) else Color(0xFF243B69)
+    val custom = customCardArt(item)
+    val dark = if (custom != null) item.metadata["cardArtLightText"] != "false" else art.dark
+    val ink = if (dark) Color.White else Color(0xFF102039)
+    val secondaryInk = ink.copy(alpha = 0.75f)
     val number = item.metadata["cardNumber"].orEmpty()
-    val lastFour = item.lastFour.ifBlank { item.metadata["cardNumber"]?.takeLast(4) ?: item.metadata["lastFour"].orEmpty() }
+    val lastFour = item.lastFour.ifBlank { number.takeLast(4).ifBlank { item.metadata["lastFour"].orEmpty() } }
     val numberVisible = showFullNumber ?: !LocalHideCardNumber.current
     val numberText = if (numberVisible && number.isNotBlank())
         if (isPaymentCardType(item.metadata["cardType"].orEmpty())) formatPaymentCardNumber(number, item.metadata["network"].orEmpty()) else number
     else "••••  ••••  ••••  ${lastFour.ifBlank { "••••" }}"
-    val issuer = item.metadata["issuer"].orEmpty().ifBlank { item.title }
-    val motion = animate && art.animated
-    val transition = if (motion) rememberInfiniteTransition(label = "card sheen") else null
+    val motion = if (animate) cardMotion(item) else CardMotion.NONE
+    val transition = if (motion != CardMotion.NONE) rememberInfiniteTransition(label = "card motion") else null
     val phase by transition?.animateFloat(-1f, 1f,
-        animationSpec = infiniteRepeatable(tween(5000), RepeatMode.Reverse), label = "sheen position")
+        animationSpec = infiniteRepeatable(tween(4000), RepeatMode.Reverse), label = "card phase")
         ?: remember { mutableStateOf(0f) }
-    Box(
-        modifier.fillMaxWidth().height(height)
-            .graphicsLayer {
-                rotationY = -2.5f + if (motion) phase * 1.3f else 0f
-                rotationX = 1.8f + if (motion) phase * 0.8f else 0f
-                cameraDistance = 30f * density
+    // Every surface uses the physical card ratio. A single logical canvas scales uniformly,
+    // so list, review and detail cannot stretch the card or rearrange its fields.
+    BoxWithConstraints(modifier.fillMaxWidth().aspectRatio(1.586f), contentAlignment = Alignment.Center) {
+        val scale = maxWidth.value / 340f
+        Box(Modifier.requiredSize(340.dp, (340f / 1.586f).dp).graphicsLayer {
+            scaleX = scale; scaleY = scale
+            if (motion == CardMotion.FLOAT) {
+                rotationZ = phase * 0.8f
+                translationY = phase * 2f * density
             }
-            .shadow(22.dp, shape, ambientColor = Color(0x8878AEE2), spotColor = Color(0x887E86BF))
-            .clip(shape).background(if (art.dark) Color(0xFF101B59) else Color(0xFFE2EAFE))
-            .border(1.5.dp, Color.White.copy(alpha = 0.96f), shape)
-            .clickable(onClick = onClick)
-    ) {
-        CardArtBackground(art, Modifier.fillMaxSize(), phase)
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-            if (art.dark) listOf(Color(0x44102055), Color.Transparent, Color(0x66102055))
-            else listOf(Color.White.copy(alpha = 0.16f), Color.Transparent, Color.White.copy(alpha = 0.23f)))))
-        if (motion) {
-            Box(Modifier.fillMaxHeight().width(100.dp).graphicsLayer {
-                translationX = (phase * 260f + 250f) * density
-                rotationZ = -17f
-            }.background(Brush.horizontalGradient(listOf(Color.Transparent,
-                Color.White.copy(alpha = 0.14f), Color.Transparent))))
-        }
-        Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.SpaceBetween) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(issuer.uppercase(), style = MaterialTheme.typography.titleMedium, color = ink,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text(item.metadata["cardType"].orEmpty().ifBlank { "Card" },
-                    style = MaterialTheme.typography.labelMedium, color = secondaryInk,
-                    modifier = Modifier.padding(start = 8.dp))
+        }.clip(shape).background(if (dark) Color(0xFF111B30) else Color(0xFFDBE9F5))
+            .border(1.dp, ink.copy(alpha = 0.15f), shape).clickable(onClick = onClick)) {
+            CardArtBackground(art, Modifier.fillMaxSize())
+            if (custom != null) CustomCardArtBackground(custom, Modifier.fillMaxSize(), animate)
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+                if (dark) listOf(Color(0x99071222), Color(0x55071222), Color(0xAA071222))
+                else listOf(Color(0xCCFFFFFF), Color(0x88FFFFFF), Color(0xCCFFFFFF)))))
+            if (motion == CardMotion.SHEEN) {
+                Box(Modifier.fillMaxHeight().width(90.dp).graphicsLayer {
+                    translationX = (phase * 270f + 160f) * density
+                    rotationZ = -20f
+                }.background(Brush.horizontalGradient(listOf(Color.Transparent,
+                    Color.White.copy(alpha = 0.3f), Color.Transparent))))
             }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                CardChip()
-                Spacer(Modifier.weight(1f))
-                Icon(Icons.Outlined.Contactless, contentDescription = null,
-                    tint = if (art.dark) Color.White else Color(0xFF436CA2), modifier = Modifier.size(25.dp))
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (motion == CardMotion.PULSE) Box(Modifier.fillMaxSize().background(
+                Color.White.copy(alpha = 0.04f + (phase + 1f) * 0.045f)))
+            Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(item.metadata["partner"].orEmpty().ifBlank { item.title }, color = ink,
+                        style = MaterialTheme.typography.labelLarge, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text(item.metadata["issuer"].orEmpty(), color = ink,
+                        style = MaterialTheme.typography.labelMedium, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CardChip(Modifier)
+                    Icon(Icons.Outlined.Contactless, "Contactless", tint = secondaryInk, modifier = Modifier.size(24.dp))
+                }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(numberText, color = ink,
-                        style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 0.7.sp,
-                            fontSize = if (height >= 230.dp) 19.sp else 16.sp),
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f))
-                    if (onToggleNumber != null) IconButton(onClick = onToggleNumber, modifier = Modifier.size(32.dp)) {
+                    Text(numberText, color = ink, style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = if (numberText.length > 23) 13.sp else 16.sp, letterSpacing = 0.3.sp),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    if (onToggleNumber != null) IconButton(onClick = onToggleNumber, modifier = Modifier.size(28.dp)) {
                         Icon(if (numberVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                            contentDescription = if (numberVisible) "Hide card number" else "Show card number",
-                            tint = ink, modifier = Modifier.size(21.dp))
+                            if (numberVisible) "Hide card number" else "Show card number", tint = ink, modifier = Modifier.size(17.dp))
                     }
                 }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-                    Column(Modifier.weight(1f)) {
-                        Text("CARD HOLDER", style = MaterialTheme.typography.labelSmall, color = secondaryInk)
-                        Text(item.metadata["cardholder"].orEmpty().ifBlank { "—" }.uppercase(),
-                            color = ink, style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    Column(Modifier.padding(horizontal = 9.dp)) {
-                        Text("EXPIRES", style = MaterialTheme.typography.labelSmall, color = secondaryInk)
-                        Text(item.metadata["expiry"].orEmpty().ifBlank { "MM/YY" },
-                            color = ink, style = MaterialTheme.typography.labelMedium)
-                    }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("EXP  ${item.metadata["expiry"].orEmpty().ifBlank { "MM/YY" }}",
+                        color = secondaryInk, style = MaterialTheme.typography.labelMedium)
+                    val cvc = item.metadata["cardCvc"].orEmpty()
+                    Text("CVV  ${if (cvc.isBlank()) "—" else if (showCvc) cvc else "•••"}",
+                        color = secondaryInk, style = MaterialTheme.typography.labelMedium)
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(item.metadata["cardholder"].orEmpty().ifBlank { "CARDHOLDER" }.uppercase(),
+                        color = ink, style = MaterialTheme.typography.labelMedium, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Text(item.metadata["network"].orEmpty().ifBlank { "STASH" }.uppercase(),
-                        color = ink, style = MaterialTheme.typography.labelMedium,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.width(73.dp), textAlign = TextAlign.End)
+                        color = ink, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
             }
         }
