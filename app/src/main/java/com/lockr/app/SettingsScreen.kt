@@ -17,7 +17,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Animation
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.DocumentScanner
+import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Info
@@ -66,13 +75,40 @@ fun SettingsScreen(
     backupStatus: String?,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences("lockr_preferences", android.content.Context.MODE_PRIVATE) }
+    val dark = LocalDarkTheme.current
+    var themeMode by remember { mutableStateOf(preferences.getString("theme_mode", "system") ?: "system") }
+    var reducedMotion by remember { mutableStateOf(preferences.getBoolean("reduce_motion", false)) }
+    var artworkAutoplay by remember { mutableStateOf(preferences.getBoolean("artwork_autoplay", true)) }
+    var ocrEnabled by remember { mutableStateOf(preferences.getBoolean("ocr_on_import", true)) }
+    val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
     var dialog by remember { mutableStateOf("") }
 
     Column(modifier.fillMaxSize().padding(horizontal = 22.dp)) {
-        StashTopBar("Settings", "Security, privacy and exports", onBack = onBack, modifier = Modifier.padding(top = 3.dp, bottom = 7.dp))
+        StashTopBar("Settings", "Appearance, privacy and storage", onBack = onBack,
+            trailing = { IconButton(onClick = {
+                themeMode = if (dark) "light" else "dark"
+                preferences.edit().putString("theme_mode", themeMode).apply()
+            }) { Icon(if (dark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                if (dark) "Switch to light mode" else "Switch to dark mode", tint = LockrColors.Accent) } })
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            SettingsSection("Security") {
+            SettingsSection("Appearance") {
+                SettingsRow(Icons.Outlined.Palette, "Theme", when (themeMode) { "dark" -> "Dark"; "light" -> "Light"; else -> "Follow device" },
+                    value = "›", onClick = { dialog = "theme" })
+                SettingsRow(Icons.Outlined.Animation, "Reduce motion", "Keep artwork and controls still", toggle = reducedMotion,
+                    onToggle = { reducedMotion = it; preferences.edit().putBoolean("reduce_motion", it).apply() })
+                SettingsRow(Icons.Outlined.PlayCircle, "Animated card artwork", "Play saved GIF and video art", toggle = artworkAutoplay,
+                    last = true, onToggle = { artworkAutoplay = it; preferences.edit().putBoolean("artwork_autoplay", it).apply() })
+            }
+            SettingsSection("Organization", modifier = Modifier.padding(top = 14.dp)) {
+                SettingsRow(Icons.Outlined.Label, "Card tags", "Create or remove custom labels", value = "›", onClick = { dialog = "cardTags" })
+                SettingsRow(Icons.Outlined.Label, "Document tags", "Organize your document groups", value = "›", onClick = { dialog = "documentTags" })
+                SettingsRow(Icons.Outlined.DocumentScanner, "Read text on import", "Suggest fields locally from scans", toggle = ocrEnabled,
+                    last = true, onToggle = { ocrEnabled = it; preferences.edit().putBoolean("ocr_on_import", it).apply() })
+            }
+            SettingsSection("Security", modifier = Modifier.padding(top = 14.dp)) {
                 SettingsRow(
                     Icons.Outlined.Lock, "App Lock", "Require device unlock after idle",
                     toggle = settings.appLockEnabled,
@@ -113,7 +149,7 @@ fun SettingsScreen(
                 )
                 SettingsRow(
                     Icons.Outlined.Restore, "Import Backup", "Restore a backup made on this device", value = "›",
-                    iconTint = Color(0xFF5A64C8), iconBg = Color(0xFFEDEBFF), last = true, onClick = onImportBackup
+                    iconTint = Color(0xFF5A64C8), iconBg = LockrColors.Surface, last = true, onClick = onImportBackup
                 )
             }
             backupStatus?.let {
@@ -136,8 +172,8 @@ fun SettingsScreen(
             }
             SettingsSection("About", modifier = Modifier.padding(top = 14.dp)) {
                 SettingsRow(
-                    Icons.Outlined.Info, "About Stash", "Version 1.2.0 · offline vault", value = "›",
-                    iconTint = Color(0xFF4C526B), iconBg = Color(0xFFF1ECF8), last = true,
+                    Icons.Outlined.Info, "About Stash", "Version $version · offline vault", value = "›",
+                    iconTint = Color(0xFF4C526B), iconBg = LockrColors.Surface, last = true,
                     onClick = { dialog = "about" }
                 )
             }
@@ -146,6 +182,14 @@ fun SettingsScreen(
     }
 
     when (dialog) {
+        "cardTags" -> TagManagerDialog(VaultCategory.CARD, onDismiss = { dialog = "" })
+        "documentTags" -> TagManagerDialog(VaultCategory.DOCUMENT, onDismiss = { dialog = "" })
+        "theme" -> ChoiceDialog("Theme", listOf("Follow device", "Light", "Dark"),
+            selected = when (themeMode) { "dark" -> "Dark"; "light" -> "Light"; else -> "Follow device" },
+            onDismiss = { dialog = "" }) {
+            themeMode = when (it) { "Dark" -> "dark"; "Light" -> "light"; else -> "system" }
+            preferences.edit().putString("theme_mode", themeMode).apply(); dialog = ""
+        }
         "export" -> ExportFormatDialog(onDismiss = { dialog = "" }) { format, includePrivate ->
             dialog = ""
             onExportData(format, includePrivate)
@@ -171,7 +215,7 @@ fun SettingsScreen(
             onDismiss = { dialog = "" }
         )
         "about" -> InfoDialog(
-            "Stash · 1.2.0",
+            "Stash · $version",
             "Your vault is stored locally on this device. Stash has no account, cloud sync, or network connection.",
             onDismiss = { dialog = "" }
         )
@@ -183,7 +227,7 @@ private fun ExportFormatDialog(onDismiss: () -> Unit, onExport: (DataExportForma
     var includePrivate by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFFF9FCFD),
+        containerColor = LockrColors.Surface,
         shape = RoundedCornerShape(27.dp),
         title = { Text("Export vault") },
         text = {

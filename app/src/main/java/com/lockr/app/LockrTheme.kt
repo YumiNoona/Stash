@@ -1,8 +1,15 @@
 package com.lockr.app
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.LocalActivity
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -11,28 +18,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 object LockrColors {
-    val Pearl = Color(0xFFF7F5F0)
+    val Pearl: Color @Composable get() = MaterialTheme.colorScheme.background
     val SeaGlass = Color(0xFFD9F3ED)
     val Peach = Color(0xFFFFDCD0)
     val LilacMist = Color(0xFFE8DDF8)
     val IceBlue = Color(0xFFDCEBFF)
     val Champagne = Color(0xFFF7E9B8)
-    val TextPrimary = Color(0xFF182333)
-    val TextSecondary = Color(0xFF66758C)
-    val Accent = Color(0xFF398F89)
-    val Line = Color(0x22708096)
+    val TextPrimary: Color @Composable get() = MaterialTheme.colorScheme.onSurface
+    val TextSecondary: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+    val Accent: Color @Composable get() = MaterialTheme.colorScheme.primary
+    val Surface: Color @Composable get() = MaterialTheme.colorScheme.surface
+    val Raised: Color @Composable get() = MaterialTheme.colorScheme.surfaceVariant
+    val Line: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
 }
 
 private val LockrLightColors = lightColorScheme(
-    primary = LockrColors.Accent,
+    primary = Color(0xFF398F89),
     onPrimary = Color.White,
     secondary = Color(0xFF8294C5),
-    background = LockrColors.Pearl,
-    onBackground = LockrColors.TextPrimary,
+    background = Color(0xFFF7F5F0),
+    onBackground = Color(0xFF182333),
     surface = Color(0xFFF8FFFFFF),
-    onSurface = LockrColors.TextPrimary,
+    onSurface = Color(0xFF182333),
     surfaceVariant = Color(0xFFEFF3F8),
-    onSurfaceVariant = LockrColors.TextSecondary,
+    onSurfaceVariant = Color(0xFF66758C),
     outline = Color(0x337B8796)
 )
 
@@ -62,11 +71,47 @@ private val LockrTypography = Typography().let { base ->
     )
 }
 
+val LocalDarkTheme = compositionLocalOf { false }
+val LocalMotionEnabled = compositionLocalOf { true }
+val LocalArtworkAutoplay = compositionLocalOf { true }
+val LocalOcrOnImport = compositionLocalOf { true }
+
+private val LockrDarkColors = darkColorScheme(
+    primary = Color(0xFF83D8CB), onPrimary = Color(0xFF003831),
+    background = Color(0xFF09121F), onBackground = Color(0xFFE9F1FF),
+    surface = Color(0xFF152234), onSurface = Color(0xFFE9F1FF),
+    surfaceVariant = Color(0xFF203147), onSurfaceVariant = Color(0xFFACBED3),
+    outline = Color(0xFF576C84), outlineVariant = Color(0xFF304258),
+    secondary = Color(0xFFB5B9FF), error = Color(0xFFFFB4AB))
+
 @Composable
 fun LockrTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = LockrLightColors,
-        typography = LockrTypography,
-        content = content
-    )
+    val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences("lockr_preferences", android.content.Context.MODE_PRIVATE) }
+    var revision by remember { mutableIntStateOf(0) }
+    DisposableEffect(preferences) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    val mode = remember(revision) { preferences.getString("theme_mode", "system") }
+    val reduced = remember(revision) { preferences.getBoolean("reduce_motion", false) }
+    val autoplay = remember(revision) { preferences.getBoolean("artwork_autoplay", true) }
+    val ocr = remember(revision) { preferences.getBoolean("ocr_on_import", true) }
+    val dark = mode == "dark" || (mode == "system" && isSystemInDarkTheme())
+    val activity = LocalActivity.current
+    SideEffect {
+        activity?.window?.let { window ->
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                isAppearanceLightStatusBars = !dark; isAppearanceLightNavigationBars = !dark
+            }
+        }
+    }
+    CompositionLocalProvider(LocalDarkTheme provides dark, LocalMotionEnabled provides !reduced,
+        LocalArtworkAutoplay provides (autoplay && !reduced), LocalOcrOnImport provides ocr) {
+        MaterialTheme(colorScheme = if (dark) LockrDarkColors else LockrLightColors,
+            typography = LockrTypography) {
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) { content() }
+        }
+    }
 }

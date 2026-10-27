@@ -39,7 +39,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 
-enum class CardMotion(val label: String) { NONE("Still"), SHEEN("Light sweep"), FLOAT("Float"), PULSE("Glow") }
+enum class CardMotion(val label: String) {
+    NONE("Still"), SHEEN("Light sweep"), FLOAT("Float"), PULSE("Glow"), TILT("Tilt"),
+    DRIFT("Drift"), ZOOM("Breathe"), RIPPLE("Ripple"), AURORA("Aurora flow"), SPARKLE("Stardust"), ORBIT("Orbit")
+}
 
 fun cardMotion(item: VaultItem): CardMotion =
     CardMotion.entries.firstOrNull { it.name == item.metadata["cardMotion"] } ?: CardMotion.NONE
@@ -77,12 +80,10 @@ fun CardCustomization(
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        CardArtPicker(art, customSelected = media != null) { onArt(it); onMedia(null) }
-        TextButton(enabled = !busy, onClick = { picker.launch(arrayOf("image/*", "video/*")) }) {
-            Text(if (busy) "Opening artwork…" else if (media != null) "Replace custom art" else "Use your own image, GIF or video")
-        }
+        CardArtPicker(art, customSelected = media != null,
+            onImport = if (busy) null else ({ picker.launch(arrayOf("image/*", "video/*")) })) { onArt(it); onMedia(null) }
+        if (busy) Text("Opening artwork…", style = MaterialTheme.typography.bodySmall)
         if (media != null) {
-            Text("Custom art selected · saved inside your encrypted vault", style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(lightText, { onLightText(true) }, label = { Text("Light lettering") })
                 FilterChip(!lightText, { onLightText(false) }, label = { Text("Dark lettering") })
@@ -96,8 +97,6 @@ fun CardCustomization(
                 FilterChip(motion == option, { onMotion(option) }, label = { Text(option.label) })
             }
         }
-        Text("GIFs and videos loop silently. Motion adds an optional effect over the art.",
-            style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
     }
 }
 

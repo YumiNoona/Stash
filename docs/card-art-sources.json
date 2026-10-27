@@ -1,0 +1,84 @@
+{
+  "method": "Built-in image_gen",
+  "commonPrompt": "Premium full-bleed landscape card background; physically rendered flowing iridescent liquid glass, calm middle and lower left for app labels, no text, logos, chip, rounded corners, borders, mockup or watermarks.",
+  "assets": [
+    {
+      "id": "opal",
+      "prompt": "Milky translucent opal glass folded into a single sculptural loop with peach, lavender and pale aqua iridescent edges, quiet creamy left area. Light lettering area should be suitable for dark ink.",
+      "generationFile": "exec-ad68b989-5a70-47ea-83da-1b56b999a0b0.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_opal_v2.webp"
+    },
+    {
+      "id": "solar",
+      "prompt": "Flowing amber glass ribbons curling around a molten sun, warm champagne gold, copper and apricot, rich luminous detail; asymmetrical large arc in upper right and calm pale gold left area.",
+      "generationFile": "exec-973d59b9-4b53-434e-8c27-6ca432ad2bed.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_solar_v2.webp"
+    },
+    {
+      "id": "lagoon",
+      "prompt": "Liquid turquoise glass forming a deep spiraling underwater current, jade, seafoam and petrol blue, silky caustics, diagonally layered wave folds with a calm dark teal left area.",
+      "generationFile": "exec-5e0fa21e-3d82-49a9-af46-8633529b3d2b.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_lagoon_v2.webp"
+    },
+    {
+      "id": "bloom",
+      "prompt": "Sculptural folds of translucent rose quartz silk like opening petals, coral pink, raspberry and warm ivory, pearlescent refractions and soft studio lighting; sweeping petals upper right and calm blush left.",
+      "generationFile": "exec-50903ea2-1a7a-4eae-9071-3f186d26a652.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_bloom_v2.webp"
+    },
+    {
+      "id": "chrome",
+      "prompt": "Liquid mirror-silver and gunmetal flowing into sharp sweeping metallic ribbons, blue and platinum reflections, satin grey quiet left area. Premium futuristic industrial sculpture.",
+      "generationFile": "exec-ee1e822b-4b5b-44e3-9b8c-609d6f0dd15f.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_chrome_v2.webp"
+    },
+    {
+      "id": "amethyst",
+      "prompt": "Deep violet liquid crystal cavern with amethyst and magenta light winding through translucent flowing folds, quiet deep purple left area.",
+      "generationFile": "exec-35e9e3b3-f108-45de-abfc-df3fc8b93e21.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_amethyst_v2.webp"
+    },
+    {
+      "id": "neon",
+      "prompt": "Obsidian-black liquid glass with electric lime and cyan fine luminous ribbons bending into an asymmetric S curve, high contrast deep dark left area.",
+      "generationFile": "exec-25aebd48-ff41-44ab-9001-ecf8b7c985f0.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_neon_v2.webp"
+    },
+    {
+      "id": "comet",
+      "prompt": "Midnight space-blue liquid ribbon twisting diagonally with a gold-white comet-like stream of tiny luminous motes, rich celestial depth, quiet navy left area.",
+      "generationFile": "exec-813cc1b5-79b1-4e06-a955-eb17b31dc4b3.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_comet_v2.webp"
+    },
+    {
+      "id": "citrus",
+      "prompt": "Translucent chartreuse and lemon-gold blown-glass loops curving around a mint green pool, luminous citrus glass caustics, sophisticated light green quiet left area.",
+      "generationFile": "exec-31f9867c-f9f1-4a34-bdf9-aebee574d9c6.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_citrus_v2.webp"
+    },
+    {
+      "id": "ice",
+      "prompt": "Glacier-blue crystalline silk folds like a frozen flowing wave with silver and pale periwinkle refractions, sophisticated frosted glass, quiet pale blue left area.",
+      "generationFile": "exec-a5a962c1-c5cd-4db1-8910-1f80ce4a9314.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_ice_v2.webp"
+    },
+    {
+      "id": "ember",
+      "prompt": "Deep burgundy volcanic glass with molten copper and orange silky streaks curling into a slow rolling wave, luminous warm reflections and quiet dark wine left area.",
+      "generationFile": "exec-21ca49b1-91b9-4649-bc6c-5d7e4347d791.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_ember_v2.webp"
+    },
+    {
+      "id": "mosaic",
+      "prompt": "Rich dark petrol-blue liquid glass interwoven with broad angular turquoise, violet and rose-gold refracted folds, sculptural fractured light but fluid cohesive surface, quiet dark teal left area.",
+      "generationFile": "exec-26e60774-35af-42a1-95a9-96811baceaad.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_mosaic_v2.webp"
+    },
+    {
+      "id": "prism",
+      "prompt": "Deep indigo iridescent transparent glass sculpture with broad sweeping rainbow spectral ribbons wrapping asymmetrically on the upper right, luxurious holographic material, quiet blue-black left area.",
+      "generationFile": "exec-7ec78b95-334e-45b8-ac28-c7ea9dda6c71.png",
+      "asset": "app/src/main/res/drawable-nodpi/card_prism_v2.webp"
+    }
+  ]
+}

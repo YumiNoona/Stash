@@ -24,7 +24,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Icon
@@ -77,9 +77,11 @@ private val onboardingPages = listOf(
 fun OnboardingScreen(onFinish: () -> Unit, modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { onboardingPages.size })
     val scope = rememberCoroutineScope()
+    val motionEnabled = LocalMotionEnabled.current
     val navigate: (Int) -> Unit = { target ->
         if (!pagerState.isScrollInProgress) scope.launch {
-            pagerState.animateScrollToPage(target.coerceIn(0, onboardingPages.lastIndex),
+            if (!motionEnabled) pagerState.scrollToPage(target.coerceIn(0, onboardingPages.lastIndex))
+            else pagerState.animateScrollToPage(target.coerceIn(0, onboardingPages.lastIndex),
                 animationSpec = tween(420, easing = FastOutSlowInEasing))
         }
     }
@@ -94,10 +96,10 @@ fun OnboardingScreen(onFinish: () -> Unit, modifier: Modifier = Modifier) {
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
                     Color.White.copy(alpha = 0.75f), Color.Transparent, Color.White.copy(alpha = 0.3f)))))
                 Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp, vertical = 78.dp)) {
-                    Text(data.title, color = LockrColors.TextPrimary,
+                    Text(data.title, color = Color(0xFF182333),
                         style = MaterialTheme.typography.headlineSmall.copy(fontSize = 24.sp,
                             lineHeight = 31.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.8).sp))
-                    Text(data.description, color = LockrColors.TextSecondary,
+                    Text(data.description, color = Color(0xFF66758C),
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 21.sp),
                         modifier = Modifier.padding(top = 5.dp))
                 }
@@ -111,13 +113,13 @@ fun OnboardingScreen(onFinish: () -> Unit, modifier: Modifier = Modifier) {
                     Box(Modifier.size(42.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.75f))
                         .clickable(enabled = !pagerState.isScrollInProgress) { navigate(pagerState.currentPage - 1) },
                         contentAlignment = Alignment.Center) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Previous page", modifier = Modifier.size(20.dp))
+                        Icon(Icons.Outlined.ChevronLeft, "Previous page", tint = Color(0xFF182333), modifier = Modifier.size(20.dp))
                     }
                 } else Spacer(Modifier.size(42.dp))
                 if (pagerState.currentPage < onboardingPages.lastIndex) {
                     Text("Skip", Modifier.clip(RoundedCornerShape(16.dp))
                         .clickable(enabled = !pagerState.isScrollInProgress, onClick = onFinish)
-                        .padding(horizontal = 8.dp, vertical = 9.dp), color = LockrColors.TextPrimary)
+                        .padding(horizontal = 8.dp, vertical = 9.dp), color = Color(0xFF182333))
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -144,7 +146,7 @@ private fun OnboardingFooter(currentPage: Int, page: Int, onNext: () -> Unit) {
             else -> listOf(Color(0xFFFFC6B8), Color(0xFFFFEBCF))
         }
         Box(
-            Modifier.size(78.dp),
+            Modifier.size(66.dp),
             contentAlignment = Alignment.Center
         ) {
             Canvas(Modifier.fillMaxSize()) {
@@ -153,7 +155,7 @@ private fun OnboardingFooter(currentPage: Int, page: Int, onNext: () -> Unit) {
                 val arcTopLeft = Offset(strokeWidth / 2f, strokeWidth / 2f)
                 onboardingPages.indices.forEach { index ->
                     drawArc(
-                        color = if (index <= currentPage) LockrColors.Accent else Color(0x77738497),
+                        color = if (index <= currentPage) Color(0xFF398F89) else Color(0x77738497),
                         startAngle = -90f + index * 120f,
                         sweepAngle = 72f,
                         useCenter = false,
@@ -165,7 +167,7 @@ private fun OnboardingFooter(currentPage: Int, page: Int, onNext: () -> Unit) {
             }
             val shape = CircleShape
             Box(
-                Modifier.size(54.dp)
+                Modifier.size(52.dp)
                     .shadow(9.dp, shape, ambientColor = buttonColors.first().copy(alpha = 0.55f))
                     .clip(shape)
                     .background(Brush.linearGradient(buttonColors))
@@ -176,7 +178,7 @@ private fun OnboardingFooter(currentPage: Int, page: Int, onNext: () -> Unit) {
                 Icon(
                     if (page == onboardingPages.lastIndex) Icons.Outlined.Check else Icons.AutoMirrored.Outlined.ArrowForward,
                     contentDescription = if (page == onboardingPages.lastIndex) "Get started" else "Next page",
-                    tint = LockrColors.TextPrimary,
+                    tint = Color(0xFF182333),
                     modifier = Modifier.size(23.dp)
                 )
             }

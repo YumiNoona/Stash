@@ -26,7 +26,10 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -43,8 +46,9 @@ import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun AuroraBackdrop(modifier: Modifier = Modifier) {
+    val base = LockrColors.Pearl
     Canvas(modifier = modifier.fillMaxSize()) {
-        drawRect(LockrColors.Pearl)
+        drawRect(base)
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(Color(0xBFE4F7FF), Color(0x55E4F7FF), Color.Transparent),
@@ -84,7 +88,7 @@ fun VaultBackground(modifier: Modifier = Modifier) {
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
-        Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.035f)))
+        Box(Modifier.fillMaxSize().background(if (LocalDarkTheme.current) Color(0xEB08111E) else Color.White.copy(alpha = 0.035f)))
     }
 }
 
@@ -101,12 +105,13 @@ fun GlassPanel(
             .clip(shape)
             .background(
                 Brush.linearGradient(
-                    colors = listOf(Color(0xDDFEFFFF), Color(0xCFF9FBFC), Color(0xE4FFFFFF)),
+                    colors = if (LocalDarkTheme.current) listOf(Color(0xF21A2A3D), Color(0xED132033), Color(0xF21B2B40))
+                        else listOf(Color(0xDDFEFFFF), Color(0xCFF9FBFC), Color(0xE4FFFFFF)),
                     start = Offset.Zero,
                     end = Offset(520f, 860f)
                 )
             )
-            .border(1.dp, Color.White.copy(alpha = 0.82f), shape),
+            .border(1.dp, if (LocalDarkTheme.current) Color(0xFF34485D) else Color.White.copy(alpha = 0.82f), shape),
         content = content
     )
 }
@@ -125,8 +130,8 @@ fun StashTopBar(
     ) {
         if (onBack != null) {
             Box(
-                Modifier.size(42.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.76f))
-                    .border(1.dp, Color.White.copy(alpha = 0.9f), CircleShape).clickable(onClick = onBack),
+                Modifier.size(42.dp).clip(CircleShape).background(LockrColors.Surface.copy(alpha = 0.88f))
+                    .border(1.dp, LockrColors.Line, CircleShape).clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Outlined.ChevronLeft, contentDescription = "Back", tint = LockrColors.TextPrimary, modifier = Modifier.size(27.dp))
@@ -152,7 +157,10 @@ fun StashDock(
     modifier: Modifier = Modifier
 ) {
     Box(modifier.fillMaxWidth().height(100.dp).padding(start = 11.dp, end = 11.dp, bottom = 5.dp)) {
-        GlassPanel(Modifier.fillMaxWidth().height(78.dp).align(Alignment.BottomCenter), radius = 38.dp) {
+        Box(Modifier.fillMaxWidth().height(78.dp).align(Alignment.BottomCenter)
+            .shadow(12.dp, CutCornerShape(18.dp)).clip(CutCornerShape(18.dp))
+            .background(Brush.verticalGradient(listOf(LockrColors.Surface.copy(alpha = 0.97f), LockrColors.Raised.copy(alpha = 0.95f))))
+            .border(1.dp, LockrColors.Line, CutCornerShape(18.dp))) {
             Row(Modifier.fillMaxSize().padding(horizontal = 19.dp), verticalAlignment = Alignment.CenterVertically) {
                 DockAction("Cards", Icons.Outlined.CreditCard, selected == DockDestination.CARDS, onCards, Modifier.weight(1f))
                 Spacer(Modifier.width(84.dp))
@@ -187,6 +195,14 @@ fun IridescentOrb(
     modifier: Modifier = Modifier,
     orbSize: Dp = 46.dp
 ) {
+    val animate = LocalMotionEnabled.current
+    val cycle = if (animate) rememberInfiniteTransition(label = "orb") else null
+    val phase by cycle?.animateFloat(0f, 1f, infiniteRepeatable(tween(6500, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "orb drift")
+        ?: remember { mutableStateOf(0f) }
     Image(painterResource(R.drawable.opal_orb), contentDescription = null,
-        contentScale = ContentScale.Fit, modifier = modifier.size(orbSize))
+        contentScale = ContentScale.Fit, modifier = modifier.size(orbSize).graphicsLayer {
+            rotationZ = -6f + phase * 12f
+            scaleX = 0.96f + phase * 0.04f; scaleY = scaleX
+            translationY = (phase - 0.5f) * 3f * density
+        })
 }

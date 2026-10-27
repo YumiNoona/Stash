@@ -37,7 +37,7 @@ local exports and backup restore; profile changes stay on the device.
 
 ## Automated verification
 
-- All 26 JVM unit tests passed with `testDebugUnitTest`.
+- All 31 JVM unit tests passed with `testDebugUnitTest`.
 - `:app:assembleDebug` produced the installable debug APK.
 - `git diff --check` passed.
 
@@ -63,3 +63,29 @@ entry, save and reopen, detail proportions and field order, GIF import, and MP4
 import/playback after save. Successive video frames differed and no Android
 runtime or media errors were recorded. Tests used fabricated card details and
 synthetic media only. Physical-device codec compatibility remains device dependent.
+
+## Theme, tags, and visual refinement
+
+- Onboarding uses a chevron back icon and a tighter continue progress ring.
+- The beveled dock has a smooth animated add orb. Reduce motion stops it.
+- Light, Dark, and Follow device themes apply to forms, dialogs, previews, and
+  collections. Settings has a theme toggle at the top right.
+- Cards and Documents share header spacing, raised tag filters, and empty-state
+  geometry. Custom card tags and document groups can be added, assigned, filtered,
+  searched, and deleted. Deletion removes assignments, preserving item data.
+- Fifteen independent bitmap artworks replace the primitive finishes. Aurora and
+  Midnight remain; the other thirteen are built-in ImageGen artwork. Prompt and
+  asset provenance is saved in card-art-sources.json.
+- Ten independently selectable effects plus Still are available. Custom media
+  import uses an icon, and the explanatory autoplay text has been removed.
+- Card nickname fields are removed. Six detail fields remain, with card type and
+  network selectors. Eye/copy actions align with their value row.
+- Document review omits OCR controls. File information shows size, type, added
+  date, and group. Older records retain their original saved-date label when a
+  full timestamp is unavailable.
+- The extraction dialog has detected-field choices, an editable value, numbered
+  OCR lines, and a fixed Copy/Save footer that respects the keyboard.
+
+Android 15 QA used a separate emulator and fabricated data. It covered theme
+switching, custom document tag creation/assignment/deletion, image import, file
+information, and extraction/save. The existing user emulator was not cleared.

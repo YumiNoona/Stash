@@ -78,3 +78,10 @@ fun validateCardEntry(
         warnings = warnings
     )
 }
+
+/** Cards have no separate nickname field; derive a useful collection/search title. */
+fun cardDisplayTitle(issuer: String, partner: String, network: String, type: String, number: String): String {
+    val name = partner.trim().ifBlank { issuer.trim() }.ifBlank { network.trim() }.ifBlank { type.ifBlank { "Card" } }
+    val lastFour = number.filter(Char::isDigit).takeLast(4)
+    return if (lastFour.isBlank()) name else "$name · $lastFour"
+}

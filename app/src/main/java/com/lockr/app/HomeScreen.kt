@@ -73,7 +73,7 @@ fun HomeScreen(
                 modifier = Modifier.weight(1f).padding(start = 12.dp))
             Box(
                 Modifier.size(45.dp).shadow(8.dp, CircleShape)
-                    .clip(CircleShape).background(Color.White.copy(alpha = 0.82f))
+                    .clip(CircleShape).background(LockrColors.Surface.copy(alpha = 0.92f))
                     .border(1.dp, Color.White.copy(alpha = 0.94f), CircleShape)
                     .clickable(onClick = onOpenSettings), contentAlignment = Alignment.Center
             ) {
@@ -86,7 +86,7 @@ fun HomeScreen(
             Row(Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Recent Items", style = MaterialTheme.typography.titleMedium,
                     color = LockrColors.TextPrimary, modifier = Modifier.weight(1f))
-                Text("See All", style = MaterialTheme.typography.labelMedium, color = Color(0xFF1C67EA),
+                Text("See All", style = MaterialTheme.typography.labelMedium, color = LockrColors.Accent,
                     modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onOpenAllItems)
                         .padding(horizontal = 5.dp, vertical = 5.dp))
             }
@@ -118,15 +118,15 @@ private fun DashboardHero() {
     Box(
         Modifier.fillMaxWidth().height(237.dp).shadow(16.dp, shape, ambientColor = Color(0x504D9ABC))
             .clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xFFEBDFFB), Color(0xFFDCF8F9), Color(0xFFFFEAD8))))
+            .background(Brush.linearGradient(if (LocalDarkTheme.current) listOf(LockrColors.Surface, LockrColors.Raised) else listOf(Color(0xFFEBDFFB), Color(0xFFDCF8F9), Color(0xFFFFEAD8))))
             .border(1.dp, Color.White.copy(alpha = 0.94f), shape)
     ) {
         Image(painterResource(R.drawable.hero_vault_cutout), contentDescription = "Vault with cards and documents",
             contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(
-            listOf(Color(0xCFF7F5FF), Color(0x70F7F5FF), Color.Transparent), endX = 630f)))
+            if (LocalDarkTheme.current) listOf(Color(0xEE112033), Color(0x88112033), Color.Transparent) else listOf(Color(0xCFF7F5FF), Color(0x70F7F5FF), Color.Transparent), endX = 630f)))
         Text("Your\nSecure Space", style = MaterialTheme.typography.headlineSmall,
-            color = Color(0xFF09174E), modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 29.dp))
+            color = LockrColors.TextPrimary, modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 29.dp))
     }
 }
 
@@ -143,7 +143,7 @@ private fun RecentItemRow(item: VaultItem, onClick: () -> Unit, onMore: () -> Un
                     color = LockrColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 3.dp))
             }
-            Box(Modifier.size(34.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.66f))
+            Box(Modifier.size(34.dp).clip(CircleShape).background(LockrColors.Surface.copy(alpha = 0.8f))
                 .clickable(onClick = onMore), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.MoreVert, contentDescription = "More options for ${item.title}",
                     tint = LockrColors.TextPrimary, modifier = Modifier.size(20.dp))

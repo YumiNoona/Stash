@@ -69,12 +69,6 @@ fun CardReviewScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var title by remember(initial, attachments) { mutableStateOf(initial.title.ifBlank {
-        attachments.firstOrNull()?.name?.let { name ->
-            if (name.startsWith("stash-scan-")) "New card" else suggestedItemTitle(name, "")
-        }.orEmpty()
-    }) }
-    var titleTouched by remember(initial, attachments) { mutableStateOf(false) }
     var cardType by remember(initial) { mutableStateOf(initial.cardType) }
     var numberField by remember(initial) { mutableStateOf(TextFieldValue(
         if (isPaymentCardType(initial.cardType)) initial.cardNumber.filter(Char::isDigit)
@@ -97,9 +91,12 @@ fun CardReviewScreen(
     var saveAttempted by remember { mutableStateOf(false) }
     var saveNotice by remember { mutableStateOf("") }
     val number = numberField.text
+    val title = cardDisplayTitle(issuer, partner, network, cardType, number)
+    var tags by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val ocrEnabled = LocalOcrOnImport.current
 
     LaunchedEffect(attachments) {
-        if (attachments.isEmpty()) return@LaunchedEffect
+        if (attachments.isEmpty() || !ocrEnabled) { recognizing = false; return@LaunchedEffect }
         recognizing = true
         val raw = buildString {
             attachments.forEach { attachment ->
@@ -123,9 +120,6 @@ fun CardReviewScreen(
             if (expiryDigits.isBlank()) expiryDigits = cardExpiryDigits(suggestion.expiry)
             if (network.isBlank()) network = suggestion.network
             if (cardType == "Other") cardType = suggestion.cardType
-            if (!titleTouched && (title.isBlank() || title == "New card") && suggestion.network.isNotBlank()) {
-                title = "${suggestion.network} card"
-            }
             recognizedText = suggestion.ocrText.take(120_000)
         }
         recognizing = false
@@ -139,8 +133,8 @@ fun CardReviewScreen(
     val expiry = formatCardExpiry(expiryDigits)
     val validation = validateCardEntry(title.trim(), cardType, number, expiry, network, cvc = cvc)
     val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedContainerColor = Color(0xF7FFFFFF), unfocusedContainerColor = Color(0xECFFFFFF),
-        errorContainerColor = Color(0xF7FFFFFF),
+        focusedContainerColor = LockrColors.Surface, unfocusedContainerColor = LockrColors.Surface,
+        errorContainerColor = LockrColors.Surface,
         focusedTextColor = LockrColors.TextPrimary, unfocusedTextColor = LockrColors.TextPrimary,
         errorTextColor = LockrColors.TextPrimary,
         focusedLabelColor = LockrColors.Accent, unfocusedLabelColor = LockrColors.TextSecondary,
@@ -148,6 +142,7 @@ fun CardReviewScreen(
         cursorColor = LockrColors.Accent)
     val metadata = buildMap {
         put("cardType", cardType)
+        put("tags", encodeTags(tags))
         if (number.isNotBlank()) put("cardNumber", if (payment) number.filter(Char::isDigit) else number.trim())
         if (number.any(Char::isDigit)) put("lastFour", number.filter(Char::isDigit).takeLast(4))
         if (holder.isNotBlank()) put("cardholder", holder.trim())
@@ -181,11 +176,6 @@ fun CardReviewScreen(
                     "No card details detected. Fill in what you want to save." else "Detected details are suggestions. Check each field.",
                     style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
             }
-            OutlinedTextField(title, { title = it.take(80); titleTouched = true; saveNotice = "" },
-                label = { Text("Card name *") }, singleLine = true,
-                isError = saveAttempted && validation.titleError != null,
-                supportingText = validation.titleError.takeIf { saveAttempted }?.let { error -> { Text(error) } },
-                colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
             Column {
                 Text("Card type", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -256,6 +246,7 @@ fun CardReviewScreen(
                             contentDescription = if (showCvc) "Hide CVC" else "Show CVC")
                     } }, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
             }
+            TagEditor(VaultCategory.CARD, tags, { tags = it })
             validation.warnings.forEach { warning ->
                 Text(warning, style = MaterialTheme.typography.bodySmall, color = Color(0xFF436A8A))
             }
@@ -263,7 +254,7 @@ fun CardReviewScreen(
         }
         if ((saveAttempted && !validation.isValid) || saveNotice.isNotBlank()) {
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
-                .background(Color(0xF7FFFFFF)).border(1.dp, Color(0xFFFFD5D5), RoundedCornerShape(17.dp))
+                .background(LockrColors.Surface).border(1.dp, Color(0xFFFFD5D5), RoundedCornerShape(17.dp))
                 .padding(horizontal = 14.dp, vertical = 10.dp)) {
                 Text("Before saving", style = MaterialTheme.typography.labelLarge, color = LockrColors.TextPrimary)
                 if (saveNotice.isNotBlank()) Text(saveNotice, style = MaterialTheme.typography.bodySmall,
@@ -311,7 +302,7 @@ internal fun CardNetworkDropdown(
             singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp),
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable))
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false },
-            containerColor = Color(0xFFF7FBFF), shape = RoundedCornerShape(19.dp)) {
+            containerColor = LockrColors.Surface, shape = RoundedCornerShape(19.dp)) {
             options.forEach { option ->
                 val selected = value == option || (option == "Not specified" && value.isBlank())
                 DropdownMenuItem(

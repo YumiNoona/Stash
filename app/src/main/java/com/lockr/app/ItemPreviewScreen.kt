@@ -67,7 +67,8 @@ fun ItemPreviewScreen(
     var extracting by remember(item.id) { mutableStateOf(false) }
     var extractionMessage by remember(item.id) { mutableStateOf("") }
     Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
-        StashTopBar(item.title, item.category.label, onBack = onBack)
+        StashTopBar(item.title, item.category.label, onBack = onBack,
+            trailing = { IconButton(onClick = onDetails) { Icon(Icons.Outlined.MoreHoriz, "File information") } })
         GlassPanel(Modifier.fillMaxWidth().weight(1f).padding(vertical = 12.dp), radius = 25.dp) {
             item.attachments.firstOrNull()?.let { attachment ->
                 AttachmentViewer(attachment, Modifier.fillMaxSize().padding(12.dp))
@@ -99,7 +100,7 @@ fun ItemPreviewScreen(
                     }
                 }
                 PreviewAction(Icons.Outlined.IosShare, "Send", onSend)
-                PreviewAction(Icons.Outlined.MoreHoriz, "Details", onDetails)
+                PreviewAction(Icons.Outlined.MoreHoriz, "File information", onDetails)
                 PreviewAction(Icons.Outlined.DeleteOutline, "Delete") { dialog = "delete" }
             }
         }
@@ -167,7 +168,7 @@ private fun AttachmentViewer(attachment: VaultAttachment, modifier: Modifier = M
 @Composable
 private fun PreviewAction(icon: ImageVector, label: String, onClick: () -> Unit) {
     Box(
-        Modifier.size(49.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.72f)).clickable(onClick = onClick),
+        Modifier.size(49.dp).clip(CircleShape).background(LockrColors.Surface.copy(alpha = 0.72f)).clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = label, tint = LockrColors.TextPrimary, modifier = Modifier.size(24.dp))

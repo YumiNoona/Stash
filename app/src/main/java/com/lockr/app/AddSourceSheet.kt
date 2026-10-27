@@ -58,7 +58,7 @@ fun AddSourceSheet(
         }
         Row(Modifier.fillMaxWidth().height(41.dp), verticalAlignment = Alignment.CenterVertically) {
             if (stage != AddStage.CHOOSE) {
-                Box(Modifier.size(39.dp).background(Color.White.copy(alpha = 0.75f), CircleShape)
+                Box(Modifier.size(39.dp).background(LockrColors.Surface.copy(alpha = 0.75f), CircleShape)
                     .clickable { onStageChange(AddStage.CHOOSE) }, contentAlignment = Alignment.Center) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back to Add",
                         tint = LockrColors.TextPrimary, modifier = Modifier.size(21.dp))
@@ -77,10 +77,10 @@ fun AddSourceSheet(
             AddStage.CHOOSE -> {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     VaultTypeCard("Documents", "Images · PDFs · text", Icons.Outlined.Description,
-                        listOf(Color(0xFFF7FCFF), Color(0xFFD9F1FF), Color(0xFFE9F9F4)),
+                        listOf(LockrColors.Surface, Color(0xFFD9F1FF), Color(0xFFE9F9F4)),
                         Color(0xFF2F79A8), Modifier.weight(1f)) { onStageChange(AddStage.DOCUMENT) }
                     VaultTypeCard("Cards", "Scan · NFC · manual", Icons.Outlined.CreditCard,
-                        listOf(Color(0xFFFFFAFF), Color(0xFFE9DDFB), Color(0xFFFBE9EF)),
+                        listOf(LockrColors.Surface, Color(0xFFE9DDFB), Color(0xFFFBE9EF)),
                         Color(0xFF7054A8), Modifier.weight(1f)) { onStageChange(AddStage.CARD) }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -116,12 +116,12 @@ fun AddSourceSheet(
 private fun VaultTypeCard(title: String, subtitle: String, icon: ImageVector, colors: List<Color>, tint: Color,
                           modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(25.dp)
-    Column(modifier.height(170.dp).clip(shape).background(Brush.linearGradient(colors))
-        .border(1.dp, Color.White, shape).clickable(onClick = onClick).padding(15.dp),
+    Column(modifier.height(170.dp).clip(shape).background(Brush.linearGradient(if (LocalDarkTheme.current) listOf(LockrColors.Surface, LockrColors.Raised) else colors))
+        .border(1.dp, LockrColors.Surface, shape).clickable(onClick = onClick).padding(15.dp),
         verticalArrangement = Arrangement.SpaceBetween) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top) {
-            Box(Modifier.size(56.dp).background(Color.White.copy(alpha = 0.76f), CircleShape),
+            Box(Modifier.size(56.dp).background(LockrColors.Surface.copy(alpha = 0.76f), CircleShape),
                 contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(31.dp))
             }
@@ -132,7 +132,7 @@ private fun VaultTypeCard(title: String, subtitle: String, icon: ImageVector, co
             Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 20.sp),
                 color = LockrColors.TextPrimary, maxLines = 2)
             Text(subtitle, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 16.sp),
-                color = Color(0xFF43536D), maxLines = 2, modifier = Modifier.padding(top = 3.dp))
+                color = LockrColors.TextSecondary, maxLines = 2, modifier = Modifier.padding(top = 3.dp))
         }
     }
 }
@@ -140,8 +140,8 @@ private fun VaultTypeCard(title: String, subtitle: String, icon: ImageVector, co
 @Composable
 private fun SourceTile(label: String, icon: ImageVector, glow: Color, tint: Color, modifier: Modifier, onClick: () -> Unit) {
     Column(modifier.height(110.dp).background(
-        Brush.linearGradient(listOf(Color(0xF8FFFFFF), glow.copy(alpha = 0.75f))), RoundedCornerShape(23.dp))
-        .border(1.dp, Color.White, RoundedCornerShape(23.dp)).clickable(onClick = onClick).padding(8.dp),
+        Brush.linearGradient(listOf(LockrColors.Surface, if (LocalDarkTheme.current) LockrColors.Raised else glow.copy(alpha = 0.75f))), RoundedCornerShape(23.dp))
+        .border(1.dp, LockrColors.Surface, RoundedCornerShape(23.dp)).clickable(onClick = onClick).padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Box(Modifier.size(49.dp).background(glow, CircleShape), contentAlignment = Alignment.Center) {
             Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(26.dp))
@@ -153,8 +153,8 @@ private fun SourceTile(label: String, icon: ImageVector, glow: Color, tint: Colo
 
 @Composable
 private fun SmallSource(label: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Row(modifier.height(53.dp).background(Color.White.copy(alpha = 0.83f), RoundedCornerShape(18.dp))
-        .border(1.dp, Color.White, RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(horizontal = 11.dp),
+    Row(modifier.height(53.dp).background(LockrColors.Surface.copy(alpha = 0.83f), RoundedCornerShape(18.dp))
+        .border(1.dp, LockrColors.Surface, RoundedCornerShape(18.dp)).clickable(onClick = onClick).padding(horizontal = 11.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         Icon(icon, contentDescription = null, tint = LockrColors.Accent, modifier = Modifier.size(21.dp))
         Text(label, color = LockrColors.TextPrimary, style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp),

@@ -96,7 +96,8 @@ data class VaultItem(
     val lastFour: String = "",
     val metadata: Map<String, String> = emptyMap(),
     val attachments: List<VaultAttachment> = emptyList(),
-    val id: String = java.util.UUID.randomUUID().toString()
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val createdAt: Long = System.currentTimeMillis()
 )
 
 data class VaultAttachment(
@@ -142,6 +143,7 @@ private fun LockrApp() {
         mutableStateOf(preferences.getBoolean("app_lock_enabled", false))
     }
     var onboardingComplete by rememberSaveable { mutableStateOf(preferences.getBoolean("onboarding_complete", false)) }
+    val tagCatalog = remember(preferences) { VaultTagCatalog(preferences) }
     val store = remember(context) { LocalVaultStore(context) }
     val profileStore = remember(context) { LocalProfileStore(context) }
     var profileName by remember { mutableStateOf(profileStore.name()) }
@@ -163,6 +165,29 @@ private fun LockrApp() {
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    tagCatalog.onDelete = { category, tag ->
+        if (!savingItem && storageReady && !storageError) {
+            savingItem = true
+            tagCatalog.deleting = true
+            coroutineScope.launch {
+                try {
+                    val updated = items.map { withoutTag(it, category, tag) }
+                    withContext(Dispatchers.IO) { store.save(updated) }
+                    items.clear(); items.addAll(updated)
+                    currentDetailItem = currentDetailItem?.let { withoutTag(it, category, tag) }
+                    tagCatalog.remove(category, tag)
+                } catch (_: Exception) {
+                    snackbarHostState.showSnackbar("Could not remove this tag. Try again.")
+                } finally { savingItem = false; tagCatalog.deleting = false }
+            }
+        }
+    }
+    LaunchedEffect(items.map { it.category to it.metadata }) {
+        items.forEach { item ->
+            if (item.category == VaultCategory.CARD) cardTags(item).forEach { tagCatalog.add(VaultCategory.CARD, it) }
+            if (item.category == VaultCategory.DOCUMENT) item.metadata["documentCategory"]?.let { tagCatalog.add(VaultCategory.DOCUMENT, it) }
+        }
+    }
     val keyguardManager = remember(context) { context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager }
     val lifecycleOwner = LocalLifecycleOwner.current
     var backgroundedAt by remember { mutableStateOf(0L) }
@@ -488,7 +513,7 @@ private fun LockrApp() {
         }
     }
 
-    CompositionLocalProvider(LocalHideCardNumber provides settings.hideCardNumber) {
+    CompositionLocalProvider(LocalHideCardNumber provides settings.hideCardNumber, LocalTagCatalog provides tagCatalog) {
     Box(Modifier.fillMaxSize()) {
         if (!onboardingComplete) {
             OnboardingScreen(
@@ -595,7 +620,10 @@ private fun LockrApp() {
                         }
                     )
                     LockrScreen.ITEM_DETAIL -> currentDetailItem?.let { item ->
-                        VaultItemDetailScreen(
+                        if (item.category == VaultCategory.DOCUMENT) DocumentInfoScreen(item,
+                            onBack = { if (returnFromDetail != LockrScreen.ITEM_PREVIEW) currentDetailItem = null; screen = returnFromDetail },
+                            onGroupChange = { group -> persistUpdatedItem(item.copy(metadata = item.metadata + ("documentCategory" to group))) })
+                        else VaultItemDetailScreen(
                             item = item,
                             autoClearClipboard = settings.autoClearClipboard,
                             revealTimeout = settings.revealTimeout,
@@ -655,7 +683,7 @@ private fun LockrApp() {
             ModalBottomSheet(
                 onDismissRequest = { showAdd = false },
                 sheetState = sheetState,
-                containerColor = Color(0xFFF8FAFA),
+                containerColor = LockrColors.Surface,
                 dragHandle = null
             ) {
                 AddSourceSheet(

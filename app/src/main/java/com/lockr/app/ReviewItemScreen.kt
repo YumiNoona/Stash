@@ -58,17 +58,17 @@ fun ReviewItemScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val ocrEnabled = LocalOcrOnImport.current
     var title by remember(attachments) { mutableStateOf(suggestedItemTitle(attachments.firstOrNull()?.name.orEmpty(), "")) }
     var titleTouched by remember(attachments) { mutableStateOf(false) }
     var documentGroup by remember(attachments) { mutableStateOf("Other") }
+    var groupTouched by remember(attachments) { mutableStateOf(false) }
     var extractedText by remember(attachments) { mutableStateOf("") }
     var rawRecognizedText by remember(attachments) { mutableStateOf("") }
-    var selectedFields by remember(attachments) { mutableStateOf<Map<String, String>>(emptyMap()) }
     var isRecognizing by remember(attachments) { mutableStateOf(true) }
-    var showExtractedText by remember { mutableStateOf(false) }
-    var showFieldPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(attachments) {
+        if (!ocrEnabled) { isRecognizing = false; return@LaunchedEffect }
         isRecognizing = true
         val extracted = mutableListOf<String>()
         attachments.forEach { attachment ->
@@ -83,7 +83,7 @@ fun ReviewItemScreen(
         }
         rawRecognizedText = extracted.joinToString("\n\n").take(120_000)
         extractedText = redactPaymentSecrets(redactAadhaarNumbers(rawRecognizedText))
-        documentGroup = suggestedDocumentGroup(attachments.firstOrNull()?.name.orEmpty(), extractedText)
+        if (!groupTouched) documentGroup = suggestedDocumentGroup(attachments.firstOrNull()?.name.orEmpty(), extractedText)
         if (!titleTouched) title = suggestedItemTitle(attachments.firstOrNull()?.name.orEmpty(), extractedText)
         isRecognizing = false
     }
@@ -93,7 +93,7 @@ fun ReviewItemScreen(
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             attachments.firstOrNull()?.let { first ->
                 Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp))
-                    .background(Color.White.copy(alpha = 0.91f)).border(1.dp, Color.White, RoundedCornerShape(23.dp))
+                    .background(LockrColors.Surface.copy(alpha = 0.91f)).border(1.dp, LockrColors.Surface, RoundedCornerShape(23.dp))
                     .padding(7.dp)) {
                     VaultAttachmentPreview(first, Modifier.fillMaxWidth().height(265.dp))
                 }
@@ -103,7 +103,7 @@ fun ReviewItemScreen(
                 VaultAttachmentsSection(attachments.drop(1), Modifier.fillMaxWidth())
             }
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp))
-                .background(Color(0xF5FFFFFF)).border(1.dp, Color.White, RoundedCornerShape(25.dp))
+                .background(LockrColors.Surface).border(1.dp, LockrColors.Surface, RoundedCornerShape(25.dp))
                 .padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("Document name", style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
                     color = LockrColors.TextPrimary)
@@ -112,44 +112,13 @@ fun ReviewItemScreen(
                     singleLine = true, textStyle = MaterialTheme.typography.bodyLarge,
                     shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White, unfocusedContainerColor = Color(0xFFF8FBFD),
+                        focusedContainerColor = LockrColors.Surface, unfocusedContainerColor = LockrColors.Surface,
                         focusedTextColor = LockrColors.TextPrimary, unfocusedTextColor = LockrColors.TextPrimary,
                         focusedBorderColor = LockrColors.Accent, unfocusedBorderColor = Color(0xFFBECBD8),
                         cursorColor = LockrColors.Accent))
-                Text("Document group", style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
-                    color = LockrColors.TextPrimary)
-                val groups = listOf(
-                    "Identity" to Icons.Outlined.Badge,
-                    "Medical" to Icons.Outlined.MedicalServices,
-                    "Bills" to Icons.Outlined.ReceiptLong,
-                    "Insurance" to Icons.Outlined.Shield,
-                    "Other" to Icons.Outlined.Folder
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    groups.chunked(2).forEach { groupRow ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            groupRow.forEach { (label, icon) ->
-                                DocumentGroupTag(label, icon, documentGroup == label,
-                                    if (groupRow.size == 1) Modifier.fillMaxWidth() else Modifier.weight(1f)) {
-                                    documentGroup = label
-                                }
-                            }
-                        }
-                    }
-                }
-                if (extractedText.isNotBlank()) {
-                    TextButton(onClick = { showFieldPicker = true }) {
-                        Icon(Icons.Outlined.TextSnippet, contentDescription = null, modifier = Modifier.size(19.dp))
-                        Text(if (selectedFields.isEmpty()) "Extract specific fields" else "Edit ${selectedFields.size} extracted fields",
-                            style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
-                            modifier = Modifier.padding(start = 8.dp))
-                    }
-                    TextButton(onClick = { showExtractedText = true }) {
-                        Text("View extracted text",
-                            style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
-                            modifier = Modifier.padding(start = 8.dp))
-                    }
-                }
+                TagEditor(VaultCategory.DOCUMENT, setOf(documentGroup),
+                    onChange = { documentGroup = it.firstOrNull() ?: "Other"; groupTouched = true }, single = true)
+
             }
             Spacer(Modifier.height(8.dp))
         }
@@ -158,7 +127,6 @@ fun ReviewItemScreen(
                 val metadata = buildMap {
                     if (extractedText.isNotBlank()) put("ocrText", extractedText)
                     put("documentCategory", documentGroup)
-                    putAll(selectedFields)
                 }
                 onSave(title.trim().ifBlank { "Imported document" }, VaultCategory.DOCUMENT, metadata, attachments)
             },
@@ -168,42 +136,7 @@ fun ReviewItemScreen(
             Text(if (isRecognizing) "Reading file…" else "Save document")
         }
     }
-    if (showExtractedText) {
-        AlertDialog(onDismissRequest = { showExtractedText = false },
-            title = { Text("Extracted text", color = LockrColors.TextPrimary) },
-            text = {
-                Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
-                    Text(extractedText, style = MaterialTheme.typography.bodyMedium,
-                        color = LockrColors.TextPrimary)
-                }
-            },
-            confirmButton = { TextButton(onClick = { showExtractedText = false }) { Text("Done") } },
-            containerColor = Color.White, shape = RoundedCornerShape(24.dp))
-    }
-    if (showFieldPicker) ExtractFieldsDialog(
-        recognizedText = rawRecognizedText,
-        onDismiss = { showFieldPicker = false },
-        onCopy = { copyPrivateText(context, it, autoClear = true) },
-        onSave = { key, value -> selectedFields = selectedFields + (key to value) }
-    )
-}
 
-@Composable
-private fun DocumentGroupTag(label: String, icon: ImageVector, selected: Boolean,
-                             modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(15.dp)
-    val fill = if (selected) Brush.horizontalGradient(listOf(Color(0xFFD8F3F0), Color(0xFFE7EEFF)))
-        else Brush.horizontalGradient(listOf(Color.White, Color(0xFFF7F9FD)))
-    Row(modifier.height(48.dp).clip(shape).background(fill)
-        .border(1.dp, if (selected) Color(0xFF55A8A0) else Color(0xFFD3DEE8), shape)
-        .clickable(onClick = onClick).padding(horizontal = 10.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-        Icon(icon, contentDescription = null,
-            tint = if (selected) Color(0xFF197E77) else Color(0xFF536C8F), modifier = Modifier.size(18.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp),
-            color = LockrColors.TextPrimary, maxLines = 1)
-    }
 }
 
 @Composable

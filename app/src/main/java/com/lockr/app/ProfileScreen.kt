@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ProfileAvatar(photo: Bitmap?, size: Dp, modifier: Modifier = Modifier) {
-    Box(modifier.size(size).clip(CircleShape).border(2.dp, Color.White, CircleShape), contentAlignment = Alignment.Center) {
+    Box(modifier.size(size).clip(CircleShape).border(2.dp, LockrColors.Surface, CircleShape), contentAlignment = Alignment.Center) {
         if (photo != null) Image(photo.asImageBitmap(), contentDescription = "Profile photo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Image(painterResource(R.drawable.stash_logo), contentDescription = "Stash logo",
             modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
@@ -76,7 +76,7 @@ fun ProfileScreen(
             Box(Modifier.size(116.dp).clickable(onClick = onChoosePhoto), contentAlignment = Alignment.Center) {
                 ProfileAvatar(photo, 104.dp)
                 Box(
-                    Modifier.align(Alignment.BottomEnd).size(36.dp).clip(CircleShape).background(Color.White)
+                    Modifier.align(Alignment.BottomEnd).size(36.dp).clip(CircleShape).background(LockrColors.Surface)
                         .border(1.dp, Color(0xFFE0E8EE), CircleShape),
                     contentAlignment = Alignment.Center
                 ) { Icon(Icons.Outlined.CameraAlt, contentDescription = "Choose profile photo", tint = LockrColors.Accent, modifier = Modifier.size(19.dp)) }

@@ -54,9 +54,11 @@ fun CategoryScreen(
         LockrScreen.NOTES -> "Notes"
         else -> "All items"
     }
-    val filters = if (screen == LockrScreen.DOCUMENTS) listOf("All", "Identity", "Medical", "Bills", "Insurance", "Other")
+    val catalog = LocalTagCatalog.current
+    val filters = if (screen == LockrScreen.DOCUMENTS) listOf("All") + catalog.groups()
         else listOf("All", "Cards", "Documents", "Passwords", "Notes")
     var selectedFilter by rememberSaveable(screen) { mutableStateOf("All") }
+    androidx.compose.runtime.LaunchedEffect(filters) { if (selectedFilter !in filters) selectedFilter = "All" }
     val categoryItems = items.filter { category == null || it.category == category }
     val visibleItems = categoryItems.filter { item ->
         val matchesFilter = if (screen == LockrScreen.DOCUMENTS && selectedFilter != "All") {
@@ -73,31 +75,16 @@ fun CategoryScreen(
     }
 
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar(title, "${visibleItems.size} saved", onBack = onBack,
+        StashTopBar(title, "${categoryItems.size} saved", onBack = onBack,
             trailing = { IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, contentDescription = "Search vault") } })
         if (screen == LockrScreen.ALL_ITEMS || screen == LockrScreen.DOCUMENTS) {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                filters.forEach { filter ->
-                    FilterChip(selected = selectedFilter == filter, onClick = { selectedFilter = filter },
-                        label = { Text(filter, maxLines = 1, softWrap = false) })
-                }
-            }
+            CollectionFilters(filters, selectedFilter, { selectedFilter = it },
+                if (screen == LockrScreen.DOCUMENTS) VaultCategory.DOCUMENT else null)
         }
+
         if (visibleItems.isEmpty()) {
-            GlassPanel(Modifier.fillMaxWidth().height(235.dp).padding(top = 10.dp), radius = 24.dp) {
-                Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center) {
-                    Box(Modifier.size(60.dp).background(Color(0xFFDFF2F5), CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Description, contentDescription = null, tint = Color(0xFF498D9A), modifier = Modifier.size(29.dp))
-                    }
-                    Text(if (categoryItems.isEmpty()) "Nothing here yet" else "No items in this filter",
-                        style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 13.dp))
-                    Text(if (categoryItems.isEmpty()) "Use Add below to bring in your first item." else "Choose another filter.",
-                        color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 5.dp))
-                }
-            }
+            CollectionEmptyState(if (categoryItems.isEmpty()) "Your ${title.lowercase()} will live here" else "No items in this filter",
+                if (categoryItems.isEmpty()) "Tap + to add your first item." else "Choose another tag.", Icons.Outlined.Description)
         } else {
             LazyColumn(Modifier.weight(1f).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(visibleItems, key = { it.id }) { item -> VaultVisualCard(item, onClick = { onOpenItem(item) }) }
@@ -109,6 +96,11 @@ fun CategoryScreen(
 fun searchableText(item: VaultItem): String = buildString {
     append(item.title).append(' ')
     append(item.category.label).append(' ')
+    append(item.metadata["documentCategory"].orEmpty()).append(' ')
+    if (item.category == VaultCategory.CARD) {
+        append(cardTags(item).joinToString(" ")).append(' ')
+        listOf("issuer", "partner", "cardholder", "cardType", "network").forEach { append(item.metadata[it].orEmpty()).append(' ') }
+    }
     when (item.category) {
         VaultCategory.PASSWORD -> Unit // Never search or expose password field values.
         VaultCategory.NOTE -> append(item.metadata["content"].orEmpty()).append(' ').append(item.metadata["ocrText"].orEmpty()).append(' ')

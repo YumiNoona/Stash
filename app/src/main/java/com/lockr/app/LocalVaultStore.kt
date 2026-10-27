@@ -139,6 +139,7 @@ class LocalVaultStore(context: Context) {
             json.put(
                 JSONObject()
                     .put("id", item.id)
+                    .put("createdAt", item.createdAt)
                     .put("title", item.title)
                     .put("category", item.category.name)
                     .put("detail", item.detail)
@@ -158,6 +159,7 @@ class LocalVaultStore(context: Context) {
                 val json = array.getJSONObject(index)
                 VaultItem(
                     title = json.getString("title"),
+                    createdAt = json.optLong("createdAt", 0L),
                     category = VaultCategory.valueOf(json.getString("category")),
                     detail = json.optString("detail"),
                     time = json.optString("time"),

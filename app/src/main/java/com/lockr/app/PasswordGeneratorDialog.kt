@@ -87,7 +87,7 @@ fun PasswordGeneratorDialog(onDismiss: () -> Unit, onUse: (String) -> Unit) {
             Button(onClick = { onUse(generated) }, enabled = generated.isNotEmpty()) { Text("Use password") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-        containerColor = Color(0xFFF5FAFD),
+        containerColor = LockrColors.Surface,
         shape = RoundedCornerShape(26.dp)
     )
 }

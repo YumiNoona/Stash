@@ -109,6 +109,7 @@ fun VaultItemDetailScreen(
     var editIssuer by rememberSaveable(item.id) { mutableStateOf(item.metadata["issuer"].orEmpty()) }
     var editNetwork by rememberSaveable(item.id) { mutableStateOf(item.metadata["network"].orEmpty()) }
     var editCvc by remember(item.id) { mutableStateOf(item.metadata["cardCvc"].orEmpty()) }
+    var editTags by remember(item.id) { mutableStateOf(cardTags(item)) }
     var editPartner by remember(item.id) { mutableStateOf(item.metadata["partner"].orEmpty()) }
     var editMotion by remember(item.id) { mutableStateOf(cardMotion(item)) }
     var editCustomArt by remember(item.id) { mutableStateOf(customCardArt(item)) }
@@ -164,16 +165,16 @@ fun VaultItemDetailScreen(
         if (item.category == VaultCategory.CARD) {
             Row(Modifier.fillMaxWidth().height(69.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(45.dp).shadow(6.dp, CircleShape).clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.82f))
-                    .border(1.dp, Color.White.copy(alpha = 0.96f), CircleShape)
+                    .background(LockrColors.Surface.copy(alpha = 0.82f))
+                    .border(1.dp, LockrColors.Surface.copy(alpha = 0.96f), CircleShape)
                     .clickable(onClick = onBack), contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.ChevronLeft, contentDescription = "Back", modifier = Modifier.size(27.dp))
                 }
                 Spacer(Modifier.weight(1f))
                 Box {
                     Box(Modifier.size(45.dp).shadow(6.dp, CircleShape).clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.82f))
-                        .border(1.dp, Color.White.copy(alpha = 0.96f), CircleShape)
+                        .background(LockrColors.Surface.copy(alpha = 0.82f))
+                        .border(1.dp, LockrColors.Surface.copy(alpha = 0.96f), CircleShape)
                         .clickable { showMenu = true }, contentAlignment = Alignment.Center) {
                         Icon(Icons.Outlined.MoreVert, contentDescription = "Card options")
                     }
@@ -340,7 +341,7 @@ fun VaultItemDetailScreen(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            containerColor = Color(0xF8FFFFFF),
+            containerColor = LockrColors.Surface,
             title = { Text("Delete ${item.title}?") },
             text = { Text("This removes the item and its attached files from this device.", color = LockrColors.TextSecondary) },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
@@ -351,14 +352,14 @@ fun VaultItemDetailScreen(
     }
     if (editing) {
         val editFieldColors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color.White, unfocusedContainerColor = Color.White,
-            errorContainerColor = Color.White,
+            focusedContainerColor = LockrColors.Surface, unfocusedContainerColor = LockrColors.Surface,
+            errorContainerColor = LockrColors.Surface,
             focusedTextColor = LockrColors.TextPrimary, unfocusedTextColor = LockrColors.TextPrimary,
             errorTextColor = LockrColors.TextPrimary,
             focusedBorderColor = LockrColors.Accent, unfocusedBorderColor = Color(0xFFBACBD8))
         AlertDialog(
             onDismissRequest = { editing = false },
-            containerColor = Color(0xF8FFFFFF),
+            containerColor = LockrColors.Surface,
             title = {
                 Column {
                     Text(if (item.category == VaultCategory.CARD) "Edit card" else "Edit item")
@@ -370,7 +371,7 @@ fun VaultItemDetailScreen(
             },
             text = {
                 Column(Modifier.heightIn(max = 470.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(value = editTitle, onValueChange = { editTitle = it.take(80) },
+                    if (item.category != VaultCategory.CARD) OutlinedTextField(value = editTitle, onValueChange = { editTitle = it.take(80) },
                         label = { Text(if (item.category == VaultCategory.CARD) "Card name" else "Title") }, singleLine = true,
                         isError = item.category == VaultCategory.CARD && editValidationAttempted && editValidation.titleError != null,
                         colors = editFieldColors, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
@@ -427,12 +428,13 @@ fun VaultItemDetailScreen(
                                 modifier = Modifier.fillMaxWidth())
                         }
                         CardDetailPreview(item.copy(metadata = item.metadata + mapOf(
-                            "cardArt" to editCardArt.name, "partner" to editPartner, "issuer" to editIssuer,
+                            "tags" to encodeTags(editTags), "cardArt" to editCardArt.name, "partner" to editPartner, "issuer" to editIssuer,
                             "cardholder" to editCardholder, "cardNumber" to editCardNumber, "expiry" to editExpiry,
                             "network" to editNetwork, "cardMotion" to editMotion.name,
                             "cardArtLightText" to editLightText.toString(), "cardArtAttachment" to editCustomArt?.name.orEmpty()),
                             attachments = withCardArt(item.attachments, item.metadata["cardArtAttachment"], editCustomArt)),
                             showFullNumber = false)
+                        TagEditor(VaultCategory.CARD, editTags, { editTags = it })
                         CardCustomization(editCardArt, { editCardArt = it }, editMotion, { editMotion = it },
                             editCustomArt, { editCustomArt = it; editAppearanceError = "" }, editLightText, { editLightText = it })
                         if (editAppearanceError.isNotBlank()) Text(editAppearanceError,
@@ -462,7 +464,7 @@ fun VaultItemDetailScreen(
                         VaultCategory.CARD -> (item.metadata - "ocrText") + mapOf("issuer" to editIssuer.trim(), "cardholder" to editCardholder.trim(),
                             "cardNumber" to (if (paymentCard) digits else editCardNumber.trim()),
                             "expiry" to editExpiry, "network" to editNetwork.trim(), "cardCvc" to (if (paymentCard) editCvc else ""),
-                            "cardArt" to editCardArt.name, "partner" to editPartner.trim(), "cardMotion" to editMotion.name,
+                            "tags" to encodeTags(editTags), "cardArt" to editCardArt.name, "partner" to editPartner.trim(), "cardMotion" to editMotion.name,
                             "cardArtAttachment" to editCustomArt?.name.orEmpty(), "cardArtLightText" to editLightText.toString(),
                             "lastFour" to lastFour.ifBlank { item.lastFour })
                         else -> item.metadata
@@ -473,7 +475,7 @@ fun VaultItemDetailScreen(
                         editAppearanceError = "Scans and artwork must fit within 20 files and 24 MB"
                         return@TextButton
                     }
-                    onEdit(item.copy(attachments = updatedAttachments, title = editTitle.trim().ifBlank { item.title }, metadata = metadata,
+                    onEdit(item.copy(attachments = updatedAttachments, title = if (item.category == VaultCategory.CARD) cardDisplayTitle(editIssuer, editPartner, editNetwork, editCardType, editCardNumber) else editTitle.trim().ifBlank { item.title }, metadata = metadata,
                         lastFour = if (item.category == VaultCategory.CARD) lastFour.ifBlank { item.lastFour } else item.lastFour))
                     editing = false
                 }) { Text("Save") }
@@ -489,16 +491,18 @@ private fun CardDetailDivider() {
 
 @Composable
 private fun DetailField(label: String, value: String, onCopy: (() -> Unit)?, onReveal: (() -> Unit)?, revealed: Boolean) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.labelLarge, color = LockrColors.TextSecondary)
-            Text(value, style = MaterialTheme.typography.bodyLarge, color = LockrColors.TextPrimary)
-        }
-        if (onReveal != null) IconButton(onClick = onReveal, modifier = Modifier.size(42.dp)) {
-            Icon(if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, contentDescription = if (revealed) "Hide $label" else "Reveal $label", modifier = Modifier.size(20.dp))
-        }
-        if (onCopy != null) IconButton(onClick = onCopy, modifier = Modifier.size(42.dp)) {
-            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy $label", modifier = Modifier.size(20.dp))
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = LockrColors.TextSecondary)
+        Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(value, style = MaterialTheme.typography.bodyLarge, color = LockrColors.TextPrimary,
+                modifier = Modifier.weight(1f))
+            if (onReveal != null) IconButton(onClick = onReveal, modifier = Modifier.size(44.dp)) {
+                Icon(if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                    if (revealed) "Hide $label" else "Reveal $label", modifier = Modifier.size(20.dp))
+            }
+            if (onCopy != null) IconButton(onClick = onCopy, modifier = Modifier.size(44.dp)) {
+                Icon(Icons.Outlined.ContentCopy, "Copy $label", modifier = Modifier.size(20.dp))
+            }
         }
     }
 }
