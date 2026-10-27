@@ -111,7 +111,8 @@ private const val MAX_IMPORT_ITEMS = 20
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun LockrApp() {
-    var screen by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
+    // Drafts and selected items live in memory; do not restore a route without its data.
+    var screen by remember { mutableStateOf(LockrScreen.HOME) }
     var returnScreen by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
     var returnFromProfile by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
     var returnFromSettings by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
@@ -120,10 +121,9 @@ private fun LockrApp() {
     var returnFromPreview by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
     var showAdd by rememberSaveable { mutableStateOf(false) }
     var addStage by rememberSaveable { mutableStateOf(AddStage.CHOOSE) }
-    var savingItem by rememberSaveable { mutableStateOf(false) }
+    var savingItem by remember { mutableStateOf(false) }
     var storageReady by remember { mutableStateOf(false) }
     var storageError by remember { mutableStateOf(false) }
-    var vaultLocked by rememberSaveable { mutableStateOf(false) }
     var pendingAuthentication by remember { mutableStateOf<String?>(null) }
     var authorizedItem by remember { mutableStateOf<String?>(null) }
     var currentDetailItem by remember { mutableStateOf<VaultItem?>(null) }
@@ -138,6 +138,9 @@ private fun LockrApp() {
     val activity = LocalActivity.current as? MainActivity
     val context = activity?.applicationContext ?: LocalContext.current.applicationContext
     val preferences = remember(context) { context.getSharedPreferences("lockr_preferences", Context.MODE_PRIVATE) }
+    var vaultLocked by remember {
+        mutableStateOf(preferences.getBoolean("app_lock_enabled", false))
+    }
     var onboardingComplete by rememberSaveable { mutableStateOf(preferences.getBoolean("onboarding_complete", false)) }
     val store = remember(context) { LocalVaultStore(context) }
     val profileStore = remember(context) { LocalProfileStore(context) }
@@ -173,8 +176,9 @@ private fun LockrApp() {
     }
 
     BackHandler(enabled = vaultLocked) { }
+    BackHandler(enabled = !vaultLocked && (screen == LockrScreen.IMPORTING || savingItem)) { }
     BackHandler(
-        enabled = !vaultLocked && !showAdd && restoreBytes == null && screen != LockrScreen.HOME
+        enabled = !vaultLocked && !savingItem && screen != LockrScreen.IMPORTING && !showAdd && restoreBytes == null && screen != LockrScreen.HOME
     ) {
         when (screen) {
             LockrScreen.ITEM_DETAIL -> {
@@ -336,8 +340,8 @@ private fun LockrApp() {
                     snackbarHostState.showSnackbar(failure ?: "No files were selected.")
                 } else {
                     importedAttachments = imported
-                    if (failure != null) snackbarHostState.showSnackbar(failure)
                     screen = if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
+                    if (failure != null) snackbarHostState.showSnackbar(failure)
                 }
             }
         }
@@ -372,8 +376,8 @@ private fun LockrApp() {
                 }
                 if (imported.isNotEmpty()) {
                     importedAttachments = imported
-                    if (failure != null) snackbarHostState.showSnackbar(failure)
                     screen = if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
+                    if (failure != null) snackbarHostState.showSnackbar(failure)
                 } else {
                     screen = returnScreen
                     snackbarHostState.showSnackbar(failure ?: "The scan could not be opened.")
@@ -409,15 +413,17 @@ private fun LockrApp() {
         }
     }
 
-    val persistNewItem: (VaultItem) -> Unit = { item ->
+    val persistNewItem: (VaultItem) -> Unit = save@{ item ->
+        if (savingItem) return@save
+        savingItem = true
         coroutineScope.launch {
-            savingItem = true
             try {
                 val updatedItems = items.toList().toMutableList().apply { add(0, item) }
                 withContext(Dispatchers.IO) { store.save(updatedItems) }
                 items.clear()
                 items.addAll(updatedItems)
                 importedAttachments = emptyList()
+                cardDraft = CardDraft()
                 screen = when (item.category) {
                     VaultCategory.CARD -> LockrScreen.CARDS
                     VaultCategory.DOCUMENT -> LockrScreen.DOCUMENTS
@@ -433,7 +439,9 @@ private fun LockrApp() {
         }
     }
 
-    val persistUpdatedItem: (VaultItem) -> Unit = { updated ->
+    val persistUpdatedItem: (VaultItem) -> Unit = update@{ updated ->
+        if (savingItem) return@update
+        savingItem = true
         coroutineScope.launch {
             val updatedItems = items.map { if (it.id == updated.id) updated else it }
             try {
@@ -443,11 +451,15 @@ private fun LockrApp() {
                 snackbarHostState.showSnackbar("Item updated")
             } catch (_: Exception) {
                 snackbarHostState.showSnackbar("Could not update this item. Your vault was left unchanged.")
+            } finally {
+                savingItem = false
             }
         }
     }
     val openItem: (VaultItem, LockrScreen) -> Unit = { item, origin ->
         currentDetailItem = item
+        authorizedItem = null
+        returnFromDetail = origin
         if (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) &&
             item.attachments.firstOrNull()?.let { it.mimeType.startsWith("image/") || it.mimeType == "application/pdf" } == true) {
             returnFromPreview = origin
@@ -457,7 +469,9 @@ private fun LockrApp() {
             screen = LockrScreen.ITEM_DETAIL
         }
     }
-    val deleteItem: (VaultItem) -> Unit = { deleting ->
+    val deleteItem: (VaultItem) -> Unit = delete@{ deleting ->
+        if (savingItem) return@delete
+        savingItem = true
         val updatedItems = items.filterNot { it.id == deleting.id }
         coroutineScope.launch {
             try {
@@ -468,6 +482,8 @@ private fun LockrApp() {
                 snackbarHostState.showSnackbar("Item deleted")
             } catch (_: Exception) {
                 snackbarHostState.showSnackbar("Could not delete this item. Your vault was left unchanged.")
+            } finally {
+                savingItem = false
             }
         }
     }
@@ -635,7 +651,7 @@ private fun LockrApp() {
 
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).padding(bottom = 82.dp))
 
-        if (showAdd) {
+        if (showAdd && !vaultLocked && storageReady && !storageError) {
             ModalBottomSheet(
                 onDismissRequest = { showAdd = false },
                 sheetState = sheetState,
@@ -661,7 +677,7 @@ private fun LockrApp() {
             }
         }
 
-        restoreBytes?.let { bytes ->
+        restoreBytes?.takeIf { !vaultLocked }?.let { bytes ->
             AlertDialog(
                 onDismissRequest = { restoreBytes = null; bytes.fill(0) },
                 title = { Text("Restore this backup?") },
