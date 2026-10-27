@@ -1,6 +1,14 @@
 package com.lockr.app
 
 import android.graphics.Bitmap
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.onClick
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.Image
@@ -66,6 +74,13 @@ fun ItemPreviewScreen(
     var recognizedText by remember(item.id) { mutableStateOf("") }
     var extracting by remember(item.id) { mutableStateOf(false) }
     var extractionMessage by remember(item.id) { mutableStateOf("") }
+    var controlsVisible by remember(item.id) { mutableStateOf(false) }
+    var interaction by remember(item.id) { mutableIntStateOf(0) }
+    val toggleControls: () -> Unit = { controlsVisible = !controlsVisible; interaction++ }
+    val useControls: () -> Unit = { controlsVisible = true; interaction++ }
+    LaunchedEffect(controlsVisible, interaction, dialog, extracting) {
+        if (controlsVisible && dialog.isBlank() && !extracting) { delay(3500); controlsVisible = false }
+    }
     val scan: () -> Unit = {
         if (!extracting) scope.launch {
             extracting = true
@@ -92,22 +107,24 @@ fun ItemPreviewScreen(
     // The document owns the full canvas; chrome floats above it instead of shrinking it into a card.
     Box(modifier.fillMaxSize()) {
         if (item.attachments.isNotEmpty()) HorizontalPager(pager, Modifier.fillMaxSize(), key = { item.attachments[it].name + it }) { page ->
-            DocumentPreviewCanvas(item.attachments[page], Modifier.fillMaxSize())
+            DocumentPreviewCanvas(item.attachments[page], Modifier.fillMaxSize(), showPageControls = controlsVisible, onTap = toggleControls, onPageInteraction = useControls)
         } else Text("No attached file", color = LockrColors.TextSecondary, modifier = Modifier.align(Alignment.Center))
-        if (item.attachments.size > 1) PreviewGlass(Modifier.align(Alignment.TopCenter).padding(top = 78.dp), RoundedCornerShape(20.dp)) {
+        if (controlsVisible && item.attachments.size > 1) PreviewGlass(Modifier.align(Alignment.TopCenter).padding(top = 78.dp), RoundedCornerShape(20.dp)) {
             Text("Page ${pager.currentPage + 1} of ${item.attachments.size}", color = LockrColors.TextPrimary,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         }
 
-        Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FloatingPreviewButton(Icons.Outlined.ChevronLeft, "Back", onBack)
-            PreviewGlass(Modifier.weight(1f), RoundedCornerShape(20.dp)) {
-                Text(item.title, color = LockrColors.TextPrimary, style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 13.dp))
+        AnimatedVisibility(controlsVisible, Modifier.align(Alignment.TopCenter), enter = fadeIn(), exit = fadeOut()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FloatingPreviewButton(Icons.Outlined.ChevronLeft, "Back", onBack)
+                PreviewGlass(Modifier.weight(1f), RoundedCornerShape(20.dp)) {
+                    Text(item.title, color = LockrColors.TextPrimary, style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 15.dp, vertical = 13.dp))
+                }
+                FloatingPreviewButton(Icons.Outlined.Info, "File information") { useControls(); onDetails() }
             }
-            FloatingPreviewButton(Icons.Outlined.Info, "File information", onDetails)
         }
 
         if (extracting || extractionMessage.isNotBlank()) PreviewGlass(
@@ -116,14 +133,16 @@ fun ItemPreviewScreen(
                 color = LockrColors.TextPrimary, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
         }
-        PreviewGlass(Modifier.align(Alignment.BottomCenter).padding(horizontal = 20.dp, vertical = 16.dp)
-            .widthIn(max = 360.dp).fillMaxWidth(), RoundedCornerShape(30.dp)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 9.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                PreviewAction(Icons.Outlined.Edit, "Edit", "Edit document", modifier = Modifier.weight(1f)) { title = item.title; dialog = "edit" }
-                PreviewAction(Icons.Outlined.DocumentScanner, if (extracting) "Reading" else "Scan", "Scan document", !extracting, extracting, Modifier.weight(1f), scan)
-                PreviewAction(Icons.Outlined.IosShare, "Share", "Share document", modifier = Modifier.weight(1f), onClick = { if (item.attachments.size > 1) scope.launch { shareVaultDocument(context, item) } else onSend() })
-                PreviewAction(Icons.Outlined.DeleteOutline, "Delete", "Delete document", modifier = Modifier.weight(1f)) { dialog = "delete" }
+        AnimatedVisibility(controlsVisible, Modifier.align(Alignment.BottomCenter), enter = fadeIn(), exit = fadeOut()) {
+            PreviewGlass(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                .widthIn(max = 360.dp).fillMaxWidth(), RoundedCornerShape(30.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    PreviewAction(Icons.Outlined.Edit, "Edit", "Edit document", modifier = Modifier.weight(1f)) { useControls(); title = item.title; dialog = "edit" }
+                    PreviewAction(Icons.Outlined.DocumentScanner, if (extracting) "Reading" else "Scan", "Scan document", !extracting, extracting, Modifier.weight(1f)) { useControls(); scan() }
+                    PreviewAction(Icons.Outlined.IosShare, "Share", "Share document", modifier = Modifier.weight(1f)) { useControls(); if (item.attachments.size > 1) scope.launch { shareVaultDocument(context, item) } else onSend() }
+                    PreviewAction(Icons.Outlined.DeleteOutline, "Delete", "Delete document", modifier = Modifier.weight(1f)) { useControls(); dialog = "delete" }
+                }
             }
         }
     }
@@ -171,19 +190,22 @@ private fun FloatingPreviewButton(icon: ImageVector, label: String, onClick: () 
 @Composable
 private fun PreviewAction(icon: ImageVector, label: String, description: String,
                           enabled: Boolean = true, busy: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(modifier.height(64.dp).clip(RoundedCornerShape(22.dp))
-        .clickable(enabled = enabled, onClick = onClick).padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+    Column(modifier.height(60.dp).clip(RoundedCornerShape(22.dp))
+        .clickable(enabled = enabled, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = LockrColors.Accent)
         else Icon(icon, description, tint = if (label == "Delete") MaterialTheme.colorScheme.error else LockrColors.TextPrimary,
             modifier = Modifier.size(22.dp))
+        Spacer(Modifier.height(5.dp))
         Text(label, color = LockrColors.TextPrimary, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }
 
 @Composable
 internal fun DocumentPreviewCanvas(attachment: VaultAttachment, modifier: Modifier = Modifier,
-                                   gesturesEnabled: Boolean = true, showPageControls: Boolean = true) {
+                                   gesturesEnabled: Boolean = true, showPageControls: Boolean = true,
+                                   onTap: (() -> Unit)? = null, onPageInteraction: () -> Unit = {}) {
+    val currentTap by rememberUpdatedState(onTap)
     val context = LocalContext.current
     val pdf = attachment.mimeType.equals("application/pdf", true) || attachment.name.endsWith(".pdf", true)
     var pageIndex by remember(attachment.base64Data) { mutableIntStateOf(0) }
@@ -210,7 +232,8 @@ internal fun DocumentPreviewCanvas(attachment: VaultAttachment, modifier: Modifi
             bitmap = null; pageCount = 0; failed = true
         }
     }
-    Box(modifier.clipToBounds().onSizeChanged {
+    Box(modifier.then(if (onTap != null) Modifier.pointerInput(Unit) { detectTapGestures(onTap = { currentTap?.invoke() }) }
+        .semantics { onClick(label = "Show or hide document controls") { currentTap?.invoke(); true } } else Modifier).clipToBounds().onSizeChanged {
         viewport = it
         pan = boundedDocumentPan(pan, zoom, it, bitmap)
     }, contentAlignment = Alignment.Center) {
@@ -224,9 +247,9 @@ internal fun DocumentPreviewCanvas(attachment: VaultAttachment, modifier: Modifi
         if (showPageControls && pdf && pageCount > 1) PreviewGlass(
             Modifier.align(Alignment.BottomCenter).padding(bottom = 112.dp), RoundedCornerShape(22.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { pageIndex-- }, enabled = pageIndex > 0) { Icon(Icons.Outlined.ChevronLeft, "Previous page") }
+                IconButton(onClick = { onPageInteraction(); pageIndex-- }, enabled = pageIndex > 0) { Icon(Icons.Outlined.ChevronLeft, "Previous page") }
                 Text("${pageIndex + 1} / $pageCount", color = LockrColors.TextPrimary, style = MaterialTheme.typography.labelLarge)
-                IconButton(onClick = { pageIndex++ }, enabled = pageIndex < pageCount - 1) { Icon(Icons.Outlined.ChevronRight, "Next page") }
+                IconButton(onClick = { onPageInteraction(); pageIndex++ }, enabled = pageIndex < pageCount - 1) { Icon(Icons.Outlined.ChevronRight, "Next page") }
             }
         }
     }

@@ -1,5 +1,8 @@
 package com.lockr.app
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -67,15 +70,15 @@ fun CategoryScreen(
     val folders = LocalVaultFolders.current
     val prefs = LocalContext.current.getSharedPreferences("lockr_preferences", 0)
     var folder by rememberSaveable(screen) { mutableStateOf(prefs.getString("last_folder", "All folders") ?: "All folders") }
-    var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selection by remember(screen) { mutableStateOf(VaultSelection()) }
+    val selected = selection.ids
     var moving by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     var managing by remember { mutableStateOf(false) }
     var folderToEdit by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("__closed__") }
     var descending by rememberSaveable { mutableStateOf(true) }
-    BackHandler(selected.isNotEmpty()) { selected = emptySet() }
-    LaunchedEffect(items.toList()) { selected = selected.intersect(items.map { it.id }.toSet()) }
+    BackHandler(selection.active) { selection = VaultSelection() }
     LaunchedEffect(folders) { if (folder !in folders && folder !in listOf("All folders", "Unfiled")) { folder = "All folders"; prefs.edit().putString("last_folder", folder).apply() } }
     val catalog = LocalTagCatalog.current
     val filters = if (screen == LockrScreen.DOCUMENTS) listOf("All") + catalog.groups()
@@ -98,61 +101,71 @@ fun CategoryScreen(
             item.metadata["folder"].orEmpty() == if (folder == "Unfiled") "" else folder)
     }.let { if (descending) it.sortedByDescending { item -> item.createdAt } else it.sortedBy { item -> item.title.lowercase() } }
 
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar(title, "${categoryItems.size} saved", onBack = onBack,
-            trailing = { IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, contentDescription = "Search vault") } })
-        if (screen == LockrScreen.ALL_ITEMS || screen == LockrScreen.DOCUMENTS) {
-            CollectionFilters(filters, selectedFilter, { selectedFilter = it },
-                if (screen == LockrScreen.DOCUMENTS) VaultCategory.DOCUMENT else null)
-        }
-
-        if (screen == LockrScreen.DOCUMENTS) {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                (listOf("All folders", "Unfiled") + folders).distinct().forEach { f ->
-                    FilterChip(folder == f, { folder = f; prefs.edit().putString("last_folder", f).apply() }, label = { Text(f) })
-                }
+    val visibleIds = visibleItems.map { it.id }.toSet()
+    LaunchedEffect(visibleIds) { selection = selection.reconcile(visibleIds) }
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 88.dp, bottom = 124.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (screen == LockrScreen.ALL_ITEMS || screen == LockrScreen.DOCUMENTS) item {
+                CollectionFilters(filters, selectedFilter, { selectedFilter = it },
+                    if (screen == LockrScreen.DOCUMENTS) VaultCategory.DOCUMENT else null)
             }
-            Row {
-                TextButton(onClick = { managing = true }) { Text("Manage folders") }
-                TextButton(onClick = { descending = !descending }) { Text(if (descending) "Newest first" else "Name A–Z") }
-                TextButton(onClick = { selected = if (selected.isEmpty()) visibleItems.map { it.id }.toSet() else emptySet() }) { Text(if (selected.isEmpty()) "Select" else "Clear") }
-            }
-        }
-        if (selected.isNotEmpty()) {
-            GlassPanel(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(8.dp)) {
-                    Row { Text("${selected.size} selected", modifier = Modifier.weight(1f)); TextButton(onClick = { selected = visibleItems.map { it.id }.toSet() }) { Text("Select all") } }
-                    Row {
-                        TextButton(onClick = { moving = true }) { Text("Move") }
-                        TextButton(onClick = { actions.download(items.filter { it.id in selected }) }) { Text("Download") }
-                        TextButton(onClick = { deleting = true }) { Text("Delete") }
-                    }
-                }
-            }
-        }
-        if (visibleItems.isEmpty()) {
-            CollectionEmptyState(if (categoryItems.isEmpty()) "Your ${title.lowercase()} will live here" else "No items in this filter",
-                if (categoryItems.isEmpty()) "Tap + to add your first item." else "Choose another tag.", Icons.Outlined.Description)
-        } else {
-            LazyColumn(Modifier.weight(1f).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(visibleItems, key = { it.id }) { item ->
-                    Column(Modifier.combinedClickable(onClick = {
-                        if (selected.isNotEmpty()) selected = if (item.id in selected) selected - item.id else selected + item.id
-                        else onOpenItem(item)
-                    }, onLongClick = { selected = selected + item.id })) {
-                        if (screen == LockrScreen.DOCUMENTS && selected.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(item.id in selected, { checked -> selected = if (checked) selected + item.id else selected - item.id })
-                            Text(item.metadata["folder"].orEmpty().ifBlank { "Unfiled" }, style = MaterialTheme.typography.labelMedium, color = LockrColors.TextSecondary)
+            if (screen == LockrScreen.DOCUMENTS) item {
+                Column {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        (listOf("All folders", "Unfiled") + folders).distinct().forEach { f ->
+                            FilterChip(folder == f, { folder = f; prefs.edit().putString("last_folder", f).apply() }, label = { Text(f) })
                         }
-                        VaultVisualCard(item, onClick = { if (selected.isNotEmpty()) selected = if (item.id in selected) selected - item.id else selected + item.id else onOpenItem(item) }, onLongClick = { selected = selected + item.id })
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { managing = true }) { Text("Folders") }
+                        TextButton(onClick = { descending = !descending }) { Text(if (descending) "Newest first" else "Name A–Z") }
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = { selection = if (selection.active) VaultSelection() else selection.enter() }) {
+                            Icon(Icons.Outlined.Checklist, if (selection.active) "Exit selection" else "Select documents", tint = LockrColors.Accent)
+                        }
                     }
                 }
-                item { Spacer(Modifier.height(120.dp)) }
+            }
+            if (visibleItems.isEmpty()) item {
+                CollectionEmptyState(if (categoryItems.isEmpty()) "Your ${title.lowercase()} will live here" else "No items in this filter",
+                    if (categoryItems.isEmpty()) "Tap + to add your first item." else "Choose another folder or tag.", Icons.Outlined.Description)
+            }
+            items(visibleItems, key = { it.id }) { item ->
+                val selectedItem = item.id in selected
+                Box(Modifier.fillMaxWidth().then(if (selectedItem) Modifier.border(2.dp, LockrColors.Accent, RoundedCornerShape(23.dp)) else Modifier)) {
+                    VaultVisualCard(item, onClick = { if (selection.active) selection = selection.toggle(item.id) else onOpenItem(item) },
+                        onLongClick = { selection = selection.toggle(item.id) })
+                    if (selection.active) FloatingGlass(Modifier.align(Alignment.TopStart).padding(5.dp).size(36.dp), RoundedCornerShape(18.dp)) {
+                        Checkbox(selectedItem, { selection = selection.toggle(item.id) }, modifier = Modifier.fillMaxSize())
+                    }
+                }
             }
         }
+        if (selection.active) {
+            FloatingGlass(Modifier.align(Alignment.TopCenter).padding(top = 8.dp).fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { selection = VaultSelection() }, modifier = Modifier.size(40.dp)) { Icon(Icons.Outlined.Close, "Close selection") }
+                    Text("${selected.size} selected", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { selection = selection.all(visibleIds) }, enabled = visibleIds.isNotEmpty(), modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Outlined.SelectAll, if (selected.containsAll(visibleIds)) "Deselect all" else "Select all")
+                    }
+                    IconButton(enabled = selected.isNotEmpty() && items.filter { it.id in selected }.all { it.category == VaultCategory.DOCUMENT }, onClick = { moving = true }, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Outlined.DriveFileMove, "Move selected documents")
+                    }
+                    IconButton(enabled = items.any { it.id in selected && it.category == VaultCategory.DOCUMENT && it.attachments.isNotEmpty() }, onClick = { actions.download(items.filter { it.id in selected }) }, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Outlined.Download, "Download selected documents")
+                    }
+                    IconButton(enabled = selected.isNotEmpty(), onClick = { deleting = true }, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Outlined.DeleteOutline, "Delete selected items", tint = if (selected.isNotEmpty()) MaterialTheme.colorScheme.error else LockrColors.TextSecondary)
+                    }
+                }
+            }
+        } else StashTopBar(title, "${categoryItems.size} saved", onBack = onBack,
+            trailing = { IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "Search vault") } })
     }
-    if (moving) FolderPicker(folders, { moving = false }) { destination -> actions.move(selected, destination); moving = false; selected = emptySet() }
-    if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text("Delete ${selected.size} items?") }, text = { Text("The selected items and their files will be removed.") }, confirmButton = { TextButton(onClick = { actions.delete(selected); selected = emptySet(); deleting = false }) { Text("Delete") } }, dismissButton = { TextButton(onClick = { deleting = false }) { Text("Cancel") } })
+    if (moving) FolderPicker(folders, { moving = false }) { destination -> actions.move(selected, destination); moving = false; selection = VaultSelection() }
+    if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text("Delete ${selected.size} items?") }, text = { Text("The selected items and their files will be removed.") }, confirmButton = { TextButton(onClick = { actions.delete(selected); selection = VaultSelection(); deleting = false }) { Text("Delete") } }, dismissButton = { TextButton(onClick = { deleting = false }) { Text("Cancel") } })
     if (managing) AlertDialog(onDismissRequest = { managing = false }, title = { Text("Folders") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState())) {
             folders.forEach { f -> Row(verticalAlignment = Alignment.CenterVertically) {

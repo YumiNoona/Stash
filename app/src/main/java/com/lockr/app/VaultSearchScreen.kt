@@ -1,5 +1,7 @@
 package com.lockr.app
 
+import androidx.compose.foundation.layout.Box
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -44,46 +46,49 @@ fun VaultSearchScreen(items: List<VaultItem>, onBack: () -> Unit, onOpenItem: (V
     val matches = items.filter { item ->
         (category == null || item.category == category) && (query.isBlank() || searchableText(item).contains(query, ignoreCase = true))
     }
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar("Search", "Search titles and document text", onBack = onBack, modifier = Modifier.padding(top = 3.dp))
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-            placeholder = { Text("Search your vault") },
-            singleLine = true,
-            shape = RoundedCornerShape(17.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 5.dp)
-        )
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            listOf("All", "Cards", "Documents", "Passwords", "Notes").forEach { option ->
-                FilterChip(selected = filter == option, onClick = { filter = option }, label = { Text(option) })
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxSize().padding(top = 88.dp)) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                placeholder = { Text("Search your vault") },
+                singleLine = true,
+                shape = RoundedCornerShape(17.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp)
+            )
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("All", "Cards", "Documents", "Passwords", "Notes").forEach { option ->
+                    FilterChip(selected = filter == option, onClick = { filter = option }, label = { Text(option) })
+                }
             }
-        }
-        if (matches.isEmpty()) {
-            EmptyCategoryStateForSearch(if (query.isBlank()) "Your search starts here" else "No matches", if (query.isBlank()) "Search stays on this device." else "Try a different word or category.", Modifier.weight(1f).fillMaxWidth().padding(vertical = 16.dp))
-        } else {
-            LazyColumn(Modifier.weight(1f).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                items(matches, key = { it.id }) { item ->
-                    GlassPanel(Modifier.fillMaxWidth(), radius = 19.dp) {
-                        Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(19.dp)).clickable { onOpenItem(item) }.padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(item.title, style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-                                Text(item.category.label, style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary, modifier = Modifier.padding(top = 2.dp))
-                                val snippet = if (item.category == VaultCategory.NOTE) item.metadata["content"] ?: item.metadata["ocrText"] else item.metadata["ocrText"]
-                                if (!snippet.isNullOrBlank() && query.isNotBlank()) {
-                                    Text(snippet.lineSequence().firstOrNull { it.contains(query, true) }?.take(100).orEmpty(), style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary, maxLines = 1, modifier = Modifier.padding(top = 3.dp))
+            if (matches.isEmpty()) {
+                EmptyCategoryStateForSearch(if (query.isBlank()) "Your search starts here" else "No matches", if (query.isBlank()) "Search stays on this device." else "Try a different word or category.", Modifier.weight(1f).fillMaxWidth().padding(vertical = 16.dp))
+            } else {
+                LazyColumn(Modifier.weight(1f).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    items(matches, key = { it.id }) { item ->
+                        GlassPanel(Modifier.fillMaxWidth(), radius = 19.dp) {
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(19.dp)).clickable { onOpenItem(item) }.padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(item.title, style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+                                    Text(item.category.label, style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary, modifier = Modifier.padding(top = 2.dp))
+                                    val snippet = if (item.category == VaultCategory.NOTE) item.metadata["content"] ?: item.metadata["ocrText"] else item.metadata["ocrText"]
+                                    if (!snippet.isNullOrBlank() && query.isNotBlank()) {
+                                        Text(snippet.lineSequence().firstOrNull { it.contains(query, true) }?.take(100).orEmpty(), style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary, maxLines = 1, modifier = Modifier.padding(top = 3.dp))
+                                    }
                                 }
+                                Icon(Icons.AutoMirrored.Outlined.ArrowForwardIos, contentDescription = "Open ${item.title}", tint = LockrColors.TextSecondary)
                             }
-                            Icon(Icons.AutoMirrored.Outlined.ArrowForwardIos, contentDescription = "Open ${item.title}", tint = LockrColors.TextSecondary)
                         }
                     }
                 }
             }
+
         }
+        StashTopBar("Search", "Search titles and document text", onBack = onBack, modifier = Modifier.padding(top = 3.dp))
     }
 }
 

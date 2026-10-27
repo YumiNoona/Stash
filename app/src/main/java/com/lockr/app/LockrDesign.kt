@@ -84,13 +84,13 @@ fun AuroraBackdrop(modifier: Modifier = Modifier) {
 fun VaultBackground(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize()) {
         Image(
-            painter = painterResource(R.drawable.vault_aurora_bg),
+            painter = painterResource(if (LocalDarkTheme.current) R.drawable.vault_dark_aurora_bg else R.drawable.vault_aurora_bg),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-            if (LocalDarkTheme.current) listOf(Color(0xD52D3040), Color(0xDF363042), Color(0xD22D4148))
+            if (LocalDarkTheme.current) listOf(Color(0x10101929), Color(0x20101929), Color(0x10121B2C))
             else listOf(Color(0x18E6DAFF), Color(0x0FFFD9C9), Color(0x16C6F3EA)))))
     }
 }
@@ -119,6 +119,17 @@ fun GlassPanel(
     )
 }
 
+/** A shared floating glass surface for headers and compact controls. */
+@Composable
+fun FloatingGlass(modifier: Modifier = Modifier, shape: RoundedCornerShape = RoundedCornerShape(25.dp), content: @Composable BoxScope.() -> Unit) {
+    val dark = LocalDarkTheme.current
+    val fill = if (dark) listOf(Color(0x68585272), Color(0x78404D65), Color(0x58445965))
+        else listOf(Color(0xB8FFFFFF), Color(0x97E9E2FF), Color(0xA0E5F7F1))
+    val rim = Brush.linearGradient(listOf(Color.White.copy(alpha = if (dark) 0.4f else 0.8f), Color(0x5589CCC9), Color(0x77C9ADF3)))
+    Box(modifier.shadow(8.dp, shape, ambientColor = Color(0x245F4A88), spotColor = Color(0x245F4A88))
+        .clip(shape).background(Brush.linearGradient(fill)).border(1.dp, rim, shape), content = content)
+}
+
 @Composable
 fun StashTopBar(
     title: String,
@@ -127,25 +138,24 @@ fun StashTopBar(
     trailing: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier.fillMaxWidth().height(70.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (onBack != null) {
-            Box(
-                Modifier.size(42.dp).clip(CircleShape).background(LockrColors.Surface.copy(alpha = 0.88f))
-                    .border(1.dp, LockrColors.Line, CircleShape).clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Outlined.ChevronLeft, contentDescription = "Back", tint = LockrColors.TextPrimary, modifier = Modifier.size(27.dp))
+    Row(modifier.fillMaxWidth().height(80.dp).padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (onBack != null) FloatingGlass(Modifier.size(46.dp), RoundedCornerShape(23.dp)) {
+            androidx.compose.material3.IconButton(onClick = onBack, modifier = Modifier.fillMaxSize()) {
+                Icon(Icons.Outlined.ChevronLeft, "Back", tint = LockrColors.TextPrimary, modifier = Modifier.size(27.dp))
             }
-            Spacer(Modifier.width(11.dp))
         }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = LockrColors.TextPrimary, maxLines = 1)
-            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary, maxLines = 1)
+        FloatingGlass(Modifier.weight(1f)) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                Text(title, style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = LockrColors.TextSecondary,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
         }
-        trailing?.invoke()
+        if (trailing != null) FloatingGlass(shape = RoundedCornerShape(24.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) { trailing() }
+        }
     }
 }
 

@@ -165,131 +165,134 @@ fun CardReviewScreen(
     val preview = VaultItem(title.ifBlank { "Your card" }, VaultCategory.CARD, cardType, "",
         lastFour = number.filter(Char::isDigit).takeLast(4), metadata = metadata, attachments = listOfNotNull(customArt), id = "card-draft")
 
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar(if (appearance) "Make it yours" else if (attachments.isEmpty()) "Add a card" else "Review card",
-            subtitle = if (attachments.isEmpty()) "Enter the details you want to keep" else "Check the scan before saving",
-            onBack = { if (appearance) appearance = false else onBack() })
-        Column(Modifier.weight(1f).verticalScroll(formScroll), verticalArrangement = Arrangement.spacedBy(13.dp)) {
-            CardDetailPreview(preview, showFullNumber = showNumber)
-            if (appearance) {
-            CardCustomization(cardArt, { cardArt = it }, motion, { motion = it },
-                customArt, { customArt = it }, lightText, { lightText = it })
-            } else {
-            if (attachments.isNotEmpty()) {
-                Text("Original scan", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-                VaultAttachmentPreview(attachments.first(), Modifier.fillMaxWidth().height(160.dp))
-                if (attachments.size > 1) Text("${attachments.size} files attached", style = MaterialTheme.typography.bodySmall,
-                    color = LockrColors.TextSecondary)
-                Text(if (recognizing) "Reading the image on this device…" else if (recognizedText.isBlank())
-                    "No card details detected. Fill in what you want to save." else "Detected details are suggestions. Check each field.",
-                    style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(formScroll).padding(top = 88.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                CardDetailPreview(preview, showFullNumber = showNumber)
+                if (appearance) {
+                CardCustomization(cardArt, { cardArt = it }, motion, { motion = it },
+                    customArt, { customArt = it }, lightText, { lightText = it })
+                } else {
+                if (attachments.isNotEmpty()) {
+                    Text("Original scan", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+                    VaultAttachmentPreview(attachments.first(), Modifier.fillMaxWidth().height(160.dp))
+                    if (attachments.size > 1) Text("${attachments.size} files attached", style = MaterialTheme.typography.bodySmall,
+                        color = LockrColors.TextSecondary)
+                    Text(if (recognizing) "Reading the image on this device…" else if (recognizedText.isBlank())
+                        "No card details detected. Fill in what you want to save." else "Detected details are suggestions. Check each field.",
+                        style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
+                }
+                Column {
+                    Text("Card type", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("Credit", "Debit", "ID Card", "Other").forEach { type ->
+                            FilterChip(selected = cardType == type, onClick = {
+                                cardType = type
+                                if (isPaymentCardType(type)) numberField = normalizedPaymentCardValue(numberField, network)
+                                saveNotice = ""
+                            },
+                                label = { Text(type, maxLines = 1, softWrap = false) })
+                        }
+                    }
+                }
+                OutlinedTextField(holder, { holder = it.take(60) }, label = { Text("Name on card (optional)") },
+                    singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(issuer, { issuer = it.take(60) }, label = { Text("Issuer or bank (optional)") },
+                    singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(partner, { partner = it.take(60) }, label = { Text("Partner brand (optional)") },
+                    placeholder = { Text("Amazon Pay, for example") }, singleLine = true,
+                    colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(numberField, {
+                    if (payment) {
+                        val digits = it.text.filter(Char::isDigit)
+                        if (!networkSelectedByUser) network = cardNetwork(digits)
+                        numberField = normalizedPaymentCardValue(it, network)
+                    } else numberField = it.copy(text = it.text.take(40),
+                        selection = TextRange(it.selection.start.coerceAtMost(40), it.selection.end.coerceAtMost(40)))
+                    saveNotice = ""
+                },
+                    label = { Text(if (payment) "Card number *" else if (cardType == "ID Card") "ID number (optional)" else "Card number (optional)") },
+                    placeholder = if (payment) ({ Text("0000 0000 0000 0000") }) else null,
+                    singleLine = true, isError = saveAttempted && validation.numberError != null,
+                    supportingText = validation.numberError.takeIf { saveAttempted }?.let { error -> { Text(error) } },
+                    visualTransformation = if (payment) PaymentCardVisualTransformation(masked = !showNumber)
+                        else if (showNumber) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = if (payment) KeyboardType.Number else KeyboardType.Text),
+                    trailingIcon = { IconButton(onClick = { showNumber = !showNumber }) {
+                        Icon(if (showNumber) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = if (showNumber) "Hide number" else "Show number")
+                    } }, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    OutlinedTextField(expiryDigits, { expiryDigits = cardExpiryDigits(it); saveNotice = "" },
+                        label = { Text(if (payment) "Expiry *" else "Expiry") },
+                        placeholder = { Text("MM/YY") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        visualTransformation = ExpiryVisualTransformation,
+                        isError = saveAttempted && validation.expiryError != null,
+                        supportingText = validation.expiryError.takeIf { saveAttempted }?.let { error -> { Text(error) } },
+                        singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.weight(1f))
+                    CardNetworkDropdown(network, payment, saveAttempted && validation.networkError != null,
+                        fieldColors, Modifier.weight(1f)) { selected ->
+                        networkSelectedByUser = true
+                        network = selected
+                        if (payment) numberField = normalizedPaymentCardValue(numberField, network)
+                        saveNotice = ""
+                    }
+                }
+                if (payment) {
+                    OutlinedTextField(cvc, { cvc = it.filter(Char::isDigit).take(4); saveNotice = "" },
+                        label = { Text("CVC (optional)") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        visualTransformation = if (showCvc) VisualTransformation.None else PasswordVisualTransformation(),
+                        isError = saveAttempted && validation.cvcError != null,
+                        supportingText = validation.cvcError.takeIf { saveAttempted }?.let { error -> { Text(error) } },
+                        trailingIcon = { IconButton(onClick = { showCvc = !showCvc }) {
+                            Icon(if (showCvc) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                contentDescription = if (showCvc) "Hide CVC" else "Show CVC")
+                        } }, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+                }
+                TagEditor(VaultCategory.CARD, tags, { tags = it })
+                validation.warnings.forEach { warning ->
+                    Text(warning, style = MaterialTheme.typography.bodySmall, color = Color(0xFF436A8A))
+                }
+                }
+                Spacer(Modifier.height(28.dp))
             }
-            Column {
-                Text("Card type", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("Credit", "Debit", "ID Card", "Other").forEach { type ->
-                        FilterChip(selected = cardType == type, onClick = {
-                            cardType = type
-                            if (isPaymentCardType(type)) numberField = normalizedPaymentCardValue(numberField, network)
-                            saveNotice = ""
-                        },
-                            label = { Text(type, maxLines = 1, softWrap = false) })
+            if ((saveAttempted && !validation.isValid) || saveNotice.isNotBlank()) {
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
+                    .background(LockrColors.Surface).border(1.dp, Color(0xFFFFD5D5), RoundedCornerShape(17.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)) {
+                    Text("Before saving", style = MaterialTheme.typography.labelLarge, color = LockrColors.TextPrimary)
+                    if (saveNotice.isNotBlank()) Text(saveNotice, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error)
+                    else validation.messages.forEach { message ->
+                        Text("• $message", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
-            OutlinedTextField(holder, { holder = it.take(60) }, label = { Text("Name on card (optional)") },
-                singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(issuer, { issuer = it.take(60) }, label = { Text("Issuer or bank (optional)") },
-                singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(partner, { partner = it.take(60) }, label = { Text("Partner brand (optional)") },
-                placeholder = { Text("Amazon Pay, for example") }, singleLine = true,
-                colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(numberField, {
-                if (payment) {
-                    val digits = it.text.filter(Char::isDigit)
-                    if (!networkSelectedByUser) network = cardNetwork(digits)
-                    numberField = normalizedPaymentCardValue(it, network)
-                } else numberField = it.copy(text = it.text.take(40),
-                    selection = TextRange(it.selection.start.coerceAtMost(40), it.selection.end.coerceAtMost(40)))
-                saveNotice = ""
+            if (appearance) androidx.compose.material3.TextButton(enabled = !saving, onClick = {
+                onSave(title.trim(), metadata - "cardArtAttachment" + mapOf("cardArt" to "BASIC", "cardMotion" to "NONE"), attachments)
+            }, modifier = Modifier.fillMaxWidth()) { Text("Skip · use a basic card") }
+            Button(enabled = !saving, onClick = {
+                if (recognizing) saveNotice = "Wait for the card scan to finish"
+                else if (!validation.isValid) saveAttempted = true
+                else if (!appearance) { focus.clearFocus(); appearance = true }
+                else {
+                    val allAttachments = withCardArt(attachments, null, customArt)
+                    if (allAttachments.size > MAX_VAULT_ATTACHMENT_COUNT || allAttachments.sumOf { it.byteCount } > MAX_VAULT_TOTAL_ATTACHMENT_BYTES)
+                        saveNotice = "Original scans and artwork together must fit within 20 files and 24 MB. Choose smaller artwork."
+                    else onSave(title.trim(), metadata, allAttachments)
+                }
             },
-                label = { Text(if (payment) "Card number *" else if (cardType == "ID Card") "ID number (optional)" else "Card number (optional)") },
-                placeholder = if (payment) ({ Text("0000 0000 0000 0000") }) else null,
-                singleLine = true, isError = saveAttempted && validation.numberError != null,
-                supportingText = validation.numberError.takeIf { saveAttempted }?.let { error -> { Text(error) } },
-                visualTransformation = if (payment) PaymentCardVisualTransformation(masked = !showNumber)
-                    else if (showNumber) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = if (payment) KeyboardType.Number else KeyboardType.Text),
-                trailingIcon = { IconButton(onClick = { showNumber = !showNumber }) {
-                    Icon(if (showNumber) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                        contentDescription = if (showNumber) "Hide number" else "Show number")
-                } }, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 10.dp).height(54.dp)) {
+                Text(if (appearance) "Finish and save" else "Continue")
+            }
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                OutlinedTextField(expiryDigits, { expiryDigits = cardExpiryDigits(it); saveNotice = "" },
-                    label = { Text(if (payment) "Expiry *" else "Expiry") },
-                    placeholder = { Text("MM/YY") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    visualTransformation = ExpiryVisualTransformation,
-                    isError = saveAttempted && validation.expiryError != null,
-                    supportingText = validation.expiryError.takeIf { saveAttempted }?.let { error -> { Text(error) } },
-                    singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.weight(1f))
-                CardNetworkDropdown(network, payment, saveAttempted && validation.networkError != null,
-                    fieldColors, Modifier.weight(1f)) { selected ->
-                    networkSelectedByUser = true
-                    network = selected
-                    if (payment) numberField = normalizedPaymentCardValue(numberField, network)
-                    saveNotice = ""
-                }
-            }
-            if (payment) {
-                OutlinedTextField(cvc, { cvc = it.filter(Char::isDigit).take(4); saveNotice = "" },
-                    label = { Text("CVC (optional)") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    visualTransformation = if (showCvc) VisualTransformation.None else PasswordVisualTransformation(),
-                    isError = saveAttempted && validation.cvcError != null,
-                    supportingText = validation.cvcError.takeIf { saveAttempted }?.let { error -> { Text(error) } },
-                    trailingIcon = { IconButton(onClick = { showCvc = !showCvc }) {
-                        Icon(if (showCvc) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                            contentDescription = if (showCvc) "Hide CVC" else "Show CVC")
-                    } }, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-            }
-            TagEditor(VaultCategory.CARD, tags, { tags = it })
-            validation.warnings.forEach { warning ->
-                Text(warning, style = MaterialTheme.typography.bodySmall, color = Color(0xFF436A8A))
-            }
-            }
-            Spacer(Modifier.height(28.dp))
         }
-        if ((saveAttempted && !validation.isValid) || saveNotice.isNotBlank()) {
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp))
-                .background(LockrColors.Surface).border(1.dp, Color(0xFFFFD5D5), RoundedCornerShape(17.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp)) {
-                Text("Before saving", style = MaterialTheme.typography.labelLarge, color = LockrColors.TextPrimary)
-                if (saveNotice.isNotBlank()) Text(saveNotice, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error)
-                else validation.messages.forEach { message ->
-                    Text("• $message", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                }
-            }
-        }
-        if (appearance) androidx.compose.material3.TextButton(enabled = !saving, onClick = {
-            onSave(title.trim(), metadata - "cardArtAttachment" + mapOf("cardArt" to "BASIC", "cardMotion" to "NONE"), attachments)
-        }, modifier = Modifier.fillMaxWidth()) { Text("Skip · use a basic card") }
-        Button(enabled = !saving, onClick = {
-            if (recognizing) saveNotice = "Wait for the card scan to finish"
-            else if (!validation.isValid) saveAttempted = true
-            else if (!appearance) { focus.clearFocus(); appearance = true }
-            else {
-                val allAttachments = withCardArt(attachments, null, customArt)
-                if (allAttachments.size > MAX_VAULT_ATTACHMENT_COUNT || allAttachments.sumOf { it.byteCount } > MAX_VAULT_TOTAL_ATTACHMENT_BYTES)
-                    saveNotice = "Original scans and artwork together must fit within 20 files and 24 MB. Choose smaller artwork."
-                else onSave(title.trim(), metadata, allAttachments)
-            }
-        },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 10.dp).height(54.dp)) {
-            Text(if (appearance) "Finish and save" else "Continue")
-        }
+        StashTopBar(if (appearance) "Make it yours" else if (attachments.isEmpty()) "Add a card" else "Review card",
+            subtitle = if (attachments.isEmpty()) "Enter the details you want to keep" else "Check the scan before saving",
+            onBack = { if (appearance) appearance = false else onBack() })
     }
 }
 

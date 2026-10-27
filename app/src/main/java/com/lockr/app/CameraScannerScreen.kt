@@ -115,79 +115,74 @@ fun CameraScannerScreen(
     }
     BackHandler { backAndClean() }
 
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = backAndClean, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = LockrColors.TextPrimary)
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Color(0xFF263640))) {
+                if (hasPermission) AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
+                else Column(Modifier.align(Alignment.Center).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Outlined.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(34.dp))
+                    Text(cameraError ?: "Camera permission is needed to scan.", color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
+                    Button(onClick = { cameraPermission.launch(Manifest.permission.CAMERA) }, modifier = Modifier.padding(top = 12.dp)) { Text("Allow camera") }
+                }
+                cameraError?.takeIf { hasPermission }?.let {
+                    Text(it, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Center).padding(24.dp))
+                }
+                Box(if (isCard) Modifier.align(Alignment.Center).fillMaxWidth(0.88f).aspectRatio(1.58f)
+                    .border(2.dp, Color.White.copy(alpha = 0.87f), RoundedCornerShape(21.dp))
+                else Modifier.align(Alignment.Center).fillMaxWidth(0.82f).fillMaxSize(0.72f)
+                    .border(1.dp, Color.White.copy(alpha = 0.75f), RoundedCornerShape(12.dp)))
             }
-            Column(Modifier.weight(1f).padding(start = 4.dp)) {
-                Text(if (isCard) "Scan card" else "Scan documents", style = MaterialTheme.typography.headlineSmall, color = LockrColors.TextPrimary)
-                Text(if (isCard) "Capture the front, then review" else "Capture each page, then review", style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
-            }
-            if (!isCard && capturedPages.isNotEmpty()) {
-                IconButton(onClick = { capturedPages.removeAt(capturedPages.lastIndex).delete() }) {
-                    Icon(Icons.Outlined.DeleteOutline, contentDescription = "Remove last page", tint = LockrColors.TextPrimary)
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (isCard) "Position the card inside the frame" else if (capturedPages.isEmpty()) "Position the page in the frame" else "${capturedPages.size} page${if (capturedPages.size == 1) "" else "s"} captured",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = LockrColors.TextSecondary,
+                    modifier = Modifier.weight(1f)
+                )
+                if (!isCard && capturedPages.isNotEmpty()) {
+                    Button(onClick = { onReviewPages(capturedPages.toList()) }) {
+                        Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("Review", modifier = Modifier.padding(start = 6.dp))
+                    }
                 }
             }
-        }
-        Box(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Color(0xFF263640))) {
-            if (hasPermission) AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
-            else Column(Modifier.align(Alignment.Center).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Outlined.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(34.dp))
-                Text(cameraError ?: "Camera permission is needed to scan.", color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
-                Button(onClick = { cameraPermission.launch(Manifest.permission.CAMERA) }, modifier = Modifier.padding(top = 12.dp)) { Text("Allow camera") }
-            }
-            cameraError?.takeIf { hasPermission }?.let {
-                Text(it, color = Color.White, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.align(Alignment.Center).padding(24.dp))
-            }
-            Box(if (isCard) Modifier.align(Alignment.Center).fillMaxWidth(0.88f).aspectRatio(1.58f)
-                .border(2.dp, Color.White.copy(alpha = 0.87f), RoundedCornerShape(21.dp))
-            else Modifier.align(Alignment.Center).fillMaxWidth(0.82f).fillMaxSize(0.72f)
-                .border(1.dp, Color.White.copy(alpha = 0.75f), RoundedCornerShape(12.dp)))
-        }
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (isCard) "Position the card inside the frame" else if (capturedPages.isEmpty()) "Position the page in the frame" else "${capturedPages.size} page${if (capturedPages.size == 1) "" else "s"} captured",
-                style = MaterialTheme.typography.bodyMedium,
-                color = LockrColors.TextSecondary,
-                modifier = Modifier.weight(1f)
-            )
-            if (!isCard && capturedPages.isNotEmpty()) {
-                Button(onClick = { onReviewPages(capturedPages.toList()) }) {
-                    Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text("Review", modifier = Modifier.padding(start = 6.dp))
-                }
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-        Box(Modifier.fillMaxWidth().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
-            Box(
-                Modifier.size(72.dp).clip(CircleShape).background(Color.White).border(5.dp, LockrColors.SeaGlass, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                IconButton(onClick = {
-                    if (captureBusy) return@IconButton
-                    captureBusy = true
-                    val file = File(context.cacheDir, "stash-scan-${UUID.randomUUID()}.jpg")
-                    val options = ImageCapture.OutputFileOptions.Builder(file).build()
-                    capture.takePicture(options, ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageSavedCallback {
-                        override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                            if (isCard) onReviewPages(listOf(file)) else capturedPages.add(file)
-                            cameraError = null
-                            captureBusy = false
-                        }
+            Spacer(Modifier.height(4.dp))
+            Box(Modifier.fillMaxWidth().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.size(72.dp).clip(CircleShape).background(Color.White).border(5.dp, LockrColors.SeaGlass, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    IconButton(onClick = {
+                        if (captureBusy) return@IconButton
+                        captureBusy = true
+                        val file = File(context.cacheDir, "stash-scan-${UUID.randomUUID()}.jpg")
+                        val options = ImageCapture.OutputFileOptions.Builder(file).build()
+                        capture.takePicture(options, ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageSavedCallback {
+                            override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                                if (isCard) onReviewPages(listOf(file)) else capturedPages.add(file)
+                                cameraError = null
+                                captureBusy = false
+                            }
 
-                        override fun onError(exception: ImageCaptureException) {
-                            file.delete()
-                            cameraError = "Could not capture this page. Please try again."
-                            captureBusy = false
-                        }
-                    })
-                }, modifier = Modifier.fillMaxSize()) {
-                    Icon(Icons.Outlined.CameraAlt, contentDescription = if (isCard) "Capture card" else "Capture page", tint = LockrColors.TextPrimary, modifier = Modifier.size(29.dp))
+                            override fun onError(exception: ImageCaptureException) {
+                                file.delete()
+                                cameraError = "Could not capture this page. Please try again."
+                                captureBusy = false
+                            }
+                        })
+                    }, modifier = Modifier.fillMaxSize()) {
+                        Icon(Icons.Outlined.CameraAlt, contentDescription = if (isCard) "Capture card" else "Capture page", tint = LockrColors.TextPrimary, modifier = Modifier.size(29.dp))
+                    }
                 }
             }
         }
+        StashTopBar(if (isCard) "Scan card" else "Scan documents",
+            if (isCard) "Capture the front, then review" else "Capture each page, then review", onBack = backAndClean,
+            trailing = if (!isCard && capturedPages.isNotEmpty()) ({
+                IconButton(onClick = { capturedPages.removeAt(capturedPages.lastIndex).delete() }) {
+                    Icon(Icons.Outlined.DeleteOutline, "Remove last page", tint = LockrColors.TextPrimary)
+                }
+            }) else null)
     }
 }
 

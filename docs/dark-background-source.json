@@ -1,0 +1,6 @@
+{
+  "tool": "built-in imagegen",
+  "prompt": "Use case: stylized-concept. Asset type: full-screen portrait background artwork for a premium private wallet app in dark mode, 9:20 vertical, edge-to-edge. Original sophisticated Y2K aurora glass artwork: luminous sculptural iridescent glass ribbons flowing diagonally along the outer edges, translucent rounded liquid-glass forms, softly refracted cyan, periwinkle, dusty violet and subtle rose highlights against deep charcoal indigo. A visibly rich dark design, not pitch black and not a pale wallpaper with a dark tint. Soft atmospheric depth and satin reflections, deliberate calm low-contrast central region so white app text and cards remain readable. Compose artwork throughout the full tall canvas with restrained highlights near upper right and lower left. Beautiful elegant material rendering. No text, lettering, logos, icons, cards, UI mockup, borders, characters, botanical or geometric vector placeholders.",
+  "source_id": "exec-3373925c-e716-4c2c-839f-154da2e9ad50.png",
+  "asset": "app/src/main/res/drawable-nodpi/vault_dark_aurora_bg.webp"
+}

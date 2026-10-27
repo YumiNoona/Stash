@@ -40,7 +40,7 @@ private val LockrLightColors = lightColorScheme(
     primaryContainer = Color(0xFFE7DAFF), onPrimaryContainer = Color(0xFF34214F),
     background = Color(0xFFF7F5FC),
     onBackground = Color(0xFF17202D),
-    surface = Color(0xFFF8FFFFFF),
+    surface = Color(0xF8FFFFFF),
     onSurface = Color(0xFF17202D),
     surfaceVariant = Color(0xFFEFF3F8),
     onSurfaceVariant = Color(0xFF4F5D70),

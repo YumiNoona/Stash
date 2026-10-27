@@ -161,22 +161,145 @@ fun VaultItemDetailScreen(
     }
 
     val originalFiles = item.attachments.filterNot { it.name == item.metadata["cardArtAttachment"] }
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 88.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                if (item.category == VaultCategory.CARD) {
+                    CardDetailPreview(item, Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 22.dp),
+                        showFullNumber = cardNumberVisible, showCvc = cardCvcRevealed && authorized,
+                        onToggleNumber = if (item.metadata["cardNumber"].isNullOrBlank()) null else toggleCardNumber)
+                }
+                if (item.category == VaultCategory.CARD) {
+                    GlassPanel(Modifier.fillMaxWidth(), radius = 26.dp) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 19.dp, vertical = 6.dp)) {
+                            val number = item.metadata["cardNumber"].orEmpty()
+                            val lastFour = item.lastFour.ifBlank { number.takeLast(4).ifBlank { item.metadata["lastFour"].orEmpty() } }
+                            DetailField("Card Number", if (cardNumberVisible && number.isNotBlank())
+                                if (paymentCard) formatPaymentCardNumber(number, item.metadata["network"].orEmpty()) else number
+                                else "••••  ••••  ••••  ${lastFour.ifBlank { "••••" }}",
+                                onCopy = {
+                                    if (number.isNotBlank()) {
+                                        if (authorized || !hideCardNumber) { copyPrivateText(context, number, autoClearClipboard); feedback = "Card number copied" }
+                                        else onAuthenticate()
+                                    } else feedback = "Full card number was not saved"
+                                }, onReveal = if (number.isBlank()) null else toggleCardNumber,
+                                revealed = cardNumberVisible)
+                            CardDetailDivider()
+                            DetailField("Card Holder Name", item.metadata["cardholder"].orEmpty().ifBlank { "Not added" },
+                                onCopy = { item.metadata["cardholder"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard); feedback = "Name copied" } },
+                                onReveal = null, revealed = false)
+                            CardDetailDivider()
+                            DetailField("Issuer / Bank", item.metadata["issuer"].orEmpty().ifBlank { "Not added" },
+                                onCopy = { item.metadata["issuer"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard) } },
+                                onReveal = null, revealed = false)
+                            CardDetailDivider()
+                            DetailField("Expiry Date", item.metadata["expiry"].orEmpty().ifBlank { "Not added" },
+                                onCopy = { item.metadata["expiry"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard); feedback = "Expiry copied" } },
+                                onReveal = null, revealed = false)
+                            CardDetailDivider()
+                            val cvc = item.metadata["cardCvc"].orEmpty()
+                            DetailField("CVC", if (cvc.isBlank()) "Not added" else if (cardCvcRevealed && authorized) cvc else "•••",
+                                onCopy = if (cvc.isBlank()) null else ({
+                                    if (authorized) { copyPrivateText(context, cvc, autoClearClipboard); feedback = "CVC copied" }
+                                    else onAuthenticate()
+                                }),
+                                onReveal = if (cvc.isBlank()) null else ({
+                                    if (cardCvcRevealed) cardCvcRevealed = false
+                                    else if (authorized) cardCvcRevealed = true
+                                    else { pendingCardReveal = "cvc"; onAuthenticate() }
+                                }),
+                                revealed = cardCvcRevealed && authorized)
+                        }
+                    }
+                } else if (item.metadata.isNotEmpty()) {
+                    GlassPanel(Modifier.fillMaxWidth(), radius = 22.dp) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp)) {
+                            item.metadata.entries
+                                .filter { it.key !in setOf("ocrText", "password", "securityCode", "cvv", "cvc", "cardCvc", "content", "lastFour") && it.value.isNotBlank() }
+                                .forEach { (key, value) ->
+                                    val sensitive = key in setOf("cardNumber", "idNumber", "documentNumber")
+                                    DetailField(
+                                        key.toFieldLabel(),
+                                        if (sensitive && !revealed) "••••  ••••  ••••  ${value.takeLast(4)}" else value,
+                                        onCopy = {
+                                            if (sensitive && !authorized) onAuthenticate()
+                                            else {
+                                                copyPrivateText(context, value, autoClearClipboard)
+                                                feedback = if (autoClearClipboard) "Copied · clipboard clears in 30 seconds" else "Copied"
+                                            }
+                                        },
+                                        onReveal = if (sensitive) {
+                                            {
+                                                if (authorized) revealed = !revealed else onAuthenticate()
+                                            }
+                                        } else null,
+                                        revealed = revealed
+                                    )
+                                }
+                            val password = item.metadata["password"].orEmpty()
+                            if (password.isNotBlank()) {
+                                DetailField(
+                                    "Password",
+                                    if (revealed && authorized) password else "••••••••••••",
+                                    onCopy = {
+                                        if (authorized) {
+                                            copyPrivateText(context, password, autoClearClipboard)
+                                            feedback = if (autoClearClipboard) "Copied · clipboard clears in 30 seconds" else "Copied"
+                                        } else onAuthenticate()
+                                    },
+                                    onReveal = { if (authorized) revealed = !revealed else onAuthenticate() },
+                                    revealed = revealed && authorized
+                                )
+                            }
+                            val note = item.metadata["content"] ?: item.metadata["notes"]
+                            note?.takeIf { it.isNotBlank() }?.let { text ->
+                                Text("Note", style = MaterialTheme.typography.labelLarge, color = LockrColors.TextSecondary, modifier = Modifier.padding(top = 13.dp))
+                                Text(text, style = MaterialTheme.typography.bodyLarge, color = LockrColors.TextPrimary, modifier = Modifier.padding(top = 3.dp, bottom = 13.dp))
+                            }
+                        }
+                    }
+                }
+                item.metadata["ocrText"]?.takeIf { item.category != VaultCategory.CARD && it.isNotBlank() }?.let { text ->
+                    OcrTextCard(text, extracting = extractingFields,
+                        onExtractFields = {
+                            if (!extractingFields) scope.launch {
+                                extractingFields = true
+                                val freshText = item.attachments.take(20).mapNotNull { attachment ->
+                                    runCatching { recognizeAttachmentText(context, attachment) }.getOrNull()
+                                        ?.takeIf(String::isNotBlank)
+                                }.joinToString("\n\n").take(120_000)
+                                fieldExtractionText = freshText.ifBlank { text }
+                                showFieldExtraction = true
+                                extractingFields = false
+                            }
+                        },
+                        onCopyAll = {
+                            copyPrivateText(context, text, autoClearClipboard)
+                            feedback = "Full extracted text copied"
+                        })
+                }
+                if (originalFiles.isNotEmpty() && (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) || (authorized && (item.category != VaultCategory.CARD || showOriginal)))) {
+                    Column {
+                        Text("Original files", style = MaterialTheme.typography.titleMedium, color = LockrColors.TextPrimary, modifier = Modifier.padding(bottom = 7.dp))
+                        VaultAttachmentsSection(originalFiles, Modifier.fillMaxWidth())
+                    }
+                } else if (item.attachments.isNotEmpty() && item.category != VaultCategory.CARD) {
+                    Button(onClick = onAuthenticate, modifier = Modifier.fillMaxWidth()) { Text("Unlock attached file") }
+                }
+                if (feedback.isNotBlank()) Text(feedback, style = MaterialTheme.typography.bodySmall, color = LockrColors.Accent)
+                Spacer(Modifier.height(20.dp))
+            }
+
+        }
         if (item.category == VaultCategory.CARD) {
             Row(Modifier.fillMaxWidth().height(69.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(45.dp).shadow(6.dp, CircleShape).clip(CircleShape)
-                    .background(LockrColors.Surface.copy(alpha = 0.82f))
-                    .border(1.dp, LockrColors.Surface.copy(alpha = 0.96f), CircleShape)
-                    .clickable(onClick = onBack), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.ChevronLeft, contentDescription = "Back", modifier = Modifier.size(27.dp))
+                FloatingGlass(Modifier.size(46.dp).clickable(onClick = onBack), RoundedCornerShape(23.dp)) {
+                    Icon(Icons.Outlined.ChevronLeft, contentDescription = "Back", modifier = Modifier.align(Alignment.Center).size(27.dp))
                 }
                 Spacer(Modifier.weight(1f))
                 Box {
-                    Box(Modifier.size(45.dp).shadow(6.dp, CircleShape).clip(CircleShape)
-                        .background(LockrColors.Surface.copy(alpha = 0.82f))
-                        .border(1.dp, LockrColors.Surface.copy(alpha = 0.96f), CircleShape)
-                        .clickable { showMenu = true }, contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.MoreVert, contentDescription = "Card options")
+                    FloatingGlass(Modifier.size(46.dp).clickable { showMenu = true }, RoundedCornerShape(23.dp)) {
+                        Icon(Icons.Outlined.MoreVert, contentDescription = "Card options", modifier = Modifier.align(Alignment.Center))
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         if (originalFiles.isNotEmpty()) DropdownMenuItem(text = { Text("View original file") },
@@ -203,132 +326,6 @@ fun VaultItemDetailScreen(
                 IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Outlined.DeleteOutline, contentDescription = "Delete item", tint = LockrColors.TextPrimary) }
             }
         )
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            if (item.category == VaultCategory.CARD) {
-                CardDetailPreview(item, Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 22.dp),
-                    showFullNumber = cardNumberVisible, showCvc = cardCvcRevealed && authorized,
-                    onToggleNumber = if (item.metadata["cardNumber"].isNullOrBlank()) null else toggleCardNumber)
-            }
-            if (item.category == VaultCategory.CARD) {
-                GlassPanel(Modifier.fillMaxWidth(), radius = 26.dp) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 19.dp, vertical = 6.dp)) {
-                        val number = item.metadata["cardNumber"].orEmpty()
-                        val lastFour = item.lastFour.ifBlank { number.takeLast(4).ifBlank { item.metadata["lastFour"].orEmpty() } }
-                        DetailField("Card Number", if (cardNumberVisible && number.isNotBlank())
-                            if (paymentCard) formatPaymentCardNumber(number, item.metadata["network"].orEmpty()) else number
-                            else "••••  ••••  ••••  ${lastFour.ifBlank { "••••" }}",
-                            onCopy = {
-                                if (number.isNotBlank()) {
-                                    if (authorized || !hideCardNumber) { copyPrivateText(context, number, autoClearClipboard); feedback = "Card number copied" }
-                                    else onAuthenticate()
-                                } else feedback = "Full card number was not saved"
-                            }, onReveal = if (number.isBlank()) null else toggleCardNumber,
-                            revealed = cardNumberVisible)
-                        CardDetailDivider()
-                        DetailField("Card Holder Name", item.metadata["cardholder"].orEmpty().ifBlank { "Not added" },
-                            onCopy = { item.metadata["cardholder"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard); feedback = "Name copied" } },
-                            onReveal = null, revealed = false)
-                        CardDetailDivider()
-                        DetailField("Issuer / Bank", item.metadata["issuer"].orEmpty().ifBlank { "Not added" },
-                            onCopy = { item.metadata["issuer"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard) } },
-                            onReveal = null, revealed = false)
-                        CardDetailDivider()
-                        DetailField("Expiry Date", item.metadata["expiry"].orEmpty().ifBlank { "Not added" },
-                            onCopy = { item.metadata["expiry"]?.takeIf { it.isNotBlank() }?.let { copyPrivateText(context, it, autoClearClipboard); feedback = "Expiry copied" } },
-                            onReveal = null, revealed = false)
-                        CardDetailDivider()
-                        val cvc = item.metadata["cardCvc"].orEmpty()
-                        DetailField("CVC", if (cvc.isBlank()) "Not added" else if (cardCvcRevealed && authorized) cvc else "•••",
-                            onCopy = if (cvc.isBlank()) null else ({
-                                if (authorized) { copyPrivateText(context, cvc, autoClearClipboard); feedback = "CVC copied" }
-                                else onAuthenticate()
-                            }),
-                            onReveal = if (cvc.isBlank()) null else ({
-                                if (cardCvcRevealed) cardCvcRevealed = false
-                                else if (authorized) cardCvcRevealed = true
-                                else { pendingCardReveal = "cvc"; onAuthenticate() }
-                            }),
-                            revealed = cardCvcRevealed && authorized)
-                    }
-                }
-            } else if (item.metadata.isNotEmpty()) {
-                GlassPanel(Modifier.fillMaxWidth(), radius = 22.dp) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp)) {
-                        item.metadata.entries
-                            .filter { it.key !in setOf("ocrText", "password", "securityCode", "cvv", "cvc", "cardCvc", "content", "lastFour") && it.value.isNotBlank() }
-                            .forEach { (key, value) ->
-                                val sensitive = key in setOf("cardNumber", "idNumber", "documentNumber")
-                                DetailField(
-                                    key.toFieldLabel(),
-                                    if (sensitive && !revealed) "••••  ••••  ••••  ${value.takeLast(4)}" else value,
-                                    onCopy = {
-                                        if (sensitive && !authorized) onAuthenticate()
-                                        else {
-                                            copyPrivateText(context, value, autoClearClipboard)
-                                            feedback = if (autoClearClipboard) "Copied · clipboard clears in 30 seconds" else "Copied"
-                                        }
-                                    },
-                                    onReveal = if (sensitive) {
-                                        {
-                                            if (authorized) revealed = !revealed else onAuthenticate()
-                                        }
-                                    } else null,
-                                    revealed = revealed
-                                )
-                            }
-                        val password = item.metadata["password"].orEmpty()
-                        if (password.isNotBlank()) {
-                            DetailField(
-                                "Password",
-                                if (revealed && authorized) password else "••••••••••••",
-                                onCopy = {
-                                    if (authorized) {
-                                        copyPrivateText(context, password, autoClearClipboard)
-                                        feedback = if (autoClearClipboard) "Copied · clipboard clears in 30 seconds" else "Copied"
-                                    } else onAuthenticate()
-                                },
-                                onReveal = { if (authorized) revealed = !revealed else onAuthenticate() },
-                                revealed = revealed && authorized
-                            )
-                        }
-                        val note = item.metadata["content"] ?: item.metadata["notes"]
-                        note?.takeIf { it.isNotBlank() }?.let { text ->
-                            Text("Note", style = MaterialTheme.typography.labelLarge, color = LockrColors.TextSecondary, modifier = Modifier.padding(top = 13.dp))
-                            Text(text, style = MaterialTheme.typography.bodyLarge, color = LockrColors.TextPrimary, modifier = Modifier.padding(top = 3.dp, bottom = 13.dp))
-                        }
-                    }
-                }
-            }
-            item.metadata["ocrText"]?.takeIf { item.category != VaultCategory.CARD && it.isNotBlank() }?.let { text ->
-                OcrTextCard(text, extracting = extractingFields,
-                    onExtractFields = {
-                        if (!extractingFields) scope.launch {
-                            extractingFields = true
-                            val freshText = item.attachments.take(20).mapNotNull { attachment ->
-                                runCatching { recognizeAttachmentText(context, attachment) }.getOrNull()
-                                    ?.takeIf(String::isNotBlank)
-                            }.joinToString("\n\n").take(120_000)
-                            fieldExtractionText = freshText.ifBlank { text }
-                            showFieldExtraction = true
-                            extractingFields = false
-                        }
-                    },
-                    onCopyAll = {
-                        copyPrivateText(context, text, autoClearClipboard)
-                        feedback = "Full extracted text copied"
-                    })
-            }
-            if (originalFiles.isNotEmpty() && (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) || (authorized && (item.category != VaultCategory.CARD || showOriginal)))) {
-                Column {
-                    Text("Original files", style = MaterialTheme.typography.titleMedium, color = LockrColors.TextPrimary, modifier = Modifier.padding(bottom = 7.dp))
-                    VaultAttachmentsSection(originalFiles, Modifier.fillMaxWidth())
-                }
-            } else if (item.attachments.isNotEmpty() && item.category != VaultCategory.CARD) {
-                Button(onClick = onAuthenticate, modifier = Modifier.fillMaxWidth()) { Text("Unlock attached file") }
-            }
-            if (feedback.isNotBlank()) Text(feedback, style = MaterialTheme.typography.bodySmall, color = LockrColors.Accent)
-            Spacer(Modifier.height(20.dp))
-        }
     }
 
     if (showFieldExtraction) ExtractFieldsDialog(

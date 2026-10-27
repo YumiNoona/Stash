@@ -86,99 +86,101 @@ fun SettingsScreen(
     val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
     var dialog by remember { mutableStateOf("") }
 
-    Column(modifier.fillMaxSize().padding(horizontal = 22.dp)) {
+    Box(modifier.fillMaxSize().padding(horizontal = 22.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 88.dp)) {
+                SettingsSection("Appearance") {
+                    SettingsRow(Icons.Outlined.Animation, "Reduce motion", "Keep artwork and controls still", toggle = reducedMotion,
+                        onToggle = { reducedMotion = it; preferences.edit().putBoolean("reduce_motion", it).apply() })
+                    SettingsRow(Icons.Outlined.PlayCircle, "Animated card artwork", "Play saved GIF and video art", toggle = artworkAutoplay,
+                        onToggle = { artworkAutoplay = it; preferences.edit().putBoolean("artwork_autoplay", it).apply() })
+                    SettingsRow(Icons.Outlined.CreditCard, "Home-screen widgets", "Add a wallet or document folder", last = true, onClick = { dialog = "widgets" })
+                }
+                SettingsSection("Organization", modifier = Modifier.padding(top = 14.dp)) {
+                    SettingsRow(Icons.Outlined.Label, "Card tags", "Create or remove custom labels", value = "›", onClick = { dialog = "cardTags" })
+                    SettingsRow(Icons.Outlined.Label, "Document tags", "Organize your document groups", value = "›", onClick = { dialog = "documentTags" })
+                    SettingsRow(Icons.Outlined.DocumentScanner, "Read text on import", "Suggest fields locally from scans", toggle = ocrEnabled,
+                        last = true, onToggle = { ocrEnabled = it; preferences.edit().putBoolean("ocr_on_import", it).apply() })
+                }
+                SettingsSection("Security", modifier = Modifier.padding(top = 14.dp)) {
+                    SettingsRow(
+                        Icons.Outlined.Lock, "App Lock", "Require device unlock after idle",
+                        toggle = settings.appLockEnabled,
+                        iconTint = Color(0xFF18A996), iconBg = Color(0xFFDDF8F3),
+                        onToggle = { onSettingsChange(settings.copy(appLockEnabled = it)) }
+                    )
+                    SettingsRow(
+                        Icons.Outlined.Timer, "Auto Lock", settings.autoLock, value = "›",
+                        iconTint = Color(0xFF3B6589), iconBg = Color(0xFFFFECDD),
+                        onClick = { dialog = "auto" }
+                    )
+                    SettingsRow(
+                        Icons.Outlined.Visibility, "Reveal Timeout", "Hide revealed card details", value = settings.revealTimeout,
+                        iconTint = Color(0xFF4F68D4), iconBg = Color(0xFFE9E6FF),
+                        onClick = { dialog = "reveal" }
+                    )
+                    SettingsRow(
+                        Icons.Outlined.VisibilityOff, "Card number display",
+                        if (settings.hideCardNumber) "Hide number and CVC" else "Hide CVC only",
+                        value = "›", iconTint = Color(0xFF5065B5), iconBg = Color(0xFFE9EEFF),
+                        onClick = { dialog = "cardVisibility" }
+                    )
+                    SettingsRow(
+                        Icons.Outlined.Key, "Vault Encryption", "Android Keystore · this device", value = "›",
+                        iconTint = Color(0xFF8C4A8D), iconBg = Color(0xFFF9E5F0), last = true,
+                        onClick = { dialog = "encryption" }
+                    )
+                }
+
+                SettingsSection("Export & Backup", modifier = Modifier.padding(top = 14.dp)) {
+                    SettingsRow(
+                        Icons.Outlined.IosShare, "Export Vault", "JSON, PDF, Excel or text", value = "›",
+                        iconTint = Color(0xFF286DE0), iconBg = Color(0xFFE3EEFF), onClick = { dialog = "export" }
+                    )
+                    SettingsRow(
+                        Icons.Outlined.CloudUpload, "Export Encrypted Backup", "Save a protected file on this device", value = "›",
+                        iconTint = Color(0xFF286DE0), iconBg = Color(0xFFE3EEFF), onClick = onExportBackup
+                    )
+                    SettingsRow(
+                        Icons.Outlined.Restore, "Import Backup", "Restore a backup made on this device", value = "›",
+                        iconTint = Color(0xFF5A64C8), iconBg = LockrColors.Surface, last = true, onClick = onImportBackup
+                    )
+                }
+                backupStatus?.let {
+                    Text(it, color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 7.dp, top = 7.dp))
+                }
+
+                SettingsSection("Privacy", modifier = Modifier.padding(top = 14.dp)) {
+                    SettingsRow(
+                        Icons.Outlined.ContentPaste, "Auto Clear Clipboard", "Clear copied details after 30s",
+                        toggle = settings.autoClearClipboard,
+                        iconTint = Color(0xFF395F94), iconBg = Color(0xFFE4F1FF),
+                        onToggle = { onSettingsChange(settings.copy(autoClearClipboard = it)) }
+                    )
+                    SettingsRow(
+                        Icons.Outlined.PrivacyTip, "Hide App in Recents", "Block screenshots and app previews",
+                        toggle = settings.hideInRecents,
+                        iconTint = Color(0xFF4D6382), iconBg = Color(0xFFE6F5F7), last = true,
+                        onToggle = { onSettingsChange(settings.copy(hideInRecents = it)) }
+                    )
+                }
+                SettingsSection("About", modifier = Modifier.padding(top = 14.dp)) {
+                    SettingsRow(
+                        Icons.Outlined.Info, "About Stash", "Version $version · offline vault", value = "›",
+                        iconTint = Color(0xFF4C526B), iconBg = LockrColors.Surface, last = true,
+                        onClick = { dialog = "about" }
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+
+        }
         StashTopBar("Settings", "Appearance, privacy and storage", onBack = onBack,
             trailing = { IconButton(onClick = {
                 themeMode = if (dark) "light" else "dark"
                 preferences.edit().putString("theme_mode", themeMode).apply()
             }) { Icon(if (dark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
                 if (dark) "Switch to light mode" else "Switch to dark mode", tint = LockrColors.Accent) } })
-
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            SettingsSection("Appearance") {
-                SettingsRow(Icons.Outlined.Animation, "Reduce motion", "Keep artwork and controls still", toggle = reducedMotion,
-                    onToggle = { reducedMotion = it; preferences.edit().putBoolean("reduce_motion", it).apply() })
-                SettingsRow(Icons.Outlined.PlayCircle, "Animated card artwork", "Play saved GIF and video art", toggle = artworkAutoplay,
-                    onToggle = { artworkAutoplay = it; preferences.edit().putBoolean("artwork_autoplay", it).apply() })
-                SettingsRow(Icons.Outlined.CreditCard, "Home-screen widgets", "Add a wallet or document folder", last = true, onClick = { dialog = "widgets" })
-            }
-            SettingsSection("Organization", modifier = Modifier.padding(top = 14.dp)) {
-                SettingsRow(Icons.Outlined.Label, "Card tags", "Create or remove custom labels", value = "›", onClick = { dialog = "cardTags" })
-                SettingsRow(Icons.Outlined.Label, "Document tags", "Organize your document groups", value = "›", onClick = { dialog = "documentTags" })
-                SettingsRow(Icons.Outlined.DocumentScanner, "Read text on import", "Suggest fields locally from scans", toggle = ocrEnabled,
-                    last = true, onToggle = { ocrEnabled = it; preferences.edit().putBoolean("ocr_on_import", it).apply() })
-            }
-            SettingsSection("Security", modifier = Modifier.padding(top = 14.dp)) {
-                SettingsRow(
-                    Icons.Outlined.Lock, "App Lock", "Require device unlock after idle",
-                    toggle = settings.appLockEnabled,
-                    iconTint = Color(0xFF18A996), iconBg = Color(0xFFDDF8F3),
-                    onToggle = { onSettingsChange(settings.copy(appLockEnabled = it)) }
-                )
-                SettingsRow(
-                    Icons.Outlined.Timer, "Auto Lock", settings.autoLock, value = "›",
-                    iconTint = Color(0xFF3B6589), iconBg = Color(0xFFFFECDD),
-                    onClick = { dialog = "auto" }
-                )
-                SettingsRow(
-                    Icons.Outlined.Visibility, "Reveal Timeout", "Hide revealed card details", value = settings.revealTimeout,
-                    iconTint = Color(0xFF4F68D4), iconBg = Color(0xFFE9E6FF),
-                    onClick = { dialog = "reveal" }
-                )
-                SettingsRow(
-                    Icons.Outlined.VisibilityOff, "Card number display",
-                    if (settings.hideCardNumber) "Hide number and CVC" else "Hide CVC only",
-                    value = "›", iconTint = Color(0xFF5065B5), iconBg = Color(0xFFE9EEFF),
-                    onClick = { dialog = "cardVisibility" }
-                )
-                SettingsRow(
-                    Icons.Outlined.Key, "Vault Encryption", "Android Keystore · this device", value = "›",
-                    iconTint = Color(0xFF8C4A8D), iconBg = Color(0xFFF9E5F0), last = true,
-                    onClick = { dialog = "encryption" }
-                )
-            }
-
-            SettingsSection("Export & Backup", modifier = Modifier.padding(top = 14.dp)) {
-                SettingsRow(
-                    Icons.Outlined.IosShare, "Export Vault", "JSON, PDF, Excel or text", value = "›",
-                    iconTint = Color(0xFF286DE0), iconBg = Color(0xFFE3EEFF), onClick = { dialog = "export" }
-                )
-                SettingsRow(
-                    Icons.Outlined.CloudUpload, "Export Encrypted Backup", "Save a protected file on this device", value = "›",
-                    iconTint = Color(0xFF286DE0), iconBg = Color(0xFFE3EEFF), onClick = onExportBackup
-                )
-                SettingsRow(
-                    Icons.Outlined.Restore, "Import Backup", "Restore a backup made on this device", value = "›",
-                    iconTint = Color(0xFF5A64C8), iconBg = LockrColors.Surface, last = true, onClick = onImportBackup
-                )
-            }
-            backupStatus?.let {
-                Text(it, color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 7.dp, top = 7.dp))
-            }
-
-            SettingsSection("Privacy", modifier = Modifier.padding(top = 14.dp)) {
-                SettingsRow(
-                    Icons.Outlined.ContentPaste, "Auto Clear Clipboard", "Clear copied details after 30s",
-                    toggle = settings.autoClearClipboard,
-                    iconTint = Color(0xFF395F94), iconBg = Color(0xFFE4F1FF),
-                    onToggle = { onSettingsChange(settings.copy(autoClearClipboard = it)) }
-                )
-                SettingsRow(
-                    Icons.Outlined.PrivacyTip, "Hide App in Recents", "Block screenshots and app previews",
-                    toggle = settings.hideInRecents,
-                    iconTint = Color(0xFF4D6382), iconBg = Color(0xFFE6F5F7), last = true,
-                    onToggle = { onSettingsChange(settings.copy(hideInRecents = it)) }
-                )
-            }
-            SettingsSection("About", modifier = Modifier.padding(top = 14.dp)) {
-                SettingsRow(
-                    Icons.Outlined.Info, "About Stash", "Version $version · offline vault", value = "›",
-                    iconTint = Color(0xFF4C526B), iconBg = LockrColors.Surface, last = true,
-                    onClick = { dialog = "about" }
-                )
-            }
-            Spacer(Modifier.height(16.dp))
-        }
     }
 
     when (dialog) {

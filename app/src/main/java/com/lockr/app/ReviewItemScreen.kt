@@ -90,49 +90,52 @@ fun ReviewItemScreen(
         isRecognizing = false
     }
 
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar(title = "Review document", onBack = onBack)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            val pageState = rememberPagerState(pageCount = { attachments.size })
-            if (attachments.isNotEmpty()) {
-                HorizontalPager(pageState, Modifier.fillMaxWidth().height(285.dp)) { index ->
-                    DocumentPreviewCanvas(attachments[index], Modifier.fillMaxSize(), showPageControls = false)
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 88.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                val pageState = rememberPagerState(pageCount = { attachments.size })
+                if (attachments.isNotEmpty()) {
+                    HorizontalPager(pageState, Modifier.fillMaxWidth().height(285.dp)) { index ->
+                        DocumentPreviewCanvas(attachments[index], Modifier.fillMaxSize(), showPageControls = false)
+                    }
+                    Text("${pageState.currentPage + 1} / ${attachments.size} · Saved together as one document", color = LockrColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
                 }
-                Text("${pageState.currentPage + 1} / ${attachments.size} · Saved together as one document", color = LockrColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
-            }
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp))
-                .background(LockrColors.Surface).border(1.dp, LockrColors.Surface, RoundedCornerShape(25.dp))
-                .padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Document name", style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
-                    color = LockrColors.TextPrimary)
-                OutlinedTextField(value = title, onValueChange = { title = it.take(80); titleTouched = true },
-                    placeholder = { Text("Name this document", color = LockrColors.TextSecondary) },
-                    singleLine = true, textStyle = MaterialTheme.typography.bodyLarge,
-                    shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = LockrColors.Surface, unfocusedContainerColor = LockrColors.Surface,
-                        focusedTextColor = LockrColors.TextPrimary, unfocusedTextColor = LockrColors.TextPrimary,
-                        focusedBorderColor = LockrColors.Accent, unfocusedBorderColor = Color(0xFFBECBD8),
-                        cursorColor = LockrColors.Accent))
-                TagEditor(VaultCategory.DOCUMENT, setOf(documentGroup),
-                    onChange = { documentGroup = it.firstOrNull() ?: "Other"; groupTouched = true }, single = true)
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp))
+                    .background(LockrColors.Surface).border(1.dp, LockrColors.Surface, RoundedCornerShape(25.dp))
+                    .padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("Document name", style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
+                        color = LockrColors.TextPrimary)
+                    OutlinedTextField(value = title, onValueChange = { title = it.take(80); titleTouched = true },
+                        placeholder = { Text("Name this document", color = LockrColors.TextSecondary) },
+                        singleLine = true, textStyle = MaterialTheme.typography.bodyLarge,
+                        shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = LockrColors.Surface, unfocusedContainerColor = LockrColors.Surface,
+                            focusedTextColor = LockrColors.TextPrimary, unfocusedTextColor = LockrColors.TextPrimary,
+                            focusedBorderColor = LockrColors.Accent, unfocusedBorderColor = Color(0xFFBECBD8),
+                            cursorColor = LockrColors.Accent))
+                    TagEditor(VaultCategory.DOCUMENT, setOf(documentGroup),
+                        onChange = { documentGroup = it.firstOrNull() ?: "Other"; groupTouched = true }, single = true)
 
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-        Button(
-            onClick = {
-                val metadata = buildMap {
-                    if (extractedText.isNotBlank()) put("ocrText", extractedText)
-                    put("documentCategory", documentGroup)
                 }
-                onSave(title.trim().ifBlank { "Imported document" }, VaultCategory.DOCUMENT, metadata, attachments)
-            },
-            enabled = title.isNotBlank() && !isRecognizing,
-            modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp).height(54.dp)
-        ) {
-            Text(if (isRecognizing) "Reading file…" else "Save document")
+                Spacer(Modifier.height(8.dp))
+            }
+            Button(
+                onClick = {
+                    val metadata = buildMap {
+                        if (extractedText.isNotBlank()) put("ocrText", extractedText)
+                        put("documentCategory", documentGroup)
+                    }
+                    onSave(title.trim().ifBlank { "Imported document" }, VaultCategory.DOCUMENT, metadata, attachments)
+                },
+                enabled = title.isNotBlank() && !isRecognizing,
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp).height(54.dp)
+            ) {
+                Text(if (isRecognizing) "Reading file…" else "Save document")
+            }
+
         }
+        StashTopBar(title = "Review document", onBack = onBack)
     }
 
 }
@@ -153,47 +156,50 @@ fun ManualItemScreen(
     var showGenerator by remember(category) { mutableStateOf(false) }
     val isNote = category == VaultCategory.NOTE
 
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar(title = if (isNote) "New note" else "New password", subtitle = "Saved only in your encrypted vault", onBack = onBack)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            OutlinedTextField(value = title, onValueChange = { title = it.take(80) }, label = { Text(if (isNote) "Note title" else "Account name") }, singleLine = true, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-            if (isNote) {
-                OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("Note") }, minLines = 7, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-            } else {
-                OutlinedTextField(value = website, onValueChange = { website = it }, label = { Text("Website or app (optional)") }, singleLine = true, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username (optional)") }, singleLine = true, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Password") },
-                    singleLine = true,
-                    visualTransformation = if (showPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                    trailingIcon = {
-                        androidx.compose.material3.IconButton(onClick = { showPassword = !showPassword }) {
-                            androidx.compose.material3.Icon(
-                                if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                contentDescription = if (showPassword) "Hide password" else "Show password"
-                            )
-                        }
-                    },
-                    shape = RoundedCornerShape(17.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                TextButton(onClick = { showGenerator = true }) {
-                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text("Generate password", modifier = Modifier.padding(start = 8.dp))
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 88.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                OutlinedTextField(value = title, onValueChange = { title = it.take(80) }, label = { Text(if (isNote) "Note title" else "Account name") }, singleLine = true, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+                if (isNote) {
+                    OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("Note") }, minLines = 7, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+                } else {
+                    OutlinedTextField(value = website, onValueChange = { website = it }, label = { Text("Website or app (optional)") }, singleLine = true, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username (optional)") }, singleLine = true, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password") },
+                        singleLine = true,
+                        visualTransformation = if (showPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        trailingIcon = {
+                            androidx.compose.material3.IconButton(onClick = { showPassword = !showPassword }) {
+                                androidx.compose.material3.Icon(
+                                    if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                    contentDescription = if (showPassword) "Hide password" else "Show password"
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(17.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    TextButton(onClick = { showGenerator = true }) {
+                        Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("Generate password", modifier = Modifier.padding(start = 8.dp))
+                    }
+                    Text("Passwords are encrypted and excluded from vault search.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
                 }
-                Text("Passwords are encrypted and excluded from vault search.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
+            Button(
+                onClick = {
+                    val metadata = if (isNote) mapOf("content" to note) else mapOf("website" to website, "username" to username, "password" to password).filterValues(String::isNotBlank)
+                    onSave(title.trim(), category, if (isNote) "Private note" else "Password", metadata)
+                },
+                enabled = title.isNotBlank() && if (isNote) note.isNotBlank() else password.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp).height(54.dp)
+            ) { Text("Save to vault") }
+
         }
-        Button(
-            onClick = {
-                val metadata = if (isNote) mapOf("content" to note) else mapOf("website" to website, "username" to username, "password" to password).filterValues(String::isNotBlank)
-                onSave(title.trim(), category, if (isNote) "Private note" else "Password", metadata)
-            },
-            enabled = title.isNotBlank() && if (isNote) note.isNotBlank() else password.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp).height(54.dp)
-        ) { Text("Save to vault") }
+        StashTopBar(title = if (isNote) "New note" else "New password", subtitle = "Saved only in your encrypted vault", onBack = onBack)
     }
     if (showGenerator) {
         PasswordGeneratorDialog(

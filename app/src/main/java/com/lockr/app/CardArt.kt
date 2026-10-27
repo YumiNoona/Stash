@@ -50,7 +50,7 @@ fun CardArtBackground(art: CardArtStyle, modifier: Modifier = Modifier) {
     else Image(painterResource(art.image), null, contentScale = ContentScale.Crop, modifier = modifier)
 }
 
-val selectableCardArt = CardArtStyle.entries.filterNot { it == CardArtStyle.OPAL }
+val selectableCardArt = CardArtStyle.entries.filterNot { it == CardArtStyle.OPAL || it == CardArtStyle.BASIC }
 
 @Composable
 fun CardArtPicker(selected: CardArtStyle, customSelected: Boolean = false, onImport: (() -> Unit)? = null, showLabels: Boolean = true, onSelect: (CardArtStyle) -> Unit) {

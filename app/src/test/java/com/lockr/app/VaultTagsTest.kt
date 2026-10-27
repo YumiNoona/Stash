@@ -33,8 +33,10 @@ class VaultTagsTest {
     }
 
     @Test fun eachFinishHasItsOwnAssetAndTenEffectsAreAvailable() {
-        assertEquals(15, selectableCardArt.size)
-        assertEquals(15, selectableCardArt.map { it.image }.distinct().size)
+        assertEquals(14, selectableCardArt.size)
+        assertEquals(14, selectableCardArt.map { it.image }.distinct().size)
+        assertFalse(selectableCardArt.contains(CardArtStyle.BASIC))
+        assertEquals(CardArtStyle.BASIC, cardArtStyle(VaultItem("Card", VaultCategory.CARD, "", "", metadata = mapOf("cardArt" to "BASIC"))))
         assertEquals(10, CardMotion.entries.count { it != CardMotion.NONE })
     }
 }

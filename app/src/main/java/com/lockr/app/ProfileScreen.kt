@@ -1,5 +1,8 @@
 package com.lockr.app
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -76,31 +79,34 @@ fun ProfileScreen(
 ) {
     var editingName by remember { mutableStateOf(false) }
     var draftName by remember(name, editingName) { mutableStateOf(name) }
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar("Profile", onBack = onBack)
-        Column(Modifier.fillMaxWidth().padding(top = 35.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(116.dp).clickable(onClick = onChoosePhoto), contentAlignment = Alignment.Center) {
-                ProfileAvatar(photo, 104.dp)
-                Box(
-                    Modifier.align(Alignment.BottomEnd).size(36.dp).clip(CircleShape).background(LockrColors.Surface)
-                        .border(1.dp, Color(0xFFE0E8EE), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) { Icon(Icons.Outlined.CameraAlt, contentDescription = "Choose profile photo", tint = LockrColors.Accent, modifier = Modifier.size(19.dp)) }
-            }
-            Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(name, style = MaterialTheme.typography.headlineMedium, color = LockrColors.TextPrimary)
-                IconButton(onClick = { editingName = true }, modifier = Modifier.size(39.dp)) {
-                    Icon(Icons.Outlined.Edit, contentDescription = "Edit profile name", tint = LockrColors.Accent, modifier = Modifier.size(19.dp))
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 88.dp)) {
+            Column(Modifier.fillMaxWidth().padding(top = 35.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(116.dp).clickable(onClick = onChoosePhoto), contentAlignment = Alignment.Center) {
+                    ProfileAvatar(photo, 104.dp)
+                    Box(
+                        Modifier.align(Alignment.BottomEnd).size(36.dp).clip(CircleShape).background(LockrColors.Surface)
+                            .border(1.dp, Color(0xFFE0E8EE), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Outlined.CameraAlt, contentDescription = "Choose profile photo", tint = LockrColors.Accent, modifier = Modifier.size(19.dp)) }
                 }
+                Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(name, style = MaterialTheme.typography.headlineMedium, color = LockrColors.TextPrimary)
+                    IconButton(onClick = { editingName = true }, modifier = Modifier.size(39.dp)) {
+                        Icon(Icons.Outlined.Edit, contentDescription = "Edit profile name", tint = LockrColors.Accent, modifier = Modifier.size(19.dp))
+                    }
+                }
+                Text("$itemCount saved ${if (itemCount == 1) "item" else "items"}", color = LockrColors.TextSecondary,
+                    style = MaterialTheme.typography.bodyMedium)
+                if (photo != null) TextButton(onClick = onRemovePhoto) { Text("Remove photo") }
             }
-            Text("$itemCount saved ${if (itemCount == 1) "item" else "items"}", color = LockrColors.TextSecondary,
-                style = MaterialTheme.typography.bodyMedium)
-            if (photo != null) TextButton(onClick = onRemovePhoto) { Text("Remove photo") }
+            Spacer(Modifier.height(33.dp))
+            ProfileAction("All items", "Browse your collection", Icons.Outlined.Description, onOpenAllItems)
+            Spacer(Modifier.height(11.dp))
+            ProfileAction("Settings", "Security, privacy and export", Icons.Outlined.Settings, onOpenSettings)
+
         }
-        Spacer(Modifier.height(33.dp))
-        ProfileAction("All items", "Browse your collection", Icons.Outlined.Description, onOpenAllItems)
-        Spacer(Modifier.height(11.dp))
-        ProfileAction("Settings", "Security, privacy and export", Icons.Outlined.Settings, onOpenSettings)
+        StashTopBar("Profile", onBack = onBack)
     }
     if (editingName) {
         AlertDialog(

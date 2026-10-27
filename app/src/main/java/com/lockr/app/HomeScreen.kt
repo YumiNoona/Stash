@@ -84,25 +84,8 @@ fun HomeScreen(
             }
         }, confirmButton = { TextButton(onClick = { menuItem = null }) { Text("Close") } })
     }
-    Column(modifier.fillMaxSize().padding(horizontal = 17.dp)) {
-        Row(Modifier.fillMaxWidth().height(91.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(54.dp).clip(CircleShape).clickable(onClick = onOpenProfile), contentAlignment = Alignment.Center) {
-                ProfileAvatar(profilePhoto, 52.dp)
-            }
-            Text(profileName, style = MaterialTheme.typography.headlineSmall,
-                color = LockrColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(start = 12.dp))
-            Box(
-                Modifier.size(45.dp).shadow(8.dp, CircleShape)
-                    .clip(CircleShape).background(LockrColors.Surface.copy(alpha = 0.92f))
-                    .border(1.dp, Color.White.copy(alpha = 0.94f), CircleShape)
-                    .clickable(onClick = onOpenSettings), contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = LockrColors.TextPrimary,
-                    modifier = Modifier.size(23.dp))
-            }
-        }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+    Box(modifier.fillMaxSize().padding(horizontal = 17.dp)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 96.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
             DashboardHero()
             Row(Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Recent Items", style = MaterialTheme.typography.titleMedium,
@@ -130,6 +113,20 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(120.dp))
         }
+        Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().height(84.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            FloatingGlass(Modifier.weight(1f)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onOpenProfile), contentAlignment = Alignment.Center) { ProfileAvatar(profilePhoto, 46.dp) }
+                    Text(profileName, style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp, end = 6.dp))
+                }
+            }
+            FloatingGlass(Modifier.size(48.dp), RoundedCornerShape(24.dp)) {
+                IconButton(onClick = onOpenSettings, modifier = Modifier.fillMaxSize()) { Icon(Icons.Outlined.Settings, "Settings", tint = LockrColors.TextPrimary) }
+            }
+        }
+
     }
 }
 

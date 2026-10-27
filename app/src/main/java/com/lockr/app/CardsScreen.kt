@@ -75,21 +75,17 @@ fun CardsScreen(items: List<VaultItem>, onBack: () -> Unit, onSearch: () -> Unit
             else -> (item.metadata["cardType"] ?: item.detail).equals(filter, ignoreCase = true) || cardTags(item).any { it.equals(filter, true) }
         }
     }
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar("Cards", "${cards.size} saved", onBack = onBack,
-            trailing = { IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, contentDescription = "Search vault") } })
-        CollectionFilters(filters, filter, { filter = it }, VaultCategory.CARD)
-        if (visibleCards.isEmpty()) {
-            CollectionEmptyState(if (cards.isEmpty()) "Your cards will live here" else "No cards in this filter",
-                if (cards.isEmpty()) "Tap + to add your first card." else "Choose another tag.", Icons.Outlined.CreditCard)
-        } else {
-            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(visibleCards, key = { it.id }) { card ->
-                    CardSurface(card, onClick = { onOpenItem(card) })
-                }
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 88.dp, bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            item { CollectionFilters(filters, filter, { filter = it }, VaultCategory.CARD) }
+            if (visibleCards.isEmpty()) item {
+                CollectionEmptyState(if (cards.isEmpty()) "Your cards will live here" else "No cards in this filter",
+                    if (cards.isEmpty()) "Tap + to add your first card." else "Choose another tag.", Icons.Outlined.CreditCard)
             }
+            items(visibleCards, key = { it.id }) { card -> CardSurface(card, onClick = { onOpenItem(card) }) }
         }
+        StashTopBar("Cards", "${cards.size} saved", onBack = onBack,
+            trailing = { IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "Search vault") } })
     }
 }
 

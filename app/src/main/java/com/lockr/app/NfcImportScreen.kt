@@ -104,49 +104,52 @@ fun NfcImportScreen(
         }
     }
 
-    Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar("Tap a card", "Supported contactless cards only", onBack = onBack)
-        Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            GlassPanel(Modifier.fillMaxWidth(), radius = 29.dp) {
-                Column(Modifier.fillMaxWidth().padding(27.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(104.dp), contentAlignment = Alignment.Center) {
-                        IridescentOrb(orbSize = 100.dp)
-                        Icon(Icons.Outlined.Nfc, contentDescription = null, tint = Color(0xFF132351), modifier = Modifier.size(45.dp))
-                    }
-                    Text(when {
-                        adapter == null -> "NFC is unavailable here"
-                        !nfcEnabled -> "Turn on NFC"
-                        working -> "Reading card"
-                        else -> "Ready to tap"
-                    }, style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary,
-                        modifier = Modifier.padding(top = 18.dp))
-                    Text(when {
-                        adapter == null -> "This device has no NFC reader. Use the camera or manual entry."
-                        !nfcEnabled -> "Enable NFC in Android settings, then return here."
-                        else -> message
-                    }, style = MaterialTheme.typography.bodyMedium, color = LockrColors.TextSecondary,
-                        modifier = Modifier.padding(top = 9.dp))
-                    if (adapter != null && !nfcEnabled) {
-                        OutlinedButton(onClick = {
-                            context.startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
-                        }, modifier = Modifier.padding(top = 14.dp)) { Text("Open NFC settings") }
+    Box(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).padding(top = 88.dp).fillMaxWidth(), verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                GlassPanel(Modifier.fillMaxWidth(), radius = 29.dp) {
+                    Column(Modifier.fillMaxWidth().padding(27.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.size(104.dp), contentAlignment = Alignment.Center) {
+                            IridescentOrb(orbSize = 100.dp)
+                            Icon(Icons.Outlined.Nfc, contentDescription = null, tint = Color(0xFF132351), modifier = Modifier.size(45.dp))
+                        }
+                        Text(when {
+                            adapter == null -> "NFC is unavailable here"
+                            !nfcEnabled -> "Turn on NFC"
+                            working -> "Reading card"
+                            else -> "Ready to tap"
+                        }, style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary,
+                            modifier = Modifier.padding(top = 18.dp))
+                        Text(when {
+                            adapter == null -> "This device has no NFC reader. Use the camera or manual entry."
+                            !nfcEnabled -> "Enable NFC in Android settings, then return here."
+                            else -> message
+                        }, style = MaterialTheme.typography.bodyMedium, color = LockrColors.TextSecondary,
+                            modifier = Modifier.padding(top = 9.dp))
+                        if (adapter != null && !nfcEnabled) {
+                            OutlinedButton(onClick = {
+                                context.startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
+                            }, modifier = Modifier.padding(top = 14.dp)) { Text("Open NFC settings") }
+                        }
                     }
                 }
+                Text("Some banks block card details over NFC. Nothing is saved until you review and confirm.",
+                    style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary,
+                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 18.dp))
             }
-            Text("Some banks block card details over NFC. Nothing is saved until you review and confirm.",
-                style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary,
-                modifier = Modifier.padding(horizontal = 15.dp, vertical = 18.dp))
+            Row(Modifier.fillMaxWidth().padding(bottom = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                OutlinedButton(onClick = onScanCard, modifier = Modifier.weight(1f).height(52.dp)) {
+                    Icon(Icons.Outlined.CameraAlt, null, modifier = Modifier.size(18.dp))
+                    Text("Scan", modifier = Modifier.padding(start = 6.dp))
+                }
+                Button(onClick = onManual, modifier = Modifier.weight(1f).height(52.dp)) {
+                    Icon(Icons.Outlined.CreditCard, null, modifier = Modifier.size(18.dp))
+                    Text("Manual", modifier = Modifier.padding(start = 6.dp))
+                }
+            }
+
         }
-        Row(Modifier.fillMaxWidth().padding(bottom = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            OutlinedButton(onClick = onScanCard, modifier = Modifier.weight(1f).height(52.dp)) {
-                Icon(Icons.Outlined.CameraAlt, null, modifier = Modifier.size(18.dp))
-                Text("Scan", modifier = Modifier.padding(start = 6.dp))
-            }
-            Button(onClick = onManual, modifier = Modifier.weight(1f).height(52.dp)) {
-                Icon(Icons.Outlined.CreditCard, null, modifier = Modifier.size(18.dp))
-                Text("Manual", modifier = Modifier.padding(start = 6.dp))
-            }
-        }
+        StashTopBar("Tap a card", "Supported contactless cards only", onBack = onBack)
     }
 }
