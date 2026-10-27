@@ -1,5 +1,7 @@
 package com.lockr.app
 
+import androidx.compose.material.icons.outlined.CreditCard
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -97,7 +99,8 @@ fun SettingsScreen(
                 SettingsRow(Icons.Outlined.Animation, "Reduce motion", "Keep artwork and controls still", toggle = reducedMotion,
                     onToggle = { reducedMotion = it; preferences.edit().putBoolean("reduce_motion", it).apply() })
                 SettingsRow(Icons.Outlined.PlayCircle, "Animated card artwork", "Play saved GIF and video art", toggle = artworkAutoplay,
-                    last = true, onToggle = { artworkAutoplay = it; preferences.edit().putBoolean("artwork_autoplay", it).apply() })
+                    onToggle = { artworkAutoplay = it; preferences.edit().putBoolean("artwork_autoplay", it).apply() })
+                SettingsRow(Icons.Outlined.CreditCard, "Home-screen widgets", "Add a wallet or document folder", last = true, onClick = { dialog = "widgets" })
             }
             SettingsSection("Organization", modifier = Modifier.padding(top = 14.dp)) {
                 SettingsRow(Icons.Outlined.Label, "Card tags", "Create or remove custom labels", value = "›", onClick = { dialog = "cardTags" })
@@ -179,6 +182,12 @@ fun SettingsScreen(
     }
 
     when (dialog) {
+        "widgets" -> AlertDialog(onDismissRequest = { dialog = "" }, title = { Text("Add a home-screen widget") },
+            text = { Column {
+                Text("Private values stay in Stash. Resize widgets on your home screen.", style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { dialog = ""; pinStashWidget(context, false) }) { Text("Wallet widget") }
+                TextButton(onClick = { dialog = ""; pinStashWidget(context, true) }) { Text("Documents widget") }
+            } }, confirmButton = { TextButton(onClick = { dialog = "" }) { Text("Done") } })
         "cardTags" -> TagManagerDialog(VaultCategory.CARD, onDismiss = { dialog = "" })
         "documentTags" -> TagManagerDialog(VaultCategory.DOCUMENT, onDismiss = { dialog = "" })
         "export" -> ExportFormatDialog(onDismiss = { dialog = "" }) { format, includePrivate ->

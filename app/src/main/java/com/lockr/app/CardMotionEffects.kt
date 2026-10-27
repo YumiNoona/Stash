@@ -6,42 +6,49 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlin.math.*
 
-/** Decorative layers never move or blur card text. All positions are deterministic. */
+/** Seamless decorative light only. Card data stays still and readable. */
 @Composable
 fun CardMotionOverlay(motion: CardMotion, phase: Float, modifier: Modifier) {
     Canvas(modifier) {
-        val w = size.width
-        val h = size.height
+        val w = size.width; val h = size.height
         val t = (phase + 1f) / 2f
+        val angle = t * PI * 2
         when (motion) {
-            CardMotion.RIPPLE -> repeat(3) { i ->
-                val progress = (t + i / 3f) % 1f
-                drawCircle(Color.White.copy(alpha = (1f - progress) * 0.2f), w * progress,
-                    Offset(w * 0.8f, h * 0.2f), style = Stroke(1.5f))
+            CardMotion.SHEEN, CardMotion.TILT -> {
+                // A broad soft reflection followed by a narrow metallic glint; rest between passes.
+                val pass = (t / 0.7f).coerceIn(0f, 1f)
+                val x = -w * 0.55f + pass * w * 2.1f
+                val strength = sin(pass * PI).toFloat().coerceAtLeast(0f)
+                drawRect(Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.04f * strength),
+                    Color.White.copy(alpha = 0.24f * strength), Color.White.copy(alpha = 0.04f * strength), Color.Transparent),
+                    Offset(x - w * 0.18f, 0f), Offset(x + w * 0.18f, h)))
+                if (motion == CardMotion.TILT) drawRoundRect(Color(0xFFCAF5FF).copy(alpha = strength * 0.18f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(22f), style = Stroke(2f))
             }
-            CardMotion.AURORA -> repeat(3) { i ->
-                val path = Path().apply {
-                    moveTo(-w * 0.1f, h * (0.2f + i * 0.2f))
-                    cubicTo(w * 0.3f, h * (t - 0.4f), w * 0.6f, h * (1.3f - t), w * 1.1f, h * (0.5f + i * 0.2f))
+            CardMotion.RIPPLE -> {
+                val alpha = (sin(angle) * 0.5 + 0.5).toFloat() * 0.1f
+                val center = Offset(w * 0.8f, h * 0.1f)
+                drawCircle(Brush.radialGradient(listOf(Color.Transparent, Color(0xFFDBDCFF).copy(alpha = alpha), Color.Transparent), center, w * 0.65f), w * 0.65f, center)
+            }
+            CardMotion.AURORA -> {
+                repeat(2) { i ->
+                    val center = Offset(w * (0.5f + sin(angle + i * PI).toFloat() * 0.5f), h * (0.5f + cos(angle + i).toFloat() * 0.35f))
+                    drawCircle(Brush.radialGradient(listOf((if (i == 0) Color(0xFF83EDE0) else Color(0xFFD6B4FF)).copy(alpha = 0.14f), Color.Transparent), center, w * 0.65f), w * 0.65f, center)
                 }
-                drawPath(path, Brush.linearGradient(listOf(Color(0x0096FFF3), Color(0x558DDBFF), Color(0x55F5B0E9), Color.Transparent)),
-                    style = Stroke(w * 0.06f))
             }
-            CardMotion.SPARKLE -> repeat(18) { i ->
+            CardMotion.SPARKLE -> repeat(7) { i ->
                 val x = ((i * 73 + 17) % 100) / 100f * w
                 val y = ((i * 47 + 23) % 100) / 100f * h
-                val alpha = ((sin(t * PI * 2 + i * 1.7) + 1f) / 2f).toFloat() * 0.55f
-                val r = 2f + alpha * 5f
-                drawLine(Color.White.copy(alpha = alpha), Offset(x - r, y), Offset(x + r, y), 1f)
-                drawLine(Color.White.copy(alpha = alpha), Offset(x, y - r), Offset(x, y + r), 1f)
+                val pulse = max(0.0, sin(angle + i * 1.7)).pow(8).toFloat()
+                val r = w * 0.006f * pulse
+                drawLine(Color.White.copy(alpha = pulse * 0.65f), Offset(x - r * 2, y), Offset(x + r * 2, y), 1.2f)
+                drawLine(Color.White.copy(alpha = pulse * 0.65f), Offset(x, y - r * 2), Offset(x, y + r * 2), 1.2f)
             }
             CardMotion.ORBIT -> {
-                val center = Offset(w * (0.5f + cos(t * PI * 2).toFloat() * 0.4f), h * (0.5f + sin(t * PI * 2).toFloat() * 0.35f))
-                drawCircle(Brush.radialGradient(listOf(Color(0x55C6F9FF), Color(0x22CAACFF), Color.Transparent), center, w * 0.32f), w * 0.32f, center)
+                val center = Offset(w * (0.5f + cos(angle).toFloat() * 0.55f), h * (0.5f + sin(angle).toFloat() * 0.55f))
+                drawCircle(Brush.radialGradient(listOf(Color(0x25C6F9FF), Color(0x10CAACFF), Color.Transparent), center, w * 0.42f), w * 0.42f, center)
             }
             else -> Unit
         }

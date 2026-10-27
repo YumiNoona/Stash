@@ -167,8 +167,8 @@ fun StashDock(
         Box(Modifier.widthIn(max = 368.dp).fillMaxWidth().height(68.dp)
             .shadow(16.dp, shape, ambientColor = Color(0x335D477A), spotColor = Color(0x335D477A))
             .clip(shape).background(Brush.verticalGradient(
-                if (dark) listOf(Color(0xA65A566A), Color(0xB83A4354))
-                else listOf(Color(0xB8FFFFFF), Color(0x99EDEAF8))))
+                if (dark) listOf(Color(0x385A566A), Color(0x503A4354))
+                else listOf(Color(0x70FFFFFF), Color(0x4DEDEAF8))))
             .border(1.dp, rim, shape)) {
             Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 DockAction("Cards", Icons.Outlined.CreditCard, selected == DockDestination.CARDS, onCards, Modifier.weight(1f))

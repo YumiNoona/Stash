@@ -1,5 +1,7 @@
 package com.lockr.app
 
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -91,16 +93,12 @@ fun ReviewItemScreen(
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         StashTopBar(title = "Review document", onBack = onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            attachments.firstOrNull()?.let { first ->
-                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(23.dp))
-                    .background(LockrColors.Surface.copy(alpha = 0.91f)).border(1.dp, LockrColors.Surface, RoundedCornerShape(23.dp))
-                    .padding(7.dp)) {
-                    VaultAttachmentPreview(first, Modifier.fillMaxWidth().height(265.dp))
+            val pageState = rememberPagerState(pageCount = { attachments.size })
+            if (attachments.isNotEmpty()) {
+                HorizontalPager(pageState, Modifier.fillMaxWidth().height(285.dp)) { index ->
+                    DocumentPreviewCanvas(attachments[index], Modifier.fillMaxSize(), showPageControls = false)
                 }
-            }
-            if (attachments.size > 1) {
-                Text("${attachments.size} pages or files", color = LockrColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
-                VaultAttachmentsSection(attachments.drop(1), Modifier.fillMaxWidth())
+                Text("${pageState.currentPage + 1} / ${attachments.size} · Saved together as one document", color = LockrColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
             }
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp))
                 .background(LockrColors.Surface).border(1.dp, LockrColors.Surface, RoundedCornerShape(25.dp))

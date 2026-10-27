@@ -1,6 +1,8 @@
 package com.lockr.app
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -54,6 +56,7 @@ fun ItemPreviewScreen(
     onSend: () -> Unit,
     onDelete: () -> Unit,
     onDetails: () -> Unit,
+    onUpdatePages: (List<VaultAttachment>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -85,11 +88,16 @@ fun ItemPreviewScreen(
         }
     }
 
+    val pager = rememberPagerState(pageCount = { item.attachments.size })
     // The document owns the full canvas; chrome floats above it instead of shrinking it into a card.
     Box(modifier.fillMaxSize()) {
-        item.attachments.firstOrNull()?.let { attachment ->
-            DocumentPreviewCanvas(attachment, Modifier.fillMaxSize())
-        } ?: Text("No attached file", color = LockrColors.TextSecondary, modifier = Modifier.align(Alignment.Center))
+        if (item.attachments.isNotEmpty()) HorizontalPager(pager, Modifier.fillMaxSize(), key = { item.attachments[it].name + it }) { page ->
+            DocumentPreviewCanvas(item.attachments[page], Modifier.fillMaxSize())
+        } else Text("No attached file", color = LockrColors.TextSecondary, modifier = Modifier.align(Alignment.Center))
+        if (item.attachments.size > 1) PreviewGlass(Modifier.align(Alignment.TopCenter).padding(top = 78.dp), RoundedCornerShape(20.dp)) {
+            Text("Page ${pager.currentPage + 1} of ${item.attachments.size}", color = LockrColors.TextPrimary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        }
 
         Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -112,9 +120,9 @@ fun ItemPreviewScreen(
             .widthIn(max = 360.dp).fillMaxWidth(), RoundedCornerShape(30.dp)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 9.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                PreviewAction(Icons.Outlined.Edit, "Edit", "Edit document", modifier = Modifier.weight(1f)) { title = item.title; dialog = "rename" }
+                PreviewAction(Icons.Outlined.Edit, "Edit", "Edit document", modifier = Modifier.weight(1f)) { title = item.title; dialog = "edit" }
                 PreviewAction(Icons.Outlined.DocumentScanner, if (extracting) "Reading" else "Scan", "Scan document", !extracting, extracting, Modifier.weight(1f), scan)
-                PreviewAction(Icons.Outlined.IosShare, "Share", "Share document", modifier = Modifier.weight(1f), onClick = onSend)
+                PreviewAction(Icons.Outlined.IosShare, "Share", "Share document", modifier = Modifier.weight(1f), onClick = { if (item.attachments.size > 1) scope.launch { shareVaultDocument(context, item) } else onSend() })
                 PreviewAction(Icons.Outlined.DeleteOutline, "Delete", "Delete document", modifier = Modifier.weight(1f)) { dialog = "delete" }
             }
         }
@@ -122,6 +130,12 @@ fun ItemPreviewScreen(
     if (dialog == "extract") ExtractFieldsDialog(recognizedText, onDismiss = { dialog = "" },
         onCopy = { copyPrivateText(context, it, autoClearClipboard) },
         onSave = { key, value -> onSaveField(key, value); dialog = "" })
+    if (dialog == "edit") AlertDialog(onDismissRequest = { dialog = "" }, title = { Text("Edit document") },
+        text = { Column {
+            TextButton(onClick = { dialog = "rename" }) { Text("Rename document") }
+            TextButton(onClick = { dialog = "pages" }) { Text("Organize pages") }
+        } }, confirmButton = { TextButton(onClick = { dialog = "" }) { Text("Done") } })
+    if (dialog == "pages") DocumentPagesDialog(item.attachments, { dialog = "" }) { onUpdatePages(it); dialog = "" }
     if (dialog == "rename") AlertDialog(
         onDismissRequest = { dialog = "" }, title = { Text("Edit document") },
         text = { OutlinedTextField(title, { title = it.take(80) }, singleLine = true, label = { Text("Name") }) },
@@ -158,7 +172,6 @@ private fun FloatingPreviewButton(icon: ImageVector, label: String, onClick: () 
 private fun PreviewAction(icon: ImageVector, label: String, description: String,
                           enabled: Boolean = true, busy: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(modifier.height(64.dp).clip(RoundedCornerShape(22.dp))
-        .background(LockrColors.Surface.copy(alpha = if (LocalDarkTheme.current) 0.36f else 0.55f))
         .clickable(enabled = enabled, onClick = onClick).padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = LockrColors.Accent)
@@ -203,7 +216,7 @@ internal fun DocumentPreviewCanvas(attachment: VaultAttachment, modifier: Modifi
     }, contentAlignment = Alignment.Center) {
         if (bitmap != null) Image(bitmap!!.asImageBitmap(), attachment.name,
             contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize().then(if (gesturesEnabled) Modifier.transformable(transform) else Modifier).graphicsLayer {
+            modifier = Modifier.fillMaxSize().then(if (gesturesEnabled) Modifier.transformable(transform, canPan = { zoom > 1f }) else Modifier).graphicsLayer {
                 scaleX = zoom; scaleY = zoom; translationX = pan.x; translationY = pan.y
             })
         else Text(if (failed) "This file could not be previewed." else "Opening document…",

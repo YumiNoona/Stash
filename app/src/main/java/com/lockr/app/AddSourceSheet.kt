@@ -1,5 +1,9 @@
 package com.lockr.app
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -126,6 +130,9 @@ private fun VaultTypeCard(title: String, subtitle: String, icon: ImageVector, co
     Box(modifier.height(176.dp).shadow(7.dp, shape, ambientColor = accent.copy(alpha = 0.14f))
         .clip(shape).background(Brush.linearGradient(if (dark) darkColors else colors))
         .border(1.dp, rim, shape).clickable(onClick = onClick)) {
+        Image(painterResource(if (title == "Cards") R.drawable.card_aurora_art else R.drawable.hero_vault_cutout), null,
+            contentScale = ContentScale.Crop, modifier = Modifier.align(Alignment.TopEnd).size(145.dp, 108.dp)
+                .graphicsLayer { rotationZ = if (title == "Cards") -14f else 8f; alpha = if (dark) 0.85f else 0.9f }.clip(RoundedCornerShape(18.dp)))
         Box(Modifier.size(145.dp).align(Alignment.TopEnd).offset(x = 37.dp, y = (-42).dp)
             .background(Brush.radialGradient(listOf(accent.copy(alpha = if (dark) 0.19f else 0.10f), Color.Transparent)), CircleShape))
         Column(Modifier.fillMaxWidth().height(176.dp).padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
@@ -138,11 +145,7 @@ private fun VaultTypeCard(title: String, subtitle: String, icon: ImageVector, co
                     contentAlignment = Alignment.Center) {
                     Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(30.dp))
                 }
-                Box(Modifier.size(28.dp).background(Color.White.copy(alpha = if (dark) 0.06f else 0.45f), CircleShape),
-                    contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.ChevronRight, contentDescription = null,
-                        tint = if (dark) darkAccent.copy(alpha = 0.90f) else tint, modifier = Modifier.size(20.dp))
-                }
+
             }
             Column {
                 Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, lineHeight = 21.sp),

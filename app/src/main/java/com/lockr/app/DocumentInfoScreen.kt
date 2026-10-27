@@ -17,12 +17,6 @@ fun DocumentInfoScreen(item: VaultItem, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         StashTopBar("File information", onBack = onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            item.attachments.firstOrNull()?.let { attachment ->
-                GlassPanel(Modifier.fillMaxWidth().height(230.dp), radius = 24.dp) {
-                    DocumentPreviewCanvas(attachment, Modifier.fillMaxSize().padding(8.dp),
-                        gesturesEnabled = false, showPageControls = false)
-                }
-            }
             GlassPanel(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(17.dp)) {
                     Text(item.title, style = MaterialTheme.typography.titleMedium, color = LockrColors.TextPrimary)

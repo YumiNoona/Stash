@@ -66,8 +66,14 @@ fun CardReviewScreen(
     initial: CardDraft,
     onBack: () -> Unit,
     onSave: (String, Map<String, String>, List<VaultAttachment>) -> Unit,
+    saving: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    var appearance by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(appearance) { appearance = false }
+    val formScroll = rememberScrollState()
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    LaunchedEffect(appearance) { formScroll.scrollTo(0) }
     val context = LocalContext.current
     var cardType by remember(initial) { mutableStateOf(initial.cardType) }
     var numberField by remember(initial) { mutableStateOf(TextFieldValue(
@@ -160,13 +166,15 @@ fun CardReviewScreen(
         lastFour = number.filter(Char::isDigit).takeLast(4), metadata = metadata, attachments = listOfNotNull(customArt), id = "card-draft")
 
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        StashTopBar(if (attachments.isEmpty()) "Add a card" else "Review card",
+        StashTopBar(if (appearance) "Make it yours" else if (attachments.isEmpty()) "Add a card" else "Review card",
             subtitle = if (attachments.isEmpty()) "Enter the details you want to keep" else "Check the scan before saving",
-            onBack = onBack)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+            onBack = { if (appearance) appearance = false else onBack() })
+        Column(Modifier.weight(1f).verticalScroll(formScroll), verticalArrangement = Arrangement.spacedBy(13.dp)) {
             CardDetailPreview(preview, showFullNumber = showNumber)
+            if (appearance) {
             CardCustomization(cardArt, { cardArt = it }, motion, { motion = it },
                 customArt, { customArt = it }, lightText, { lightText = it })
+            } else {
             if (attachments.isNotEmpty()) {
                 Text("Original scan", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
                 VaultAttachmentPreview(attachments.first(), Modifier.fillMaxWidth().height(160.dp))
@@ -250,6 +258,7 @@ fun CardReviewScreen(
             validation.warnings.forEach { warning ->
                 Text(warning, style = MaterialTheme.typography.bodySmall, color = Color(0xFF436A8A))
             }
+            }
             Spacer(Modifier.height(28.dp))
         }
         if ((saveAttempted && !validation.isValid) || saveNotice.isNotBlank()) {
@@ -264,9 +273,13 @@ fun CardReviewScreen(
                 }
             }
         }
-        Button(onClick = {
+        if (appearance) androidx.compose.material3.TextButton(enabled = !saving, onClick = {
+            onSave(title.trim(), metadata - "cardArtAttachment" + mapOf("cardArt" to "BASIC", "cardMotion" to "NONE"), attachments)
+        }, modifier = Modifier.fillMaxWidth()) { Text("Skip · use a basic card") }
+        Button(enabled = !saving, onClick = {
             if (recognizing) saveNotice = "Wait for the card scan to finish"
             else if (!validation.isValid) saveAttempted = true
+            else if (!appearance) { focus.clearFocus(); appearance = true }
             else {
                 val allAttachments = withCardArt(attachments, null, customArt)
                 if (allAttachments.size > MAX_VAULT_ATTACHMENT_COUNT || allAttachments.sumOf { it.byteCount } > MAX_VAULT_TOTAL_ATTACHMENT_BYTES)
@@ -275,7 +288,7 @@ fun CardReviewScreen(
             }
         },
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 10.dp).height(54.dp)) {
-            Text("Save card to Stash")
+            Text(if (appearance) "Finish and save" else "Continue")
         }
     }
 }

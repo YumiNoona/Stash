@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,6 +64,26 @@ fun HomeScreen(
     onOpenDetails: (VaultItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var menuItem by remember { mutableStateOf<VaultItem?>(null) }
+    var moving by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
+    val actions = LocalVaultActions.current
+    val folders = LocalVaultFolders.current
+    menuItem?.let { item ->
+        if (moving) FolderPicker(folders, { menuItem = null; moving = false }) { actions.move(setOf(item.id), it); menuItem = null; moving = false }
+        else if (deleting) AlertDialog(onDismissRequest = { menuItem = null; deleting = false }, title = { Text("Delete ${item.title}?") },
+            confirmButton = { TextButton(onClick = { actions.delete(setOf(item.id)); menuItem = null; deleting = false }) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = { menuItem = null; deleting = false }) { Text("Cancel") } })
+        else AlertDialog(onDismissRequest = { menuItem = null }, title = { Text(item.title) }, text = {
+            Column {
+                TextButton(onClick = { menuItem = null; onOpenItem(item) }) { Text("Open") }
+                TextButton(onClick = { menuItem = null; onOpenDetails(item) }) { Text("Information") }
+                if (item.category == VaultCategory.DOCUMENT) TextButton(onClick = { moving = true }) { Text("Move to folder") }
+                if (item.category == VaultCategory.DOCUMENT && item.attachments.isNotEmpty()) TextButton(onClick = { actions.download(listOf(item)); menuItem = null }) { Text("Download") }
+                TextButton(onClick = { deleting = true }) { Text("Delete") }
+            }
+        }, confirmButton = { TextButton(onClick = { menuItem = null }) { Text("Close") } })
+    }
     Column(modifier.fillMaxSize().padding(horizontal = 17.dp)) {
         Row(Modifier.fillMaxWidth().height(91.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(54.dp).clip(CircleShape).clickable(onClick = onOpenProfile), contentAlignment = Alignment.Center) {
@@ -104,10 +125,10 @@ fun HomeScreen(
                 }
             } else {
                 items.take(4).forEach { item ->
-                    RecentItemRow(item, onClick = { onOpenItem(item) }, onMore = { onOpenDetails(item) })
+                    RecentItemRow(item, onClick = { onOpenItem(item) }, onMore = { menuItem = item })
                 }
             }
-            Spacer(Modifier.height(92.dp))
+            Spacer(Modifier.height(120.dp))
         }
     }
 }

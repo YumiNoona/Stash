@@ -40,8 +40,8 @@ import kotlinx.coroutines.withContext
 import kotlin.math.max
 
 enum class CardMotion(val label: String) {
-    NONE("Still"), SHEEN("Light sweep"), FLOAT("Float"), PULSE("Glow"), TILT("Tilt"),
-    DRIFT("Drift"), ZOOM("Breathe"), RIPPLE("Ripple"), AURORA("Aurora flow"), SPARKLE("Stardust"), ORBIT("Orbit")
+    NONE("Still"), SHEEN("Glint"), FLOAT("Silk"), PULSE("Glow"), TILT("Foil"),
+    DRIFT("Drift"), ZOOM("Breathe"), RIPPLE("Halo"), AURORA("Aurora flow"), SPARKLE("Micro sparkle"), ORBIT("Orbit")
 }
 
 fun cardMotion(item: VaultItem): CardMotion =

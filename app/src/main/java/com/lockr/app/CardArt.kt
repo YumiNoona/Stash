@@ -1,6 +1,7 @@
 package com.lockr.app
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,32 +22,35 @@ import androidx.compose.ui.unit.dp
 enum class CardArtStyle(val label: String, @DrawableRes val image: Int, val dark: Boolean = false, val illustrated: Boolean = false) {
     AURORA("Aurora", R.drawable.card_aurora_art),
     MIDNIGHT("Midnight", R.drawable.card_midnight_art, dark = true),
-    OPAL("Opal", R.drawable.card_opal_v2),
-    SOLAR("Coral Bloom", R.drawable.card_solar_v4, illustrated = true),
+    BASIC("Basic", R.drawable.card_basic_art, dark = true),
+    OPAL("Basic", R.drawable.card_basic_art, dark = true),
+    SOLAR("Folded Light", R.drawable.card_solar_v6, dark = true, illustrated = true),
     LAGOON("Lagoon", R.drawable.card_lagoon_v2, dark = true),
     BLOOM("Flamingo", R.drawable.card_bloom_v3, illustrated = true),
     CHROME("Chrome", R.drawable.card_chrome_v2),
     AMETHYST("Moon Garden", R.drawable.card_amethyst_v3, illustrated = true),
     NEON("Arcade", R.drawable.card_neon_v3, dark = true, illustrated = true),
     COMET("Orbit Club", R.drawable.card_comet_v3, dark = true, illustrated = true),
-    CITRUS("Sea Petals", R.drawable.card_citrus_v4, illustrated = true),
+    CITRUS("Chrome Playground", R.drawable.card_citrus_v6, illustrated = true),
     ICE("Alpine", R.drawable.card_ice_v3, illustrated = true),
-    EMBER("Night Fern", R.drawable.card_ember_v4, dark = true, illustrated = true),
-    MOSAIC("Petal Pop", R.drawable.card_mosaic_v4, illustrated = true),
+    EMBER("Lunar Dunes", R.drawable.card_ember_v6, dark = true, illustrated = true),
+    MOSAIC("Paper Jazz", R.drawable.card_mosaic_v6, illustrated = true),
     PRISM("Prism", R.drawable.card_prism_v2, dark = true)
 }
 
 fun cardArtStyle(item: VaultItem): CardArtStyle =
     CardArtStyle.entries.firstOrNull { it.name.equals(item.metadata["cardArt"], true) }
-        ?: listOf(CardArtStyle.AURORA, CardArtStyle.OPAL, CardArtStyle.MIDNIGHT)
+        ?: listOf(CardArtStyle.AURORA, CardArtStyle.BASIC, CardArtStyle.MIDNIGHT)
             .let { it[(item.id.hashCode() and Int.MAX_VALUE) % 3] }
 
 @Composable
 fun CardArtBackground(art: CardArtStyle, modifier: Modifier = Modifier) {
-    Image(painterResource(art.image), null, contentScale = ContentScale.Crop, modifier = modifier)
+    if (art == CardArtStyle.BASIC || art == CardArtStyle.OPAL) androidx.compose.foundation.layout.Box(modifier.then(Modifier.background(
+        androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xFF293748), androidx.compose.ui.graphics.Color(0xFF536879), androidx.compose.ui.graphics.Color(0xFF344151))))))
+    else Image(painterResource(art.image), null, contentScale = ContentScale.Crop, modifier = modifier)
 }
 
-val selectableCardArt = CardArtStyle.entries.toList()
+val selectableCardArt = CardArtStyle.entries.filterNot { it == CardArtStyle.OPAL }
 
 @Composable
 fun CardArtPicker(selected: CardArtStyle, customSelected: Boolean = false, onImport: (() -> Unit)? = null, showLabels: Boolean = true, onSelect: (CardArtStyle) -> Unit) {

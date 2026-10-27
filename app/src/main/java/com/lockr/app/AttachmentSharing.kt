@@ -33,3 +33,22 @@ fun shareVaultAttachment(context: Context, attachment: VaultAttachment) {
 fun clearSharedAttachmentCache(context: Context) {
     File(context.cacheDir, "shares").listFiles()?.forEach(File::delete)
 }
+
+/** Multi-page image documents share as one PDF; mixed files travel together in a ZIP. */
+suspend fun shareVaultDocument(context: Context, item: VaultItem) {
+    try {
+        val target = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val directory = File(context.cacheDir, "shares").apply { mkdirs() }
+            File(directory, "${System.currentTimeMillis()}-${documentDownloadName(listOf(item)).replace(Regex("[^A-Za-z0-9._-]"), "_")}").apply {
+                outputStream().use { writeDocumentDownload(context, listOf(item), it) }
+            }
+        }
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", target)
+        val mime = if (target.name.endsWith(".pdf")) "application/pdf" else "application/zip"
+        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+            type = mime; putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }, "Share document").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        Handler(Looper.getMainLooper()).postDelayed({ target.delete() }, 10 * 60 * 1000L)
+    } catch (_: Exception) { Toast.makeText(context, "Could not share this document.", Toast.LENGTH_SHORT).show() }
+}

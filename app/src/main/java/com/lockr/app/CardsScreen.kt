@@ -83,7 +83,7 @@ fun CardsScreen(items: List<VaultItem>, onBack: () -> Unit, onSearch: () -> Unit
             CollectionEmptyState(if (cards.isEmpty()) "Your cards will live here" else "No cards in this filter",
                 if (cards.isEmpty()) "Tap + to add your first card." else "Choose another tag.", Icons.Outlined.CreditCard)
         } else {
-            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(top = 8.dp, bottom = 12.dp),
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 items(visibleCards, key = { it.id }) { card ->
                     CardSurface(card, onClick = { onOpenItem(card) })
@@ -133,7 +133,7 @@ private fun CardSurface(
     val motion = if (animate && LocalMotionEnabled.current) cardMotion(item) else CardMotion.NONE
     val transition = if (motion != CardMotion.NONE) rememberInfiniteTransition(label = "card motion") else null
     val phase by transition?.animateFloat(-1f, 1f,
-        animationSpec = infiniteRepeatable(tween(4000), RepeatMode.Reverse), label = "card phase")
+        animationSpec = infiniteRepeatable(tween(6400, easing = androidx.compose.animation.core.LinearEasing), RepeatMode.Restart), label = "card phase")
         ?: remember { mutableStateOf(0f) }
     // Every surface uses the physical card ratio. A single logical canvas scales uniformly,
     // so list, review and detail cannot stretch the card or rearrange its fields.
@@ -141,13 +141,15 @@ private fun CardSurface(
         val scale = maxWidth.value / 340f
         Box(Modifier.requiredSize(340.dp, (340f / 1.586f).dp).graphicsLayer {
             scaleX = scale; scaleY = scale
-            if (motion == CardMotion.FLOAT) { rotationZ = phase * 0.8f; translationY = phase * 2f * density }
-            if (motion == CardMotion.TILT) { rotationY = phase * 3f; rotationX = -phase * 1.5f; cameraDistance = 24f * density }
+
+
         }.clip(shape).background(if (dark) Color(0xFF111B30) else Color(0xFFDBE9F5))
             .border(1.dp, ink.copy(alpha = 0.15f), shape).clickable(onClick = onClick)) {
             Box(Modifier.fillMaxSize().graphicsLayer {
-                if (motion == CardMotion.DRIFT) { scaleX = 1.06f; scaleY = 1.06f; translationX = phase * 5f * density }
-                if (motion == CardMotion.ZOOM) { scaleX = 1.03f + phase * 0.025f; scaleY = scaleX }
+                val wave = kotlin.math.sin((phase + 1f) * kotlin.math.PI).toFloat()
+                if (motion == CardMotion.FLOAT) { scaleX = 1.035f; scaleY = 1.035f; translationY = wave * 2f * density }
+                if (motion == CardMotion.DRIFT) { scaleX = 1.055f; scaleY = 1.055f; translationX = wave * 5f * density; translationY = kotlin.math.cos((phase + 1f) * kotlin.math.PI).toFloat() * 2f * density }
+                if (motion == CardMotion.ZOOM) { scaleX = 1.035f + kotlin.math.sin((phase + 1f) * kotlin.math.PI).toFloat() * 0.015f; scaleY = scaleX }
             }) {
                 CardArtBackground(art, Modifier.fillMaxSize())
                 if (custom != null) CustomCardArtBackground(custom, Modifier.fillMaxSize(), animate && LocalArtworkAutoplay.current)
@@ -158,15 +160,8 @@ private fun CardSurface(
                     else listOf(Color(0x33FFFFFF), Color.Transparent, Color(0x33FFFFFF))
                 } else if (dark) listOf(Color(0x99071222), Color(0x55071222), Color(0xAA071222))
                 else listOf(Color(0xCCFFFFFF), Color(0x88FFFFFF), Color(0xCCFFFFFF)))))
-            if (motion == CardMotion.SHEEN) {
-                Box(Modifier.fillMaxHeight().width(90.dp).graphicsLayer {
-                    translationX = (phase * 270f + 160f) * density
-                    rotationZ = -20f
-                }.background(Brush.horizontalGradient(listOf(Color.Transparent,
-                    Color.White.copy(alpha = 0.3f), Color.Transparent))))
-            }
             if (motion == CardMotion.PULSE) Box(Modifier.fillMaxSize().background(
-                Color.White.copy(alpha = 0.04f + (phase + 1f) * 0.045f)))
+                Color(0xFFB7D6FF).copy(alpha = 0.035f + (kotlin.math.sin((phase + 1f) * kotlin.math.PI).toFloat() + 1f) * 0.025f)))
             CardMotionOverlay(motion, phase, Modifier.fillMaxSize())
             Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,

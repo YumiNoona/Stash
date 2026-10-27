@@ -68,6 +68,12 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : androidx.activity.ComponentActivity() {
+    private var widgetRequest by mutableStateOf<Pair<String, Long>?>(null)
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        widgetRequest = intent.getStringExtra("widget_target")?.let { it to System.nanoTime() }
+    }
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -78,7 +84,8 @@ class MainActivity : androidx.activity.ComponentActivity() {
             isAppearanceLightStatusBars = true
             isAppearanceLightNavigationBars = true
         }
-        setContent { LockrTheme { LockrApp() } }
+        widgetRequest = intent.getStringExtra("widget_target")?.let { it to System.nanoTime() }
+        setContent { LockrTheme { LockrApp(widgetRequest) { widgetRequest = null } } }
     }
 }
 
@@ -111,7 +118,7 @@ private const val MAX_IMPORT_ITEMS = 20
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun LockrApp() {
+private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Unit) {
     // Drafts and selected items live in memory; do not restore a route without its data.
     var screen by remember { mutableStateOf(LockrScreen.HOME) }
     var returnScreen by rememberSaveable { mutableStateOf(LockrScreen.HOME) }
@@ -443,7 +450,10 @@ private fun LockrApp() {
         savingItem = true
         coroutineScope.launch {
             try {
-                val updatedItems = items.toList().toMutableList().apply { add(0, item) }
+                val lastFolder = preferences.getString("last_folder", "All folders").orEmpty().takeIf { it in preferences.getStringSet("vault_folders", setOf("School", "Personal")).orEmpty() }.orEmpty()
+                val target = if (item.category == VaultCategory.DOCUMENT && "folder" !in item.metadata)
+                    item.copy(metadata = item.metadata + ("folder" to lastFolder)) else item
+                val updatedItems = items.toList().toMutableList().apply { add(0, uniqueItem(target, items.toList())) }
                 withContext(Dispatchers.IO) { store.save(updatedItems) }
                 items.clear()
                 items.addAll(updatedItems)
@@ -468,11 +478,12 @@ private fun LockrApp() {
         if (savingItem) return@update
         savingItem = true
         coroutineScope.launch {
-            val updatedItems = items.map { if (it.id == updated.id) updated else it }
+            val safeUpdate = uniqueItem(updated, items.toList())
+            val updatedItems = items.map { if (it.id == updated.id) safeUpdate else it }
             try {
                 withContext(Dispatchers.IO) { store.save(updatedItems) }
                 items.clear(); items.addAll(updatedItems)
-                currentDetailItem = updated
+                currentDetailItem = safeUpdate
                 snackbarHostState.showSnackbar("Item updated")
             } catch (_: Exception) {
                 snackbarHostState.showSnackbar("Could not update this item. Your vault was left unchanged.")
@@ -513,7 +524,97 @@ private fun LockrApp() {
         }
     }
 
-    CompositionLocalProvider(LocalHideCardNumber provides settings.hideCardNumber, LocalTagCatalog provides tagCatalog) {
+    var folders by remember { mutableStateOf(preferences.getStringSet("vault_folders", setOf("School", "Personal"))!!.toList().sorted()) }
+    LaunchedEffect(items.toList()) {
+        val recovered = (folders + items.mapNotNull { it.metadata["folder"]?.takeIf(String::isNotBlank) }).distinct().sorted()
+        if (recovered != folders) { folders = recovered; preferences.edit().putStringSet("vault_folders", recovered.toSet()).apply() }
+    }
+    var downloadItems by remember { mutableStateOf<List<VaultItem>>(emptyList()) }
+    val downloadLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        val selected = downloadItems; downloadItems = emptyList()
+        if (uri != null) coroutineScope.launch {
+            try {
+                withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(uri)?.use { writeDocumentDownload(context, selected, it) } ?: error("Cannot open destination") }
+                snackbarHostState.showSnackbar("Download saved")
+            } catch (_: Exception) { snackbarHostState.showSnackbar("Could not save the download. Choose another destination.") }
+        }
+    }
+    val batchSave: (List<VaultItem>, String, List<String>?) -> Unit = batch@{ replacement, message, newFolders ->
+        if (savingItem) return@batch
+        savingItem = true
+        val removed = items.filter { old -> replacement.none { it.id == old.id } }
+        coroutineScope.launch {
+            var success = false
+            try {
+                withContext(Dispatchers.IO) { store.save(replacement) }
+                items.clear(); items.addAll(replacement)
+                currentDetailItem = currentDetailItem?.let { current -> replacement.firstOrNull { it.id == current.id } }
+                if (newFolders != null) { folders = newFolders.distinct().sorted(); preferences.edit().putStringSet("vault_folders", folders.toSet()).apply() }
+                success = true
+            } catch (_: Exception) { /* The original vault remains intact. */ }
+            finally { savingItem = false }
+            if (!success) snackbarHostState.showSnackbar("Could not save. Your vault was left unchanged.")
+            else {
+                val result = snackbarHostState.showSnackbar(message, actionLabel = if (removed.isNotEmpty()) "Undo" else null)
+                if (result == androidx.compose.material3.SnackbarResult.ActionPerformed && !savingItem) {
+                    savingItem = true
+                    var restoredSuccessfully = false
+                    try {
+                        val restored = items.toMutableList()
+                        removed.filter { old -> restored.none { it.id == old.id } }.forEach { restored += uniqueItem(it, restored) }
+                        withContext(Dispatchers.IO) { store.save(restored) }
+                        items.clear(); items.addAll(restored)
+                        restoredSuccessfully = true
+                    } catch (_: Exception) { /* Keep the saved vault intact. */ } finally { savingItem = false }
+                    if (!restoredSuccessfully) snackbarHostState.showSnackbar("Could not restore these items.")
+                }
+            }
+        }
+    }
+    val actions = VaultActions(
+        move = { ids, folder ->
+            val changed = mutableListOf<VaultItem>()
+            items.filterNot { it.id in ids }.forEach { changed += it }
+            items.filter { it.id in ids }.forEach { item -> changed += uniqueItem(item.copy(metadata = item.metadata + ("folder" to folder)), changed) }
+            val order = items.mapIndexed { index, item -> item.id to index }.toMap()
+            batchSave(changed.sortedBy { order[it.id] }, "Moved ${ids.size} items", if (folder.isNotBlank()) folders + folder else folders)
+        },
+        delete = { ids -> batchSave(items.filterNot { it.id in ids }, "Deleted ${ids.size} items", null) },
+        download = { selected ->
+            val documents = selected.filter { it.attachments.isNotEmpty() && it.category != VaultCategory.CARD && it.category != VaultCategory.PASSWORD }
+            if (documents.isNotEmpty()) {
+                downloadItems = documents
+                downloadLauncher.launch(documentDownloadName(documents))
+            }
+        },
+        folderChanged = { old, new ->
+            val renamed = mutableListOf<VaultItem>()
+            val unaffected = items.filterNot { old.isNotEmpty() && it.metadata["folder"] == old }
+            renamed.addAll(unaffected)
+            items.filter { old.isNotEmpty() && it.metadata["folder"] == old }.forEach { item -> renamed += uniqueItem(item.copy(metadata = item.metadata + ("folder" to new.orEmpty())), renamed) }
+            val order = items.mapIndexed { index, item -> item.id to index }.toMap()
+            batchSave(renamed.sortedBy { order[it.id] }, "Folders updated", (folders - old) + listOfNotNull(new))
+        })
+    var widgetOpening by remember { mutableStateOf<String?>(null) }
+    val motionAllowed = LocalMotionEnabled.current
+    val theme = LocalDarkTheme.current
+    LaunchedEffect(items.toList(), theme, settings.appLockEnabled) {
+        preferences.edit().putInt("widget_cards_count", items.count { it.category == VaultCategory.CARD })
+            .putInt("widget_documents_count", items.count { it.category == VaultCategory.DOCUMENT }).apply()
+        updateWidgets(context)
+    }
+    LaunchedEffect(widgetRequest, vaultLocked, storageReady, onboardingComplete, storageError) {
+        if (widgetRequest != null && !vaultLocked && storageReady && onboardingComplete && !storageError) {
+            val target = widgetRequest.first
+            widgetOpening = target
+            if (motionAllowed) kotlinx.coroutines.delay(950)
+            screen = if (target == "documents") LockrScreen.DOCUMENTS else LockrScreen.CARDS
+            showAdd = false
+            widgetOpening = null
+            consumeWidget()
+        } else widgetOpening = null
+    }
+    CompositionLocalProvider(LocalHideCardNumber provides settings.hideCardNumber, LocalTagCatalog provides tagCatalog, LocalVaultActions provides actions, LocalVaultFolders provides folders) {
     Box(Modifier.fillMaxSize()) {
         if (!onboardingComplete) {
             OnboardingScreen(
@@ -531,12 +632,12 @@ private fun LockrApp() {
                         vaultLocked = false
                     }
                 })
-            } else Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+            } else Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                 if (!storageReady) {
                     LocalVaultMessage("Opening your local vault…", "Your records stay on this device.")
                 } else if (storageError) {
                     LocalVaultMessage("Vault could not be opened", "The encrypted file was left untouched. This device needs its original app key.")
-                } else Box(Modifier.weight(1f).fillMaxWidth()) {
+                } else Box(Modifier.fillMaxSize()) {
                     when (screen) {
                     LockrScreen.HOME -> HomeScreen(
                         items = items,
@@ -602,6 +703,7 @@ private fun LockrApp() {
                         }
                     )
                     LockrScreen.CARD_REVIEW -> CardReviewScreen(
+                        saving = savingItem,
                         attachments = importedAttachments,
                         initial = cardDraft,
                         onBack = { importedAttachments = emptyList(); cardDraft = CardDraft(); screen = returnScreen; showAdd = true },
@@ -639,6 +741,7 @@ private fun LockrApp() {
                             item = item,
                             onBack = { currentDetailItem = null; screen = returnFromPreview },
                             onRename = { name -> persistUpdatedItem(item.copy(title = name)) },
+                            onUpdatePages = { pages -> persistUpdatedItem(item.copy(attachments = pages)) },
                             onSaveField = { key, value ->
                                 persistUpdatedItem(item.copy(metadata = item.metadata + (key to value)))
                             },
@@ -663,6 +766,7 @@ private fun LockrApp() {
                 )
                 if (showDock) {
                     StashDock(
+                        modifier = Modifier.align(Alignment.BottomCenter),
                         selected = when (screen) {
                             LockrScreen.CARDS -> DockDestination.CARDS
                             LockrScreen.DOCUMENTS -> DockDestination.DOCUMENTS
@@ -675,6 +779,8 @@ private fun LockrApp() {
                 }
             }
         }
+
+        if (!vaultLocked) widgetOpening?.let { WidgetOpening(it == "documents") }
 
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).padding(bottom = 82.dp))
 

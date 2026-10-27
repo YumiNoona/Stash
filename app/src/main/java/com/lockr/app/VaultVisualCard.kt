@@ -1,6 +1,8 @@
 package com.lockr.app
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,8 +31,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun VaultVisualCard(item: VaultItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun VaultVisualCard(item: VaultItem, onClick: () -> Unit, modifier: Modifier = Modifier, onLongClick: (() -> Unit)? = null) {
     if (item.category == VaultCategory.CARD) {
         CardDetailPreview(item, modifier, onClick = onClick)
         return
@@ -42,7 +45,7 @@ fun VaultVisualCard(item: VaultItem, onClick: () -> Unit, modifier: Modifier = M
         VaultCategory.CARD -> error("Card handled above")
     }
     GlassPanel(modifier.fillMaxWidth().height(132.dp), radius = 23.dp) {
-        Row(Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)).clickable(onClick = onClick).padding(12.dp),
+        Row(Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)).combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(12.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier.size(108.dp).clip(RoundedCornerShape(17.dp)).background(Brush.linearGradient(colors)),
@@ -57,7 +60,7 @@ fun VaultVisualCard(item: VaultItem, onClick: () -> Unit, modifier: Modifier = M
             Column(Modifier.weight(1f).padding(start = 14.dp), verticalArrangement = Arrangement.Center) {
                 Text(item.title, style = MaterialTheme.typography.titleMedium, color = LockrColors.TextPrimary,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(item.category.label, style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary,
+                Text(if (item.category == VaultCategory.DOCUMENT) listOf(item.metadata["folder"].orEmpty().ifBlank { "Unfiled" }, if (item.attachments.size > 1) "${item.attachments.size} pages" else "Document").joinToString(" · ") else item.category.label, style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary,
                     modifier = Modifier.padding(top = 4.dp))
                 Text(item.time, style = MaterialTheme.typography.labelSmall, color = LockrColors.TextSecondary,
                     modifier = Modifier.padding(top = 2.dp))
