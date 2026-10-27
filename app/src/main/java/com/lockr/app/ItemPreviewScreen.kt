@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,20 +45,27 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 fun ItemPreviewScreen(
     item: VaultItem,
     onBack: () -> Unit,
     onRename: (String) -> Unit,
-    onExtract: () -> Unit,
+    onSaveField: (String, String) -> Unit,
+    autoClearClipboard: Boolean,
     onSend: () -> Unit,
     onDelete: () -> Unit,
     onDetails: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var dialog by remember { mutableStateOf("") }
     var title by remember(item.title) { mutableStateOf(item.title) }
+    var recognizedText by remember(item.id) { mutableStateOf("") }
+    var extracting by remember(item.id) { mutableStateOf(false) }
+    var extractionMessage by remember(item.id) { mutableStateOf("") }
     Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         StashTopBar(item.title, item.category.label, onBack = onBack)
         GlassPanel(Modifier.fillMaxWidth().weight(1f).padding(vertical = 12.dp), radius = 25.dp) {
@@ -72,13 +80,41 @@ fun ItemPreviewScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 PreviewAction(Icons.Outlined.Edit, "Rename") { title = item.title; dialog = "rename" }
-                PreviewAction(Icons.AutoMirrored.Outlined.ManageSearch, "Extract text", onExtract)
+                PreviewAction(Icons.AutoMirrored.Outlined.ManageSearch, "Extract fields") {
+                    if (!extracting) scope.launch {
+                        extracting = true
+                        extractionMessage = ""
+                        try {
+                            val text = item.attachments.take(20).mapNotNull { attachment ->
+                                runCatching { recognizeAttachmentText(context, attachment) }.getOrNull()
+                                    ?.takeIf(String::isNotBlank)
+                            }.joinToString("\n\n").take(120_000)
+                            if (text.isBlank()) extractionMessage = "No readable text found. Try a clearer photo."
+                            else { recognizedText = text; dialog = "extract" }
+                        } catch (_: Exception) {
+                            extractionMessage = "This file could not be read. Try another image or PDF."
+                        } finally {
+                            extracting = false
+                        }
+                    }
+                }
                 PreviewAction(Icons.Outlined.IosShare, "Send", onSend)
                 PreviewAction(Icons.Outlined.MoreHoriz, "Details", onDetails)
                 PreviewAction(Icons.Outlined.DeleteOutline, "Delete") { dialog = "delete" }
             }
         }
+        if (extracting || extractionMessage.isNotBlank()) Text(
+            if (extracting) "Reading text on this device…" else extractionMessage,
+            style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
     }
+    if (dialog == "extract") ExtractFieldsDialog(
+        recognizedText = recognizedText,
+        onDismiss = { dialog = "" },
+        onCopy = { copyPrivateText(context, it, autoClearClipboard) },
+        onSave = { key, value -> onSaveField(key, value); dialog = "" }
+    )
     if (dialog == "rename") AlertDialog(
         onDismissRequest = { dialog = "" },
         title = { Text("Rename item") },

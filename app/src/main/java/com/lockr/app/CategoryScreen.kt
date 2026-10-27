@@ -57,8 +57,8 @@ fun CategoryScreen(
     val filters = if (screen == LockrScreen.DOCUMENTS) listOf("All", "Identity", "Medical", "Bills", "Insurance", "Other")
         else listOf("All", "Cards", "Documents", "Passwords", "Notes")
     var selectedFilter by rememberSaveable(screen) { mutableStateOf("All") }
-    val visibleItems = items.filter { item ->
-        val matchesCategory = category == null || item.category == category
+    val categoryItems = items.filter { category == null || it.category == category }
+    val visibleItems = categoryItems.filter { item ->
         val matchesFilter = if (screen == LockrScreen.DOCUMENTS && selectedFilter != "All") {
             item.metadata["documentCategory"].equals(selectedFilter, ignoreCase = true) ||
                 (selectedFilter == "Other" && item.metadata["documentCategory"].isNullOrBlank())
@@ -69,7 +69,7 @@ fun CategoryScreen(
             "Notes" -> item.category == VaultCategory.NOTE
             else -> true
         }
-        matchesCategory && matchesFilter
+        matchesFilter
     }
 
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
@@ -91,9 +91,9 @@ fun CategoryScreen(
                     Box(Modifier.size(60.dp).background(Color(0xFFDFF2F5), CircleShape), contentAlignment = Alignment.Center) {
                         Icon(Icons.Outlined.Description, contentDescription = null, tint = Color(0xFF498D9A), modifier = Modifier.size(29.dp))
                     }
-                    Text(if (items.isEmpty()) "Nothing here yet" else "No items in this filter",
+                    Text(if (categoryItems.isEmpty()) "Nothing here yet" else "No items in this filter",
                         style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 13.dp))
-                    Text(if (items.isEmpty()) "Use Add below to bring in your first item." else "Choose another filter.",
+                    Text(if (categoryItems.isEmpty()) "Use Add below to bring in your first item." else "Choose another filter.",
                         color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 5.dp))
                 }

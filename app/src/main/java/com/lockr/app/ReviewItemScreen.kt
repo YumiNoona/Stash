@@ -62,8 +62,11 @@ fun ReviewItemScreen(
     var titleTouched by remember(attachments) { mutableStateOf(false) }
     var documentGroup by remember(attachments) { mutableStateOf("Other") }
     var extractedText by remember(attachments) { mutableStateOf("") }
+    var rawRecognizedText by remember(attachments) { mutableStateOf("") }
+    var selectedFields by remember(attachments) { mutableStateOf<Map<String, String>>(emptyMap()) }
     var isRecognizing by remember(attachments) { mutableStateOf(true) }
     var showExtractedText by remember { mutableStateOf(false) }
+    var showFieldPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(attachments) {
         isRecognizing = true
@@ -72,13 +75,14 @@ fun ReviewItemScreen(
             try {
                 val text = recognizeAttachmentText(context, attachment)
                 if (text.isNotBlank()) {
-                    extracted += "${attachment.name}\n${redactPaymentSecrets(text)}"
+                    extracted += "${attachment.name}\n$text"
                 }
             } catch (_: Exception) {
                 // The original attachment remains savable if local OCR cannot process it.
             }
         }
-        extractedText = extracted.joinToString("\n\n").take(120_000)
+        rawRecognizedText = extracted.joinToString("\n\n").take(120_000)
+        extractedText = redactPaymentSecrets(redactAadhaarNumbers(rawRecognizedText))
         documentGroup = suggestedDocumentGroup(attachments.firstOrNull()?.name.orEmpty(), extractedText)
         if (!titleTouched) title = suggestedItemTitle(attachments.firstOrNull()?.name.orEmpty(), extractedText)
         isRecognizing = false
@@ -134,8 +138,13 @@ fun ReviewItemScreen(
                     }
                 }
                 if (extractedText.isNotBlank()) {
-                    TextButton(onClick = { showExtractedText = true }) {
+                    TextButton(onClick = { showFieldPicker = true }) {
                         Icon(Icons.Outlined.TextSnippet, contentDescription = null, modifier = Modifier.size(19.dp))
+                        Text(if (selectedFields.isEmpty()) "Extract specific fields" else "Edit ${selectedFields.size} extracted fields",
+                            style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
+                            modifier = Modifier.padding(start = 8.dp))
+                    }
+                    TextButton(onClick = { showExtractedText = true }) {
                         Text("View extracted text",
                             style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
                             modifier = Modifier.padding(start = 8.dp))
@@ -149,6 +158,7 @@ fun ReviewItemScreen(
                 val metadata = buildMap {
                     if (extractedText.isNotBlank()) put("ocrText", extractedText)
                     put("documentCategory", documentGroup)
+                    putAll(selectedFields)
                 }
                 onSave(title.trim().ifBlank { "Imported document" }, VaultCategory.DOCUMENT, metadata, attachments)
             },
@@ -170,6 +180,12 @@ fun ReviewItemScreen(
             confirmButton = { TextButton(onClick = { showExtractedText = false }) { Text("Done") } },
             containerColor = Color.White, shape = RoundedCornerShape(24.dp))
     }
+    if (showFieldPicker) ExtractFieldsDialog(
+        recognizedText = rawRecognizedText,
+        onDismiss = { showFieldPicker = false },
+        onCopy = { copyPrivateText(context, it, autoClear = true) },
+        onSave = { key, value -> selectedFields = selectedFields + (key to value) }
+    )
 }
 
 @Composable

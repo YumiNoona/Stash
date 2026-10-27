@@ -124,7 +124,7 @@ fun suggestedVaultCategory(filename: String, recognizedText: String): VaultCateg
 fun suggestedDocumentGroup(filename: String, recognizedText: String): String {
     val sample = "$filename $recognizedText".lowercase()
     return when {
-        listOf("passport", "identity", "national id", "driver license", "driving licence").any(sample::contains) -> "Identity"
+        listOf("passport", "identity", "national id", "driver license", "driving licence", "aadhaar", "aadhar", "uidai", "government of india").any(sample::contains) -> "Identity"
         listOf("prescription", "medical", "hospital", "doctor", "clinic").any(sample::contains) -> "Medical"
         listOf("insurance", "policy number", "premium").any(sample::contains) -> "Insurance"
         listOf("invoice", "bill", "utility", "electricity", "water statement").any(sample::contains) -> "Bills"

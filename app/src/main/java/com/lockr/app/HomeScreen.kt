@@ -172,8 +172,7 @@ private fun RecentThumbnail(item: VaultItem) {
             VaultCategory.NOTE -> Icons.AutoMirrored.Outlined.Article
         }
         if (item.category == VaultCategory.CARD) {
-            Image(painterResource(cardArtStyle(item).image), null,
-                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            CardArtBackground(cardArtStyle(item), Modifier.fillMaxSize())
             Box(Modifier.align(Alignment.TopStart).padding(start = 7.dp, top = 8.dp)
                 .size(width = 14.dp, height = 10.dp)
                 .clip(RoundedCornerShape(3.dp))

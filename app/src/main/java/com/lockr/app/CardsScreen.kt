@@ -1,7 +1,6 @@
 package com.lockr.app
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,8 +53,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -156,8 +153,7 @@ private fun CardSurface(
             .border(1.5.dp, Color.White.copy(alpha = 0.96f), shape)
             .clickable(onClick = onClick)
     ) {
-        Image(painterResource(art.image), contentDescription = null,
-            contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        CardArtBackground(art, Modifier.fillMaxSize(), phase)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
             if (art.dark) listOf(Color(0x44102055), Color.Transparent, Color(0x66102055))
             else listOf(Color.White.copy(alpha = 0.16f), Color.Transparent, Color.White.copy(alpha = 0.23f)))))

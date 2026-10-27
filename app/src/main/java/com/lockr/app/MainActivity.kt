@@ -596,18 +596,10 @@ private fun LockrApp() {
                             item = item,
                             onBack = { currentDetailItem = null; screen = returnFromPreview },
                             onRename = { name -> persistUpdatedItem(item.copy(title = name)) },
-                            onExtract = {
-                                coroutineScope.launch {
-                                    try {
-                                        val text = recognizeAttachmentText(context, item.attachments.first())
-                                        if (text.isBlank()) snackbarHostState.showSnackbar("No text found in this file.")
-                                        else {
-                                            persistUpdatedItem(item.copy(metadata = item.metadata + ("ocrText" to redactPaymentSecrets(text))))
-                                            snackbarHostState.showSnackbar("Text extracted and saved.")
-                                        }
-                                    } catch (_: Exception) { snackbarHostState.showSnackbar("Text could not be extracted.") }
-                                }
+                            onSaveField = { key, value ->
+                                persistUpdatedItem(item.copy(metadata = item.metadata + (key to value)))
                             },
+                            autoClearClipboard = settings.autoClearClipboard,
                             onSend = { shareVaultAttachment(context, item.attachments.first()) },
                             onDelete = { deleteItem(item) },
                             onDetails = { returnFromDetail = LockrScreen.ITEM_PREVIEW; screen = LockrScreen.ITEM_DETAIL }

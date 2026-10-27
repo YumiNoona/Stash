@@ -136,7 +136,7 @@ fun SettingsScreen(
             }
             SettingsSection("About", modifier = Modifier.padding(top = 14.dp)) {
                 SettingsRow(
-                    Icons.Outlined.Info, "About Stash", "Version 1.1.0 · offline vault", value = "›",
+                    Icons.Outlined.Info, "About Stash", "Version 1.2.0 · offline vault", value = "›",
                     iconTint = Color(0xFF4C526B), iconBg = Color(0xFFF1ECF8), last = true,
                     onClick = { dialog = "about" }
                 )
@@ -171,7 +171,7 @@ fun SettingsScreen(
             onDismiss = { dialog = "" }
         )
         "about" -> InfoDialog(
-            "Stash · 1.1.0",
+            "Stash · 1.2.0",
             "Your vault is stored locally on this device. Stash has no account, cloud sync, or network connection.",
             onDismiss = { dialog = "" }
         )

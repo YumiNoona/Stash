@@ -2,7 +2,7 @@
 
 Stash is a local Android vault for cards, documents, passwords, and notes, built with Kotlin and Jetpack Compose. The interface uses JetBrains Mono, aurora artwork, and glass surfaces. Stash has no account, cloud service, or internet permission.
 
-Version 1.1 adds the Stash launcher logo, three selectable card finishes (Aurora, Opal, and an animated Midnight sheen), improved recent item previews, and expiry and reveal controls on the card detail. The **Card number display** setting lets you mask both the number and CVC or keep the number visible while the CVC stays masked. Revealing a masked value requires device authentication.
+Version 1.2 includes 15 selectable card finishes, five with subtle motion. Card entry groups digits visually so typing and cursor placement stay stable. Image extraction now offers a review step for specific fields such as an Aadhaar number or address. The **Card number display** setting lets you mask both the number and CVC or keep the number visible while the CVC stays masked. Revealing a masked value requires device authentication.
 
 ## Screenshots
 
@@ -14,9 +14,17 @@ Version 1.1 adds the Stash launcher logo, three selectable card finishes (Aurora
 | --- | --- |
 | ![Card import methods](docs/screenshots/add-card.jpg) | ![Manual card review](docs/screenshots/card-review.jpg) |
 
+| Card finishes |
+| --- |
+| ![Card art picker with 15 finishes](docs/screenshots/card-finishes.jpg) |
+
 | Add documents | Review document |
 | --- | --- |
 | ![Document import choices](docs/screenshots/add-document.jpg) | ![Document review with local PDF recognition](docs/screenshots/document-review.jpg) |
+
+| Review an extracted field |
+| --- |
+| ![Choose an address from a fabricated Aadhaar-style OCR test image](docs/screenshots/extract-fields.jpg) |
 
 | Cards | Card detail |
 | --- | --- |
@@ -30,7 +38,7 @@ Version 1.1 adds the Stash launcher logo, three selectable card finishes (Aurora
 | --- | --- | --- |
 | ![Documents collection](docs/screenshots/documents.jpg) | ![Local profile](docs/screenshots/profile.jpg) | ![Security and export settings](docs/screenshots/settings.jpg) |
 
-The card detail and document review screenshots use temporary files during emulator testing. They were deleted afterward; a new vault starts empty.
+The card detail and document review screenshots use temporary files during emulator testing. The field extraction screenshot uses a fabricated document. The temporary vault items were deleted afterward; a new vault starts empty.
 
 ## Add and review
 
@@ -40,13 +48,13 @@ The center dock button first asks what you are adding:
 - **Cards:** Scan a card with the camera, import a card photo or file, tap a supported contactless card with NFC, or enter details manually. A card-specific review screen lets you check the type, number, name, expiry, issuer, and network before saving. The original imported image or file stays attached.
 - **Password** and **Note:** Open short manual forms.
 
-Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works offline; PDF recognition is limited to the first 20 pages. Card OCR suggests plausible numbers and other visible details, but every field remains editable. The original selected file is kept as an encrypted attachment. Tapping a saved image or PDF opens a preview with rename, extract text, send, details, and delete actions. OCR is a convenience and should be checked before saving.
+Image, PDF, and text imports are processed locally. Bundled ML Kit OCR works offline; PDF recognition is limited to the first 20 pages. Card OCR suggests plausible numbers and other visible details, but every field remains editable. The original selected file is kept as an encrypted attachment. Tapping a saved image or PDF opens a preview with rename, extract fields, send, details, and delete actions. Extraction offers detected fields and individual OCR lines for review and editing before copying or saving; it never copies the whole result automatically. OCR is a convenience and should be checked before use.
 
 NFC is optional and needs an NFC-equipped device and a card that exposes usable fields through the supported contactless interface. Stash does not authenticate to banks or guarantee that every card can be read. The emulator has no NFC reader, so use camera or manual entry there. Nothing is saved from a tap until you confirm the review screen.
 
 Manual credit and debit entry groups card numbers in fours, uses a numeric MM/YY expiry field, and offers a network picker with recognizable marks. Save explains missing or invalid fields. Standard payment cards require 16 digits; Amex uses its 15-digit format. An unverified checksum or expired card shows a warning but can still be saved. CVC is optional. Password entry includes a local random generator with length, character type, and mixing controls.
 
-Card art can be chosen during review or changed when editing a saved card. The card collection uses masked numbers, while the detail screen shows the expiry, cardholder, network, and individual eye controls for saved number and CVC values. If no number or CVC was saved, its reveal control is omitted.
+Card art can be chosen during review or changed when editing a saved card. The 15 finishes include Aurora, Opal, Midnight, and twelve additional themes; five animate. The card collection uses masked numbers by default, while the detail screen shows the expiry, cardholder, network, and individual eye controls for saved number and CVC values. If no number or CVC was saved, its reveal control is omitted.
 
 The profile screen lets you change the display name and choose or remove a photo. Both stay in app-private local storage.
 
@@ -58,7 +66,7 @@ Settings offers readable JSON, PDF, Excel (`.xlsx`), and text exports, plus a se
 
 - Records and imported attachments are encrypted with AES-GCM in app-private storage. Android Keystore holds the device-bound encryption key.
 - Vault writes use atomic file replacement. Stash does not request broad photo or storage access; Android's pickers grant access only to items you choose.
-- An optional CVC is encrypted in the device vault, masked in the UI, and omitted from readable exports. OCR redacts likely full card numbers and labeled security codes before indexing.
+- An optional CVC is encrypted in the device vault, masked in the UI, and omitted from readable exports. OCR redacts likely full card numbers, labeled security codes, and detected Aadhaar numbers before indexing.
 - CVC is always masked and requires the device screen-lock credential to reveal. Card numbers are masked by default; Settings can show them without a reveal step. Clipboard clearing and app-lock preferences are available in Settings.
 - Encrypted backup files can be exported and restored locally, but the key is device-bound: a backup is restorable only on the device that created it.
 - Sharing an original attachment uses a temporary app-private cache file, which Stash removes after ten minutes or on next launch.

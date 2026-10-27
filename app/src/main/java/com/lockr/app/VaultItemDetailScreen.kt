@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.automirrored.outlined.ManageSearch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -47,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,12 +57,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun VaultItemDetailScreen(
@@ -76,6 +81,7 @@ fun VaultItemDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val hideCardNumber = LocalHideCardNumber.current
     var revealed by rememberSaveable(item.id) { mutableStateOf(false) }
     var cardNumberVisibleOverride by remember(item.id) { mutableStateOf<Boolean?>(null) }
@@ -95,9 +101,10 @@ fun VaultItemDetailScreen(
     var editTitle by rememberSaveable(item.id) { mutableStateOf(item.title) }
     var editCategory by remember(item.id) { mutableStateOf(item.metadata["documentCategory"].orEmpty()) }
     var editCardholder by rememberSaveable(item.id) { mutableStateOf(item.metadata["cardholder"].orEmpty()) }
-    var editCardNumber by rememberSaveable(item.id) { mutableStateOf(if (paymentCard)
-        formatPaymentCardNumber(item.metadata["cardNumber"].orEmpty(), item.metadata["network"].orEmpty())
-        else item.metadata["cardNumber"].orEmpty()) }
+    var editCardNumberField by remember(item.id) { mutableStateOf(TextFieldValue(if (paymentCard)
+        item.metadata["cardNumber"].orEmpty().filter(Char::isDigit)
+        else item.metadata["cardNumber"].orEmpty())) }
+    val editCardNumber = editCardNumberField.text
     var editExpiryDigits by rememberSaveable(item.id) { mutableStateOf(cardExpiryDigits(item.metadata["expiry"].orEmpty())) }
     var editIssuer by rememberSaveable(item.id) { mutableStateOf(item.metadata["issuer"].orEmpty()) }
     var editNetwork by rememberSaveable(item.id) { mutableStateOf(item.metadata["network"].orEmpty()) }
@@ -110,6 +117,9 @@ fun VaultItemDetailScreen(
     var showMenu by rememberSaveable(item.id) { mutableStateOf(false) }
     var showOriginal by rememberSaveable(item.id) { mutableStateOf(false) }
     var feedback by rememberSaveable(item.id) { mutableStateOf("") }
+    var fieldExtractionText by remember(item.id) { mutableStateOf("") }
+    var showFieldExtraction by remember(item.id) { mutableStateOf(false) }
+    var extractingFields by remember(item.id) { mutableStateOf(false) }
     BackHandler(onBack = onBack)
 
     LaunchedEffect(authorized, pendingCardReveal) {
@@ -279,10 +289,23 @@ fun VaultItemDetailScreen(
                 }
             }
             item.metadata["ocrText"]?.takeIf { it.isNotBlank() }?.let { text ->
-                OcrTextCard(text, onCopy = {
-                    copyPrivateText(context, text, autoClearClipboard)
-                    feedback = if (autoClearClipboard) "Extracted text copied · clears in 30 seconds" else "Extracted text copied"
-                })
+                OcrTextCard(text, extracting = extractingFields,
+                    onExtractFields = {
+                        if (!extractingFields) scope.launch {
+                            extractingFields = true
+                            val freshText = item.attachments.take(20).mapNotNull { attachment ->
+                                runCatching { recognizeAttachmentText(context, attachment) }.getOrNull()
+                                    ?.takeIf(String::isNotBlank)
+                            }.joinToString("\n\n").take(120_000)
+                            fieldExtractionText = freshText.ifBlank { text }
+                            showFieldExtraction = true
+                            extractingFields = false
+                        }
+                    },
+                    onCopyAll = {
+                        copyPrivateText(context, text, autoClearClipboard)
+                        feedback = "Full extracted text copied"
+                    })
             }
             if (item.attachments.isNotEmpty() && (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) || (authorized && (item.category != VaultCategory.CARD || showOriginal)))) {
                 Column {
@@ -296,6 +319,13 @@ fun VaultItemDetailScreen(
             Spacer(Modifier.height(20.dp))
         }
     }
+
+    if (showFieldExtraction) ExtractFieldsDialog(
+        recognizedText = fieldExtractionText,
+        onDismiss = { showFieldExtraction = false },
+        onCopy = { copyPrivateText(context, it, autoClearClipboard) },
+        onSave = { key, value -> onEdit(item.copy(metadata = item.metadata + (key to value))); showFieldExtraction = false }
+    )
 
     if (confirmDelete) {
         AlertDialog(
@@ -341,14 +371,17 @@ fun VaultItemDetailScreen(
                         OutlinedTextField(value = editCardholder, onValueChange = { editCardholder = it.take(60) },
                             label = { Text("Name on card") }, singleLine = true, colors = editFieldColors,
                             shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = editCardNumber, onValueChange = { input ->
+                        OutlinedTextField(value = editCardNumberField, onValueChange = { input ->
                             if (paymentCard) {
-                                val digits = input.filter(Char::isDigit)
+                                val digits = input.text.filter(Char::isDigit)
                                 if (!editNetworkSelectedByUser) editNetwork = cardNetwork(digits)
-                                editCardNumber = formatPaymentCardNumber(digits, editNetwork)
-                            } else editCardNumber = input.take(40)
+                                editCardNumberField = normalizedPaymentCardValue(input, editNetwork)
+                            } else editCardNumberField = input.copy(text = input.text.take(40),
+                                selection = TextRange(input.selection.start.coerceAtMost(40), input.selection.end.coerceAtMost(40)))
                         }, label = { Text(if (paymentCard) "Card number *" else "Card or ID number") },
                             keyboardOptions = KeyboardOptions(keyboardType = if (paymentCard) KeyboardType.Number else KeyboardType.Text),
+                            visualTransformation = if (paymentCard) PaymentCardVisualTransformation(masked = false)
+                                else VisualTransformation.None,
                             isError = editValidationAttempted && editValidation.numberError != null,
                             singleLine = true, colors = editFieldColors, shape = RoundedCornerShape(15.dp),
                             modifier = Modifier.fillMaxWidth())
@@ -366,7 +399,7 @@ fun VaultItemDetailScreen(
                             editFieldColors, Modifier.fillMaxWidth()) { selected ->
                             editNetworkSelectedByUser = true
                             editNetwork = selected
-                            if (paymentCard) editCardNumber = formatPaymentCardNumber(editCardNumber, editNetwork)
+                            if (paymentCard) editCardNumberField = normalizedPaymentCardValue(editCardNumberField, editNetwork)
                         }
                         if (paymentCard) {
                             OutlinedTextField(editCvc, onValueChange = { editCvc = it.filter(Char::isDigit).take(4) },
@@ -441,7 +474,7 @@ private fun DetailField(label: String, value: String, onCopy: (() -> Unit)?, onR
 }
 
 @Composable
-private fun OcrTextCard(text: String, onCopy: () -> Unit) {
+private fun OcrTextCard(text: String, extracting: Boolean, onExtractFields: () -> Unit, onCopyAll: () -> Unit) {
     var expanded by rememberSaveable(text) { mutableStateOf(false) }
     GlassPanel(Modifier.fillMaxWidth(), radius = 22.dp) {
         Column(Modifier.fillMaxWidth().padding(15.dp)) {
@@ -450,7 +483,9 @@ private fun OcrTextCard(text: String, onCopy: () -> Unit) {
                     Text("Extracted text", style = MaterialTheme.typography.titleMedium)
                     Text("Recognized on this device", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
                 }
-                IconButton(onClick = onCopy) { Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy extracted text") }
+                IconButton(onClick = onExtractFields, enabled = !extracting) {
+                    Icon(Icons.AutoMirrored.Outlined.ManageSearch, contentDescription = "Choose extracted fields")
+                }
             }
             Text(text, style = MaterialTheme.typography.bodyMedium, color = LockrColors.TextPrimary,
                 maxLines = if (expanded) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis,
@@ -458,6 +493,7 @@ private fun OcrTextCard(text: String, onCopy: () -> Unit) {
             if (text.length > 240 || text.count { it == '\n' } > 5) {
                 TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Show less" else "Show all text") }
             }
+            TextButton(onClick = onCopyAll) { Text("Copy all text") }
         }
     }
 }
@@ -477,7 +513,7 @@ private fun String.toFieldLabel(): String = when (this) {
     else -> replace(Regex("([a-z])([A-Z])"), "$1 $2").replaceFirstChar(Char::uppercase)
 }
 
-private fun copyPrivateText(context: Context, value: String, autoClear: Boolean) {
+internal fun copyPrivateText(context: Context, value: String, autoClear: Boolean) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText("Stash", value))
     if (autoClear) {

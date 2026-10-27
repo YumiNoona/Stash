@@ -48,9 +48,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontStyle
@@ -74,8 +76,9 @@ fun CardReviewScreen(
     }) }
     var titleTouched by remember(initial, attachments) { mutableStateOf(false) }
     var cardType by remember(initial) { mutableStateOf(initial.cardType) }
-    var number by remember(initial) { mutableStateOf(if (isPaymentCardType(initial.cardType))
-        formatPaymentCardNumber(initial.cardNumber, initial.network) else initial.cardNumber) }
+    var numberField by remember(initial) { mutableStateOf(TextFieldValue(
+        if (isPaymentCardType(initial.cardType)) initial.cardNumber.filter(Char::isDigit)
+        else initial.cardNumber)) }
     var holder by remember(initial) { mutableStateOf(initial.cardholder) }
     var expiryDigits by remember(initial) { mutableStateOf(cardExpiryDigits(initial.expiry)) }
     var issuer by remember(initial) { mutableStateOf(initial.issuer) }
@@ -89,6 +92,7 @@ fun CardReviewScreen(
     var networkSelectedByUser by remember(initial) { mutableStateOf(false) }
     var saveAttempted by remember { mutableStateOf(false) }
     var saveNotice by remember { mutableStateOf("") }
+    val number = numberField.text
 
     LaunchedEffect(attachments) {
         if (attachments.isEmpty()) return@LaunchedEffect
@@ -108,7 +112,10 @@ fun CardReviewScreen(
         }
         if (raw.isNotBlank()) {
             val suggestion = recognizeCardFields(raw)
-            if (number.isBlank()) number = formatPaymentCardNumber(suggestion.cardNumber, suggestion.network)
+            if (number.isBlank()) {
+                val suggested = suggestion.cardNumber.filter(Char::isDigit)
+                numberField = TextFieldValue(suggested, TextRange(suggested.length))
+            }
             if (expiryDigits.isBlank()) expiryDigits = cardExpiryDigits(suggestion.expiry)
             if (network.isBlank()) network = suggestion.network
             if (cardType == "Other") cardType = suggestion.cardType
@@ -177,7 +184,7 @@ fun CardReviewScreen(
                     listOf("Credit", "Debit", "ID Card", "Other").forEach { type ->
                         FilterChip(selected = cardType == type, onClick = {
                             cardType = type
-                            if (isPaymentCardType(type)) number = formatPaymentCardNumber(number, network)
+                            if (isPaymentCardType(type)) numberField = normalizedPaymentCardValue(numberField, network)
                             saveNotice = ""
                         },
                             label = { Text(type, maxLines = 1, softWrap = false) })
@@ -186,19 +193,21 @@ fun CardReviewScreen(
             }
             OutlinedTextField(issuer, { issuer = it.take(60) }, label = { Text("Issuer or bank (optional)") },
                 singleLine = true, colors = fieldColors, shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(number, {
+            OutlinedTextField(numberField, {
                 if (payment) {
-                    val digits = it.filter(Char::isDigit)
+                    val digits = it.text.filter(Char::isDigit)
                     if (!networkSelectedByUser) network = cardNetwork(digits)
-                    number = formatPaymentCardNumber(digits, network)
-                } else number = it.take(40)
+                    numberField = normalizedPaymentCardValue(it, network)
+                } else numberField = it.copy(text = it.text.take(40),
+                    selection = TextRange(it.selection.start.coerceAtMost(40), it.selection.end.coerceAtMost(40)))
                 saveNotice = ""
             },
                 label = { Text(if (payment) "Card number *" else if (cardType == "ID Card") "ID number (optional)" else "Card number (optional)") },
                 placeholder = if (payment) ({ Text("0000 0000 0000 0000") }) else null,
                 singleLine = true, isError = saveAttempted && validation.numberError != null,
                 supportingText = validation.numberError.takeIf { saveAttempted }?.let { error -> { Text(error) } },
-                visualTransformation = if (showNumber) VisualTransformation.None else PasswordVisualTransformation(),
+                visualTransformation = if (payment) PaymentCardVisualTransformation(masked = !showNumber)
+                    else if (showNumber) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = if (payment) KeyboardType.Number else KeyboardType.Text),
                 trailingIcon = { IconButton(onClick = { showNumber = !showNumber }) {
                     Icon(if (showNumber) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
@@ -219,7 +228,7 @@ fun CardReviewScreen(
                     fieldColors, Modifier.weight(1f)) { selected ->
                     networkSelectedByUser = true
                     network = selected
-                    if (payment) number = formatPaymentCardNumber(number, network)
+                    if (payment) numberField = normalizedPaymentCardValue(numberField, network)
                     saveNotice = ""
                 }
             }
