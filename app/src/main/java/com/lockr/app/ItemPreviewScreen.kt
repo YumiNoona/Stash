@@ -71,6 +71,7 @@ fun ItemPreviewScreen(
     onDelete: () -> Unit,
     onDetails: () -> Unit,
     onUpdatePages: (List<VaultAttachment>) -> Unit,
+    onMakeIdentityCard: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -168,6 +169,9 @@ fun ItemPreviewScreen(
                 enabled = title.isNotBlank() && title.trim() != item.title,
                 modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(18.dp)) {
                 Icon(Icons.Outlined.Save, null, Modifier.size(19.dp)); Spacer(Modifier.width(9.dp)); Text("Save name")
+            }
+            OutlinedButton(onClick = { dialog = ""; onMakeIdentityCard() }, modifier = Modifier.fillMaxWidth()) {
+                Text("Create identity card from this document")
             }
             Surface(onClick = { dialog = "pages" }, modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .7f)) {

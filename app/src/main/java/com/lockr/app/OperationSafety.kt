@@ -11,6 +11,15 @@ internal fun writeExportDestination(open: () -> OutputStream?, write: (OutputStr
 internal fun cardExportText(item: VaultItem, includePrivate: Boolean): String = buildString {
     appendLine(item.title)
     val fields = visibleMetadata(item, includePrivate)
+    identityType(item)?.let { type ->
+        appendLine("Type: ${type.label}")
+        appendLine("Number: ${identityNumberText(type, item.metadata["idNumber"].orEmpty(), includePrivate)}")
+        if (includePrivate) identityFields(type).filter { it.key != "idNumber" }.forEach { field ->
+            fields[field.key]?.takeIf(String::isNotBlank)?.let { appendLine("${field.label.removeSuffix(" *")}: $it") }
+        }
+        appendLine("Personal record stored in Stash")
+        return@buildString
+    }
     listOf("issuer" to "Issuer", "cardType" to "Type", "network" to "Network",
         "cardholder" to "Cardholder", "expiry" to "Expiry").forEach { (key, label) ->
         fields[key]?.takeIf(String::isNotBlank)?.let { appendLine("$label: $it") }

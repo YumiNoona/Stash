@@ -69,6 +69,12 @@ fun CardReviewScreen(
     saving: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    var identityEntry by remember(initial) { mutableStateOf(initial.cardType == "ID Card") }
+    var identityRaw by remember { mutableStateOf("") }
+    if (identityEntry) {
+        IdentityCardEditor(attachments, { if (attachments.isNotEmpty() || initial.cardType == "ID Card") onBack() else identityEntry = false }, onSave, rawSuggestion = identityRaw, saving = saving)
+        return
+    }
     var appearance by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(appearance) { appearance = false }
     val formScroll = rememberScrollState()
@@ -118,6 +124,10 @@ fun CardReviewScreen(
             }
         }
         if (raw.isNotBlank()) {
+            if (recognizeIdentity(raw) != null) {
+                identityRaw = raw; recognizing = false; identityEntry = true
+                return@LaunchedEffect
+            }
             val suggestion = recognizeCardFields(raw)
             if (number.isBlank()) {
                 val suggested = suggestion.cardNumber.filter(Char::isDigit)
@@ -187,7 +197,8 @@ fun CardReviewScreen(
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("Credit", "Debit", "ID Card", "Other").forEach { type ->
                             FilterChip(selected = cardType == type, onClick = {
-                                cardType = type
+                                if (type == "ID Card") identityEntry = true
+                                else cardType = type
                                 if (isPaymentCardType(type)) numberField = normalizedPaymentCardValue(numberField, network)
                                 saveNotice = ""
                             },

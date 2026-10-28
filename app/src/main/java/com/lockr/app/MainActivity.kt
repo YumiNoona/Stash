@@ -792,6 +792,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                         onAddFiles = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; fileLauncher.launch(arrayOf("application/pdf", "image/*", "text/*")) },
                         onAddCamera = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; screen = LockrScreen.SCANNER },
                         onRemovePage = { index -> importedAttachments = importedAttachments.filterIndexed { i, _ -> i != index } },
+                        onIdentityCard = { cardDraft = CardDraft(cardType = "ID Card"); screen = LockrScreen.CARD_REVIEW },
                         onCorrectPage = { index, corrected ->
                             val next = importedAttachments.toMutableList().apply { set(index, corrected) }
                             validateDocumentPages(next); importedAttachments = next
@@ -840,6 +841,10 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                             onBack = { currentDetailItem = null; screen = returnFromPreview },
                             onRename = { name -> persistUpdatedItem(item.copy(title = name)) },
                             onUpdatePages = { pages -> persistUpdatedItem(item.copy(attachments = pages)) },
+                            onMakeIdentityCard = {
+                                importedAttachments = item.attachments; cardDraft = CardDraft(cardType = "ID Card")
+                                returnScreen = returnFromPreview; screen = LockrScreen.CARD_REVIEW
+                            },
                             onSaveField = { key, value ->
                                 persistUpdatedItem(item.copy(metadata = item.metadata + (key to value)))
                             },
@@ -903,6 +908,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                     },
                     onNfc = { showAdd = false; screen = LockrScreen.NFC_CARD },
                     onCardManual = { cardDraft = CardDraft(cardType = "Credit"); importedAttachments = emptyList(); showAdd = false; screen = LockrScreen.CARD_REVIEW },
+                    onIdentityManual = { cardDraft = CardDraft(cardType = "ID Card"); importedAttachments = emptyList(); showAdd = false; screen = LockrScreen.CARD_REVIEW },
                     onManual = { category -> manualCategory = category; showAdd = false; screen = LockrScreen.MANUAL }
                 )
             }

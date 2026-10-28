@@ -139,3 +139,27 @@ add/scan/correct/reorder/rotate/remove changes only on Save pages. Redaction kee
 all image and PDF pages together (up to 100 pages), exports a flattened PDF for a
 multi-page document, and does not silently drop unreadable pages. Device-bound
 backup portability and separate encrypted attachment storage remain future work.
+
+
+## Offline identity cards
+
+Add -> Cards -> Identity card creates a dedicated Aadhaar, PAN, voter ID, driving
+licence or Other ID. Photo/file card imports can suggest a supported type using
+bundled OCR. Check every suggestion. Document review and a saved document's Edit
+menu can also create an identity card while keeping the original document.
+
+Each type has its own front/back layout, colours, labels and relevant fields,
+including local-language names, dates, address and licence validity/classes.
+Add image or PDF originals, then crop the portrait, original QR, signature and
+issuer logo into their places. PDF cropping includes a page selector. Unavailable
+images stay empty; Stash does not invent photos, issuer security marks or QR data.
+
+Identity numbers stay masked in the collection. Device credentials unlock private
+fields, copying, original scans, QR display and editing. Details and all cropped
+images are encrypted in the local vault and work without internet. QR images are
+preserved from the source; digital signatures are not verified. These are personal
+wallet views, with the original available separately. OCR currently reads Latin
+text; local-language names remain manually editable.
+
+See [identity-card design references](docs/identity-card-design.md) for the issuer
+sources, layout choices and storage behaviour.

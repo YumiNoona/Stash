@@ -55,6 +55,7 @@ fun AddSourceSheet(
     onFiles: (VaultCategory) -> Unit,
     onNfc: () -> Unit,
     onCardManual: () -> Unit,
+    onIdentityManual: () -> Unit,
     onManual: (VaultCategory) -> Unit
 ) {
     Column(Modifier.fillMaxWidth().padding(start = 19.dp, end = 19.dp, bottom = 25.dp)) {
@@ -113,6 +114,8 @@ fun AddSourceSheet(
                     SmallSource("Tap with NFC", Icons.Outlined.Nfc, Modifier.weight(1f), onNfc)
                     SmallSource("Enter manually", Icons.Outlined.CreditCard, Modifier.weight(1f), onCardManual)
                 }
+                Spacer(Modifier.height(10.dp))
+                SmallSource("Identity card · Aadhaar, PAN, voter ID, licence", Icons.Outlined.Description, Modifier.fillMaxWidth(), onIdentityManual)
             }
         }
     }

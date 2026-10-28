@@ -75,6 +75,7 @@ fun ReviewItemScreen(
     onAddCamera: () -> Unit,
     onRemovePage: (Int) -> Unit,
     onCorrectPage: (Int, VaultAttachment) -> Unit,
+    onIdentityCard: () -> Unit,
     onSave: (String, VaultCategory, Map<String, String>, List<VaultAttachment>) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -151,7 +152,10 @@ fun ReviewItemScreen(
                             focusedTextColor = LockrColors.TextPrimary, unfocusedTextColor = LockrColors.TextPrimary,
                             focusedBorderColor = LockrColors.Accent, unfocusedBorderColor = Color(0xFFBECBD8),
                             cursorColor = LockrColors.Accent))
-                    TagEditor(VaultCategory.DOCUMENT, setOf(documentGroup),
+                    TextButton(onClick = onIdentityCard, enabled = !isRecognizing, modifier = Modifier.fillMaxWidth()) {
+                    Text("Make an identity card · Aadhaar, PAN, voter ID, licence")
+                }
+                TagEditor(VaultCategory.DOCUMENT, setOf(documentGroup),
                         onChange = { documentGroup = it.firstOrNull() ?: "Other"; groupTouched = true; onDraftChange(if (titleTouched) title else null, documentGroup) }, single = true)
 
                 }

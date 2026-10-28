@@ -83,7 +83,7 @@ fun CardsScreen(items: List<VaultItem>, onBack: () -> Unit, onSearch: () -> Unit
                 CollectionEmptyState(if (cards.isEmpty()) "Your cards will live here" else "No cards in this filter",
                     if (cards.isEmpty()) "Tap + to add your first card." else "Choose another tag.", Icons.Outlined.CreditCard)
             }
-            items(visibleCards, key = { it.id }) { card -> CardSurface(card, onClick = { onOpenItem(card) }) }
+            items(visibleCards, key = { it.id }) { card -> CardDetailPreview(card, onClick = { onOpenItem(card) }) }
         }
         StashTopBar("Cards", "${cards.size} saved", onBack = onBack,
             trailing = { IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "Search vault") } })
@@ -101,7 +101,8 @@ fun CardDetailPreview(
     onToggleCvc: (() -> Unit)? = null,
     onClick: () -> Unit = {}
 ) {
-    CardSurface(item, modifier, showFullNumber, onToggleNumber, animate, showCvc, onToggleCvc, onClick)
+    if (identityType(item) != null) IdentityCardTemplate(item, modifier, showPrivate = showFullNumber == true, onClick = onClick)
+    else CardSurface(item, modifier, showFullNumber, onToggleNumber, animate, showCvc, onToggleCvc, onClick)
 }
 
 @Composable

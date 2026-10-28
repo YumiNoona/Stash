@@ -281,7 +281,7 @@ private fun AttachmentPreviewDialog(attachment: VaultAttachment, onClose: () -> 
     }
 }
 
-private fun isPdfAttachment(attachment: VaultAttachment): Boolean =
+internal fun isPdfAttachment(attachment: VaultAttachment): Boolean =
     attachment.mimeType.equals("application/pdf", ignoreCase = true) || attachment.name.endsWith(".pdf", ignoreCase = true)
 
 internal suspend fun renderPdfAttachmentPage(attachment: VaultAttachment, requestedPage: Int, context: Context): Pair<Bitmap?, Int> = withContext(Dispatchers.IO) {
@@ -327,15 +327,29 @@ internal fun decodeAttachmentPreview(base64Data: String, maxWidth: Int = 1600, m
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         var sampleSize = 1
         while (bounds.outWidth / sampleSize > maxWidth || bounds.outHeight / sampleSize > maxHeight) sampleSize *= 2
-        BitmapFactory.decodeByteArray(
-            bytes,
-            0,
-            bytes.size,
-            BitmapFactory.Options().apply {
-                inSampleSize = sampleSize
-                inPreferredConfig = Bitmap.Config.RGB_565
+        val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }) ?: return null
+        val orientation = runCatching {
+            androidx.exifinterface.media.ExifInterface(java.io.ByteArrayInputStream(bytes)).getAttributeInt(
+                androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, 1)
+        }.getOrDefault(1)
+        val matrix = android.graphics.Matrix().apply {
+            when (orientation) {
+                2 -> setScale(-1f, 1f)
+                3 -> setRotate(180f)
+                4 -> setScale(1f, -1f)
+                5 -> { setRotate(90f); postScale(-1f, 1f) }
+                6 -> setRotate(90f)
+                7 -> { setRotate(-90f); postScale(-1f, 1f) }
+                8 -> setRotate(-90f)
             }
-        )
+        }
+        if (matrix.isIdentity) decoded else {
+            try { Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true) }
+            finally { decoded.recycle() }
+        }
     } finally {
         bytes.fill(0)
     }

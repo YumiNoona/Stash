@@ -80,6 +80,10 @@ fun VaultItemDetailScreen(
     onDelete: (VaultItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (identityType(item) != null) {
+        IdentityCardDetail(item, authorized, revealTimeout, autoClearClipboard, onAuthenticate, onAuthorizationExpired, onBack, onEdit, onDelete)
+        return
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val hideCardNumber = LocalHideCardNumber.current

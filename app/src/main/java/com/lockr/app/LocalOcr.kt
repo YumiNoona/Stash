@@ -33,7 +33,7 @@ suspend fun recognizeAttachmentText(context: Context, attachment: VaultAttachmen
             attachment.mimeType.equals("application/pdf", ignoreCase = true) || attachment.name.endsWith(".pdf", true) ->
                 recognizePdf(context, bytes)
             attachment.mimeType.startsWith("image/", ignoreCase = true) -> {
-                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                val bitmap = decodeAttachmentPreview(attachment.base64Data, 1800, 2400)
                     ?: throw IOException("This image could not be opened for text recognition.")
                 try {
                     recognizeBitmap(bitmap)
