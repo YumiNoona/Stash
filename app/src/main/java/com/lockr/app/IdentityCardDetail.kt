@@ -28,7 +28,6 @@ fun IdentityCardDetail(item: VaultItem, authorized: Boolean, revealTimeout: Stri
     var editing by remember(item.id) { mutableStateOf(false) }
     var delete by remember(item.id) { mutableStateOf(false) }
     var originals by remember(item.id) { mutableStateOf(false) }
-    var qr by remember(item.id) { mutableStateOf(false) }
     var pending by remember(item.id) { mutableStateOf("") }
     var feedback by remember(item.id) { mutableStateOf("") }
     androidx.activity.compose.BackHandler(onBack=onBack)
@@ -37,14 +36,13 @@ fun IdentityCardDetail(item: VaultItem, authorized: Boolean, revealTimeout: Stri
             when {
                 pending=="edit" -> editing=true
                 pending=="original" -> originals=true
-                pending=="qr" -> qr=true
                 pending.startsWith("copy:") -> {
                     val value=item.metadata[pending.removePrefix("copy:")].orEmpty()
                     if(value.isNotBlank()) {copyPrivateText(context,value,autoClearClipboard);feedback="Copied"}
                 }
             }
             pending=""
-        } else { originals=false;qr=false }
+        } else { originals=false }
     }
     LaunchedEffect(authorized,revealTimeout,editing) {
         if(authorized && !editing) {
@@ -54,7 +52,7 @@ fun IdentityCardDetail(item: VaultItem, authorized: Boolean, revealTimeout: Stri
     }
     val request: (String) -> Unit = { action ->
         if(!authorized) {pending=action;onAuthenticate()}
-        else when(action) { "edit" -> editing=true;"original" -> originals=true;"qr" -> qr=true }
+        else when(action) { "edit" -> editing=true;"original" -> originals=true }
     }
     Box(Modifier.fillMaxSize().padding(horizontal=20.dp)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top=88.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
@@ -87,7 +85,6 @@ fun IdentityCardDetail(item: VaultItem, authorized: Boolean, revealTimeout: Stri
                     }
                 }
             }
-            if(identityAsset(item,IdentityAsset.QR)!=null) OutlinedButton(onClick={request("qr")},modifier=Modifier.fillMaxWidth()) {Text("Open original QR")}
             if(identityOriginals(item).isNotEmpty()) OutlinedButton(onClick={request("original")},modifier=Modifier.fillMaxWidth()) {Text("View original scans · ${identityOriginals(item).size}")}
             if(feedback.isNotBlank()) Text(feedback,style=MaterialTheme.typography.bodySmall,color=LockrColors.Accent)
         }
@@ -108,12 +105,6 @@ fun IdentityCardDetail(item: VaultItem, authorized: Boolean, revealTimeout: Stri
     if(originals && authorized) AlertDialog(onDismissRequest={originals=false},title={Text("Original scans")},text={
         Column(Modifier.heightIn(max=480.dp).verticalScroll(rememberScrollState())) { VaultAttachmentsSection(identityOriginals(item)) }
     },confirmButton={TextButton(onClick={originals=false}) {Text("Close")}})
-    if(qr && authorized) AlertDialog(onDismissRequest={qr=false},title={Text("QR from your original")},text={
-        Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            identityAsset(item,IdentityAsset.QR)?.let { IdentityAssetImage(it,"Original QR",Modifier.fillMaxWidth().aspectRatio(1f)) }
-            Text("Stored image · Stash has not verified its digital signature.",style=MaterialTheme.typography.bodySmall)
-        }
-    },confirmButton={TextButton(onClick={qr=false}) {Text("Close")}})
     if(delete) AlertDialog(onDismissRequest={delete=false},title={Text("Delete ${type.label}?")},text={Text("This removes the saved details, cropped images and original scans from Stash.")},
         confirmButton={TextButton(onClick={delete=false;onDelete(item)}) {Text("Delete")}},dismissButton={TextButton(onClick={delete=false}) {Text("Cancel")}})
 }

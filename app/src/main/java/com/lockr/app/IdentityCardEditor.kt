@@ -89,9 +89,22 @@ fun IdentityCardEditor(originalAttachments: List<VaultAttachment>, onBack: () ->
                 }
                 validateDocumentPages(sources+added+assets.values)
                 sources=sources+added
-                status=if(uris.size>slots) "Some files were omitted: the limit is 20 files / 24 MB." else "Originals added. Crop the portrait and QR below."
+                status=if(uris.size>slots) "Some files were omitted: the limit is 20 files / 24 MB." else "Originals added. You can add your portrait below."
             } catch(cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
             catch(failure: Exception) { status=failure.message ?: "Could not add these files." }
+            finally { busy=false }
+        }
+    }
+    val portraitPicker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if(uri==null) busy=false
+        else scope.launch {
+            try {
+                val photo=importIdentityPortrait(context,uri)
+                val next=assets+(IdentityAsset.PHOTO to photo)
+                validateDocumentPages(sources+next.values)
+                assets=next;status="Photo added to your card."
+            } catch(cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch(failure: Exception) { status=failure.message ?: "Could not add this photo." }
             finally { busy=false }
         }
     }
@@ -152,7 +165,11 @@ fun IdentityCardEditor(originalAttachments: List<VaultAttachment>, onBack: () ->
                     }
                 }
                 if(sources.isNotEmpty()) OutlinedButton(enabled=!blocked,onClick={busy=true;scope.launch { try { readSuggestions(sources) } finally { busy=false } }},modifier=Modifier.fillMaxWidth()) { Text("Read details from scans · offline") }
-                IdentityAsset.entries.forEach { role ->
+                OutlinedButton(enabled=!blocked && (assets.containsKey(IdentityAsset.PHOTO) || sources.size+assets.size<20),
+                    onClick={busy=true;portraitPicker.launch("image/*")},modifier=Modifier.fillMaxWidth()) {
+                    Text(if(assets[IdentityAsset.PHOTO]==null) "Choose your photo" else "Replace your photo")
+                }
+                listOf(IdentityAsset.PHOTO,IdentityAsset.SIGNATURE).forEach { role ->
                     Surface(shape=androidx.compose.foundation.shape.RoundedCornerShape(17.dp),color=MaterialTheme.colorScheme.surface.copy(alpha=.8f)) {
                         Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
                             assets[role]?.let { IdentityAssetImage(it,role.label,Modifier.size(48.dp)) }
@@ -165,7 +182,7 @@ fun IdentityCardEditor(originalAttachments: List<VaultAttachment>, onBack: () ->
                         }
                     }
                 }
-                Text("QR codes are copied from your original. Stash does not issue or verify identity documents.",style=MaterialTheme.typography.bodySmall,color=LockrColors.TextSecondary)
+                Text("The small QR links to venusapp.in and contains no personal data.",style=MaterialTheme.typography.bodySmall,color=LockrColors.TextSecondary)
                 TagEditor(VaultCategory.CARD,tags,{tags=it})
                 if(status.isNotBlank()) Text(status,style=MaterialTheme.typography.bodySmall,color=LockrColors.TextSecondary)
                 if(attempted && (nameError || numberError!=null || dateErrors.isNotEmpty())) Text("Check the highlighted fields before saving.",color=MaterialTheme.colorScheme.error)

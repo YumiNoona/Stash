@@ -31,7 +31,7 @@ fun identityFields(type: IdentityType): List<IdentityField> = buildList {
     add(IdentityField("dateOfBirth", "Date / year of birth"))
     if (type != IdentityType.PAN) add(IdentityField("gender", "Gender"))
     if (type != IdentityType.AADHAAR) add(IdentityField("relativeName", if (type == IdentityType.PAN) "Parent's name" else "Relative's name"))
-    if (type != IdentityType.PAN) add(IdentityField("address", "Address", true))
+    add(IdentityField("address", "Address", true))
     if (type == IdentityType.LICENCE) {
         add(IdentityField("issuer", "Issuing state / authority"))
         add(IdentityField("issueDate", "Date of issue"))
@@ -43,6 +43,8 @@ fun identityFields(type: IdentityType): List<IdentityField> = buildList {
     if (type == IdentityType.VOTER) {
         add(IdentityField("age", "Age (if date of birth is unavailable)"))
         add(IdentityField("constituency", "Assembly constituency"))
+        add(IdentityField("partNumber", "Part number"))
+        add(IdentityField("serialNumber", "Serial number"))
         add(IdentityField("issueDate", "Date of issue"))
     }
     if (type == IdentityType.OTHER) {

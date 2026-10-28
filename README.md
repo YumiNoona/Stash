@@ -143,23 +143,27 @@ backup portability and separate encrypted attachment storage remain future work.
 
 ## Offline identity cards
 
-Add -> Cards -> Identity card creates a dedicated Aadhaar, PAN, voter ID, driving
-licence or Other ID. Photo/file card imports can suggest a supported type using
-bundled OCR. Check every suggestion. Document review and a saved document's Edit
-menu can also create an identity card while keeping the original document.
+Add -> Cards -> Identity card creates an Aadhaar, PAN, voter ID, driving licence
+or Other ID. Photo/file card imports can suggest a supported type using bundled
+OCR. Check every suggestion. Document review and a saved document's Edit menu can
+also create an identity card while keeping the original document.
 
-Each type has its own front/back layout, colours, labels and relevant fields,
-including local-language names, dates, address and licence validity/classes.
-Add image or PDF originals, then crop the portrait, original QR, signature and
-issuer logo into their places. PDF cropping includes a page selector. Unavailable
-images stay empty; Stash does not invent photos, issuer security marks or QR data.
+Eight reference-matched raster faces follow the supplied original Aadhaar, PAN,
+voter ID and Maharashtra licence examples, including their logo placement, colour
+schemes and front/back layouts. Names, ID numbers, dates and addresses are rendered
+as sharp live text over the art. Portrait windows stay empty until a user
+chooses their photo; a photo can be selected directly or cropped from an original.
+Signatures can also be cropped. No sample people or personal details are built in.
+All identity templates use one small labelled website QR for https://venusapp.in;
+it contains no personal data and is not a document verification code.
 
 Identity numbers stay masked in the collection. Device credentials unlock private
-fields, copying, original scans, QR display and editing. Details and all cropped
-images are encrypted in the local vault and work without internet. QR images are
-preserved from the source; digital signatures are not verified. These are personal
-wallet views, with the original available separately. OCR currently reads Latin
-text; local-language names remain manually editable.
+fields, copying, original scans and editing. Details and all cropped images are
+encrypted in the local vault and work without internet. These are personal wallet
+views, with originals available separately. Existing saved original QR attachments
+are retained, but are no longer used as the card QR. OCR currently reads Latin text;
+local-language names remain manually editable.
 
 See [identity-card design references](docs/identity-card-design.md) for the issuer
-sources, layout choices and storage behaviour.
+field references. Generated asset paths and exact built-in imagegen prompts are
+recorded in [artwork sources](docs/identity-art-v3-source.json).

@@ -51,7 +51,7 @@ class IdentityCardsTest {
     @Test fun switchingTypeDropsIrrelevantAndLegacyPaymentFields() {
         val meta=identityMetadata(IdentityType.PAN,mapOf("cardholder" to "Test","idNumber" to "abcde1234f","cardCvc" to "123","address" to "Old address","validTill" to "12/12/2030"),emptyMap(),emptySet())
         assertEquals("ABCDE1234F",meta["cardNumber"]);assertEquals("234F",meta["lastFour"])
-        assertFalse(meta.containsKey("cardCvc"));assertFalse(meta.containsKey("address"));assertFalse(meta.containsKey("validTill"))
+        assertFalse(meta.containsKey("cardCvc"));assertEquals("Old address",meta["address"]);assertFalse(meta.containsKey("validTill"))
         assertEquals("ID Card",meta["cardType"])
     }
     @Test fun identityAssetsHaveExplicitRolesAndOriginalsStaySeparate() {
