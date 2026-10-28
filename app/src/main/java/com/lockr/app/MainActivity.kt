@@ -140,6 +140,13 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     var cardDraft by remember { mutableStateOf(CardDraft()) }
     var importedAttachments by remember { mutableStateOf<List<VaultAttachment>>(emptyList()) }
     var appendToReview by remember { mutableStateOf(false) }
+    var importingPages by remember { mutableStateOf(false) }
+    val importGate = remember { DraftImportGate() }
+    LaunchedEffect(screen) {
+        if (importingPages && screen != LockrScreen.IMPORTING) {
+            importGate.invalidate(); importingPages = false; appendToReview = false
+        }
+    }
     var reviewTitleDraft by remember { mutableStateOf<String?>(null) }
     var reviewGroupDraft by remember { mutableStateOf<String?>(null) }
     var backupStatus by rememberSaveable { mutableStateOf<String?>(null) }
@@ -291,12 +298,14 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     }
 
     val exportBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
-        if (uri != null) {
+        if (uri != null && !savingItem && !importingPages) {
+            savingItem = true
+            val snapshot = items.toList()
             backupStatus = "Creating encrypted backup…"
             coroutineScope.launch {
                 try {
                     val encryptedBytes = withContext(Dispatchers.IO) {
-                        store.save(items.toList())
+                        store.save(snapshot)
                         store.exportEncryptedBackup()
                     }
                     withContext(Dispatchers.IO) {
@@ -307,7 +316,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                     backupStatus = "Encrypted backup saved. This device's key is needed to restore it."
                 } catch (_: Exception) {
                     backupStatus = "Backup could not be saved. Your vault is unchanged."
-                }
+                } finally { savingItem = false }
             }
         }
     }
@@ -331,6 +340,12 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
             }
         }
     }
+    var readablePrivateIntent by remember { mutableStateOf<Intent?>(null) }
+    val readableExportUnlock = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val intent = readablePrivateIntent; readablePrivateIntent = null
+        if (result.resultCode == Activity.RESULT_OK && intent != null) exportDataLauncher.launch(intent)
+        else pendingExport = null
+    }
     val importBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) coroutineScope.launch {
             backupStatus = "Checking backup…"
@@ -349,42 +364,41 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
         }
     }
 
-    val beginImport: (List<Uri>, VaultCategory?) -> Unit = { uris, categoryHint ->
+    val beginImport: (List<Uri>, VaultCategory?) -> Unit = import@{ uris, categoryHint ->
         showAdd = false
-        if (uris.isEmpty()) {
-            if (!appendToReview) showAdd = true
-            appendToReview = false
-        } else {
-            if (!appendToReview) { reviewTitleDraft = null; reviewGroupDraft = null }
-            if (!appendToReview) screen = LockrScreen.IMPORTING
-            importCategoryHint = categoryHint
-            coroutineScope.launch {
-                val imported = mutableListOf<VaultAttachment>()
-                var totalBytes = 0L
-                var failure: String? = null
-                for (uri in uris.take((MAX_IMPORT_ITEMS - if (appendToReview) importedAttachments.size else 0).coerceAtLeast(0))) {
-                    val remaining = MAX_VAULT_TOTAL_ATTACHMENT_BYTES - totalBytes -
-                        (if (appendToReview) importedAttachments.sumOf { it.byteCount } else 0L)
+        val append = appendToReview
+        val base = if (append) importedAttachments.toList() else emptyList()
+        appendToReview = false
+        if (uris.isEmpty()) { if (!append) showAdd = true; return@import }
+        if (remainingDocumentSlots(base.size) == 0) {
+            coroutineScope.launch { snackbarHostState.showSnackbar("A document can contain up to 20 files.") }
+            return@import
+        }
+        if (!append) { reviewTitleDraft = null; reviewGroupDraft = null }
+        val token = importGate.begin()
+        importingPages = true; screen = LockrScreen.IMPORTING; importCategoryHint = categoryHint
+        coroutineScope.launch {
+            val imported = mutableListOf<VaultAttachment>()
+            var totalBytes = base.sumOf { it.byteCount }
+            var failure: String? = if (uris.size > remainingDocumentSlots(base.size)) "Only the first 20 files fit in this document." else null
+            try {
+                for (uri in uris.take(remainingDocumentSlots(base.size))) {
+                    val remaining = MAX_VAULT_TOTAL_ATTACHMENT_BYTES - totalBytes
                     if (remaining <= 0) { failure = "The 24 MB per-item limit was reached."; break }
                     try {
                         val attachment = readVaultAttachment(context, uri, minOf(MAX_VAULT_ATTACHMENT_BYTES, remaining))
-                        imported += attachment
-                        totalBytes += attachment.byteCount
-                    } catch (error: Exception) {
-                        failure = error.message ?: "One of the selected files could not be opened."
-                        break
-                    }
+                        imported += attachment; totalBytes += attachment.byteCount
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                    catch (error: Exception) { failure = error.message ?: "One selected file could not be opened."; break }
                 }
-                if (imported.isEmpty()) {
-                    screen = if (appendToReview) LockrScreen.REVIEW else returnScreen
-                    snackbarHostState.showSnackbar(failure ?: "No files were selected.")
-                } else {
-                    importedAttachments = if (appendToReview) importedAttachments + imported else imported
-                    screen = if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
-                    if (failure != null) snackbarHostState.showSnackbar(failure)
-                }
-                appendToReview = false
-            }
+                if (!importGate.current(token)) return@launch
+                if (imported.isNotEmpty()) importedAttachments = base + imported
+                importingPages = false
+                screen = if (append || imported.isNotEmpty()) {
+                    if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
+                } else returnScreen
+                if (imported.isEmpty() || failure != null) snackbarHostState.showSnackbar(failure ?: "No files could be opened.")
+            } finally { if (importGate.current(token)) importingPages = false }
         }
     }
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_IMPORT_ITEMS)) { uris ->
@@ -401,36 +415,36 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     }
 
     val beginCameraImport: (List<File>, VaultCategory?) -> Unit = { files, categoryHint ->
-        if (!appendToReview) { reviewTitleDraft = null; reviewGroupDraft = null }
-        screen = LockrScreen.IMPORTING
-        importCategoryHint = categoryHint
+        val append = appendToReview
+        val base = if (append) importedAttachments.toList() else emptyList()
+        appendToReview = false
+        if (!append) { reviewTitleDraft = null; reviewGroupDraft = null }
+        val token = importGate.begin()
+        importingPages = true; screen = LockrScreen.IMPORTING; importCategoryHint = categoryHint
         coroutineScope.launch {
             val imported = mutableListOf<VaultAttachment>()
-            var totalBytes = 0L
-            var failure: String? = null
+            var totalBytes = base.sumOf { it.byteCount }
+            var failure: String? = if (files.size > remainingDocumentSlots(base.size)) "A document can contain up to 20 files." else null
             try {
-                for (file in files.take(MAX_IMPORT_ITEMS)) {
-                    val remaining = MAX_VAULT_TOTAL_ATTACHMENT_BYTES - totalBytes -
-                        (if (appendToReview) importedAttachments.sumOf { it.byteCount } else 0L)
+                for (file in files.take(remainingDocumentSlots(base.size))) {
+                    val remaining = MAX_VAULT_TOTAL_ATTACHMENT_BYTES - totalBytes
                     if (remaining <= 0) { failure = "The 24 MB per-item limit was reached."; break }
-                    val attachment = readFileVaultAttachment(file, minOf(MAX_VAULT_ATTACHMENT_BYTES, remaining))
-                    imported += attachment
-                    totalBytes += attachment.byteCount
+                    try {
+                        val attachment = readFileVaultAttachment(file, minOf(MAX_VAULT_ATTACHMENT_BYTES, remaining))
+                        imported += attachment; totalBytes += attachment.byteCount
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                    catch (error: Exception) { failure = error.message ?: "A scan could not be opened."; break }
                 }
-                if (imported.isNotEmpty()) {
-                    importedAttachments = if (appendToReview) importedAttachments + imported else imported
-                    screen = if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
-                    if (failure != null) snackbarHostState.showSnackbar(failure)
-                } else {
-                    screen = returnScreen
-                    snackbarHostState.showSnackbar(failure ?: "The scan could not be opened.")
-                }
-            } catch (error: Exception) {
-                screen = returnScreen
-                snackbarHostState.showSnackbar(error.message ?: "The scan could not be opened.")
+                if (!importGate.current(token)) return@launch
+                if (imported.isNotEmpty()) importedAttachments = base + imported
+                importingPages = false
+                screen = if (append || imported.isNotEmpty()) {
+                    if (categoryHint == VaultCategory.CARD) LockrScreen.CARD_REVIEW else LockrScreen.REVIEW
+                } else returnScreen
+                if (imported.isEmpty() || failure != null) snackbarHostState.showSnackbar(failure ?: "The scan could not be opened.")
             } finally {
                 files.forEach(File::delete)
-                appendToReview = false
+                if (importGate.current(token)) importingPages = false
             }
         }
     }
@@ -461,10 +475,11 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     }
 
     val persistNewItem: (VaultItem) -> Unit = save@{ item ->
-        if (savingItem) return@save
+        if (savingItem || importingPages) return@save
         savingItem = true
         coroutineScope.launch {
             try {
+                if (item.attachments.isNotEmpty()) validateDocumentPages(item.attachments)
                 val lastFolder = preferences.getString("last_folder", "All folders").orEmpty().takeIf { it in preferences.getStringSet("vault_folders", emptySet()).orEmpty() }.orEmpty()
                 val target = if (item.category == VaultCategory.DOCUMENT && "folder" !in item.metadata)
                     item.copy(metadata = item.metadata + ("folder" to lastFolder)) else item
@@ -496,6 +511,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
             val safeUpdate = uniqueItem(updated, items.toList())
             val updatedItems = items.map { if (it.id == updated.id) safeUpdate else it }
             try {
+                if (safeUpdate.attachments != items.firstOrNull { it.id == safeUpdate.id }?.attachments && safeUpdate.attachments.isNotEmpty()) validateDocumentPages(safeUpdate.attachments)
                 withContext(Dispatchers.IO) { store.save(updatedItems) }
                 items.clear(); items.addAll(updatedItems)
                 currentDetailItem = safeUpdate
@@ -586,6 +602,49 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
             }
         }
     }
+    var cardToExport by remember { mutableStateOf<VaultItem?>(null) }
+    var includeFullNumber by remember { mutableStateOf(false) }
+    var pendingCardCopy by remember { mutableStateOf<Pair<VaultItem, Boolean>?>(null) }
+    var authenticatingCard by remember { mutableStateOf<VaultItem?>(null) }
+    val cardCopyLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        val request = pendingCardCopy; pendingCardCopy = null
+        if (uri != null && request != null) coroutineScope.launch {
+            val bytes = cardExportText(request.first, request.second).toByteArray(Charsets.UTF_8)
+            try {
+                withContext(Dispatchers.IO) { writeExportDestination({ context.contentResolver.openOutputStream(uri) }) { it.write(bytes) } }
+                snackbarHostState.showSnackbar("Card copy saved")
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) { snackbarHostState.showSnackbar("Could not save the card copy. Choose another destination.") }
+            finally { bytes.fill(0) }
+        }
+    }
+    val openCardCopy: (VaultItem, Boolean) -> Unit = { card, privateFields ->
+        pendingCardCopy = card to privateFields
+        cardCopyLauncher.launch(card.title.replace(Regex("[^A-Za-z0-9._-]"), "_").take(70) + ".txt")
+    }
+    val cardCopyUnlock = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val card = authenticatingCard; authenticatingCard = null
+        if (result.resultCode == Activity.RESULT_OK && card != null) openCardCopy(card, true)
+    }
+    if (!vaultLocked) cardToExport?.let { card ->
+        AlertDialog(onDismissRequest = { cardToExport = null }, title = { Text("Download card copy") },
+            text = { Column {
+                Text("The copy masks the card number by default. Verification codes are never exported.")
+                androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Checkbox(includeFullNumber, { includeFullNumber = it })
+                    Text("Include full card number · device unlock required")
+                }
+            } }, dismissButton = { TextButton(onClick = { cardToExport = null }) { Text("Cancel") } },
+            confirmButton = { TextButton(onClick = {
+                cardToExport = null
+                if (!includeFullNumber) openCardCopy(card, false)
+                else {
+                    val prompt = keyguardManager.createConfirmDeviceCredentialIntent("Export private card details", "Confirm your device screen lock to include the full number.")
+                    if (prompt == null) Toast.makeText(context, "Set a device screen lock to export a full card number.", Toast.LENGTH_LONG).show()
+                    else { authenticatingCard = card; cardCopyUnlock.launch(prompt) }
+                }
+            }) { Text("Save copy") } })
+    }
     val actions = VaultActions(
         move = { ids, folder ->
             val changed = mutableListOf<VaultItem>()
@@ -663,7 +722,8 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                         onOpenProfile = { returnFromProfile = LockrScreen.HOME; screen = LockrScreen.PROFILE },
                         onOpenItem = { item -> openItem(item, LockrScreen.HOME) },
                         onOpenDetails = { item -> currentDetailItem = item; returnFromDetail = LockrScreen.HOME; screen = LockrScreen.ITEM_DETAIL },
-                        onRenameItem = { item, name -> persistUpdatedItem(item.copy(title = name)) }
+                        onRenameItem = { item, name -> persistUpdatedItem(item.copy(title = name)) },
+                        onExportCard = { card -> includeFullNumber = false; cardToExport = card }
                     )
                     LockrScreen.CARDS -> CardsScreen(items = items, onBack = { screen = LockrScreen.HOME }, onSearch = { returnFromSearch = LockrScreen.CARDS; screen = LockrScreen.SEARCH }, onOpenItem = { item -> openItem(item, LockrScreen.CARDS) })
                     LockrScreen.SETTINGS -> SettingsScreen(
@@ -678,7 +738,14 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                                 type = format.mimeType
                                 putExtra(Intent.EXTRA_TITLE, "Stash-Export.${format.extension}")
                             }
-                            exportDataLauncher.launch(intent)
+                            if (!includePrivate) exportDataLauncher.launch(intent)
+                            else {
+                                val prompt = keyguardManager.createConfirmDeviceCredentialIntent("Export private vault fields", "Confirm your device screen lock to export private information.")
+                                if (prompt == null) {
+                                    pendingExport = null
+                                    Toast.makeText(context, "Set a device screen lock to export private fields.", Toast.LENGTH_LONG).show()
+                                } else { readablePrivateIntent = intent; readableExportUnlock.launch(prompt) }
+                            }
                         },
                         onImportBackup = { importBackupLauncher.launch(arrayOf("*/*")) },
                         onOpenOrganization = { screen = LockrScreen.ORGANIZATION },
@@ -725,9 +792,12 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                         onAddFiles = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; fileLauncher.launch(arrayOf("application/pdf", "image/*", "text/*")) },
                         onAddCamera = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; screen = LockrScreen.SCANNER },
                         onRemovePage = { index -> importedAttachments = importedAttachments.filterIndexed { i, _ -> i != index } },
-                        onCorrectPage = { index, corrected -> importedAttachments = importedAttachments.toMutableList().apply { set(index, corrected) } },
+                        onCorrectPage = { index, corrected ->
+                            val next = importedAttachments.toMutableList().apply { set(index, corrected) }
+                            validateDocumentPages(next); importedAttachments = next
+                        },
                         onSave = { title, category, metadata, attachments ->
-                            if (!savingItem) persistNewItem(VaultItem(title, category, metadata["cardType"].orEmpty(), nowLabel(), lastFour = metadata["lastFour"].orEmpty(), metadata = metadata, attachments = attachments))
+                            if (!savingItem && !importingPages) persistNewItem(VaultItem(title, category, metadata["cardType"].orEmpty(), nowLabel(), lastFour = metadata["lastFour"].orEmpty(), metadata = metadata, attachments = attachments))
                         }
                     )
                     LockrScreen.CARD_REVIEW -> CardReviewScreen(
@@ -736,7 +806,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                         initial = cardDraft,
                         onBack = { importedAttachments = emptyList(); cardDraft = CardDraft(); screen = returnScreen; showAdd = true },
                         onSave = { title, metadata, attachments ->
-                            if (!savingItem) persistNewItem(VaultItem(title, VaultCategory.CARD,
+                            if (!savingItem && !importingPages) persistNewItem(VaultItem(title, VaultCategory.CARD,
                                 metadata["cardType"].orEmpty(), nowLabel(),
                                 lastFour = metadata["lastFour"].orEmpty(), metadata = metadata,
                                 attachments = attachments))
@@ -746,7 +816,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                         category = manualCategory,
                         onBack = { screen = returnScreen; showAdd = true },
                         onSave = { title, category, detail, metadata ->
-                            if (!savingItem) persistNewItem(VaultItem(title, category, detail, nowLabel(), metadata = metadata))
+                            if (!savingItem && !importingPages) persistNewItem(VaultItem(title, category, detail, nowLabel(), metadata = metadata))
                         }
                     )
                     LockrScreen.ITEM_DETAIL -> currentDetailItem?.let { item ->
@@ -840,12 +910,13 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
 
         restoreBytes?.takeIf { !vaultLocked }?.let { bytes ->
             AlertDialog(
-                onDismissRequest = { restoreBytes = null; bytes.fill(0) },
+                onDismissRequest = { if (!savingItem) { restoreBytes = null; bytes.fill(0) } },
                 title = { Text("Restore this backup?") },
                 text = { Text("Replace your current vault with $restoreItemCount items from this encrypted file? This device's key is required.", color = LockrColors.TextSecondary) },
-                dismissButton = { TextButton(onClick = { restoreBytes = null; bytes.fill(0) }) { Text("Cancel") } },
+                dismissButton = { TextButton(enabled = !savingItem, onClick = { restoreBytes = null; bytes.fill(0) }) { Text("Cancel") } },
                 confirmButton = {
-                    TextButton(onClick = {
+                    TextButton(enabled = !savingItem && !importingPages, onClick = {
+                        savingItem = true
                         coroutineScope.launch {
                             try {
                                 val restored = withContext(Dispatchers.IO) { store.restoreEncryptedBackup(bytes) }
@@ -856,6 +927,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                             } finally {
                                 bytes.fill(0)
                                 restoreBytes = null
+                                savingItem = false
                             }
                         }
                     }) { Text("Restore") }

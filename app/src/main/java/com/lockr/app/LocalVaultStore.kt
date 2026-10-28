@@ -22,6 +22,7 @@ class LocalVaultStore(context: Context) {
     private val vaultFile = File(context.filesDir, "lockr-vault.bin")
     private val atomicFile = AtomicFile(vaultFile)
 
+    @Synchronized
     fun loadOrNull(): List<VaultItem>? {
         val encoded = try {
             atomicFile.openRead().use { it.readBytes() }
@@ -40,12 +41,15 @@ class LocalVaultStore(context: Context) {
     }
 
     /** Returns the encrypted vault bytes for a user-selected local backup destination. */
+    @Synchronized
     fun exportEncryptedBackup(): ByteArray = atomicFile.openRead().use { it.readBytes() }
 
     /** Authenticates and decodes a candidate backup without modifying the current vault. */
+    @Synchronized
     fun validateEncryptedBackup(encoded: ByteArray): List<VaultItem> = decodeEncrypted(encoded)
 
     /** Validates first, then atomically replaces the current encrypted vault file. */
+    @Synchronized
     fun restoreEncryptedBackup(encoded: ByteArray): List<VaultItem> {
         if (encoded.size > MAX_BACKUP_BYTES) throw IOException("Backup file is too large")
         val decodedItems = decodeEncrypted(encoded)
@@ -78,6 +82,7 @@ class LocalVaultStore(context: Context) {
         return decodeItems(plaintext)
     }
 
+    @Synchronized
     fun save(items: List<VaultItem>) {
         val plaintext = encodeItems(items)
         if (plaintext.size + 1 + IV_LENGTH + TAG_LENGTH_BYTES > MAX_BACKUP_BYTES) {

@@ -44,9 +44,14 @@ fun DocumentEdgeCorrectionSheet(attachment: VaultAttachment, onDismiss: () -> Un
     var error by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     LaunchedEffect(attachment.base64Data) {
-        bitmap = withContext(Dispatchers.IO) { decodeAttachmentPreview(attachment.base64Data, 2400, 3200) }
+        try {
+            bitmap = withContext(Dispatchers.IO) { decodeAttachmentPreview(attachment.base64Data, 2400, 3200) }
+            if (bitmap == null) error = "This image cannot be opened. Keep the original or choose another page."
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (_: Exception) { error = "This image cannot be opened." }
     }
-    ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() }, containerColor = LockrColors.Surface,
+    ModalBottomSheet(onDismissRequest = { if (!busy) onDismiss() }, sheetGesturesEnabled = false,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { it != SheetValue.Hidden || !busy }), containerColor = LockrColors.Surface,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -54,18 +59,18 @@ fun DocumentEdgeCorrectionSheet(attachment: VaultAttachment, onDismiss: () -> Un
             Text("Drag the four corners to the page edges. The exported scan will be straightened.",
                 style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
             val source = bitmap
-            if (source == null) LinearProgressIndicator(Modifier.fillMaxWidth())
-            else Box(Modifier.fillMaxWidth().height(400.dp).onSizeChanged { viewport = it }
-                .pointerInput(source, viewport, points) {
+            if (source == null) { if (error.isBlank()) LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            else Box(Modifier.weight(1f, fill = false).fillMaxWidth().heightIn(min = 160.dp, max = 400.dp).onSizeChanged { viewport = it }
+                .pointerInput(source, viewport, busy) {
                     detectDragGestures(onDragStart = { touch ->
                         val rect = fittedImageRect(viewport, source)
                         activeCorner = points.indices.minByOrNull { i ->
                             val p = points[i]; (Offset(rect.first + p.x * rect.third, rect.second + p.y * rect.fourth) - touch).getDistance()
                         } ?: -1
-                    }, onDragEnd = { activeCorner = -1 }) { change, drag ->
+                    }, onDragEnd = { activeCorner = -1 }, onDragCancel = { activeCorner = -1 }) { change, drag ->
                         change.consume()
                         val rect = fittedImageRect(viewport, source)
-                        if (activeCorner in points.indices && rect.third > 0f && rect.fourth > 0f) {
+                        if (!busy && activeCorner in points.indices && rect.third > 0f && rect.fourth > 0f) {
                             val old = points[activeCorner]
                             points = points.toMutableList().apply { this[activeCorner] = Offset(
                                 (old.x + drag.x / rect.third).coerceIn(0f, 1f),
@@ -97,13 +102,14 @@ fun DocumentEdgeCorrectionSheet(attachment: VaultAttachment, onDismiss: () -> Un
                     try {
                         val corrected = withContext(Dispatchers.Default) { correctDocumentEdges(attachment, source, points) }
                         onApply(corrected)
-                    } catch (_: Exception) { error = "Could not correct this page. Try moving the corners farther apart." }
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                    catch (failure: Exception) { error = failure.message ?: "Could not correct this page. Try moving the corners farther apart." }
                     finally { busy = false }
                 }
             }, enabled = bitmap != null && !busy, modifier = Modifier.fillMaxWidth().height(52.dp)) {
                 Text(if (busy) "Correcting…" else "Use corrected page")
             }
-            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) { Text("Keep original") }
+            TextButton(enabled = !busy, onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) { Text("Keep original") }
         }
     }
 }
@@ -118,13 +124,7 @@ private fun fittedImageRect(viewport: IntSize, bitmap: Bitmap): ImageRect {
 
 internal fun correctDocumentEdges(attachment: VaultAttachment, bitmap: Bitmap, points: List<Offset>): VaultAttachment {
     require(points.size == 4)
-    val top = (points[1] - points[0]).getDistance() * bitmap.width
-    val bottom = (points[2] - points[3]).getDistance() * bitmap.width
-    val left = (points[3] - points[0]).getDistance() * bitmap.height
-    val right = (points[2] - points[1]).getDistance() * bitmap.height
-    val width = maxOf(top, bottom).toInt().coerceIn(100, 2400)
-    val height = maxOf(left, right).toInt().coerceIn(100, 3200)
-    require(top > 80 && bottom > 80 && left > 80 && right > 80)
+    val (width, height) = correctedDocumentSize(points.map { CropCorner(it.x, it.y) }, bitmap.width, bitmap.height)
     val src = floatArrayOf(points[0].x * bitmap.width, points[0].y * bitmap.height,
         points[1].x * bitmap.width, points[1].y * bitmap.height,
         points[2].x * bitmap.width, points[2].y * bitmap.height,

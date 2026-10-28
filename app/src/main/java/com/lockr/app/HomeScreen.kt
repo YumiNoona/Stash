@@ -76,38 +76,13 @@ fun HomeScreen(
     onOpenItem: (VaultItem) -> Unit,
     onOpenDetails: (VaultItem) -> Unit,
     onRenameItem: (VaultItem, String) -> Unit,
+    onExportCard: (VaultItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var menuItem by remember { mutableStateOf<VaultItem?>(null) }
     var menuPage by remember { mutableStateOf("actions") }
     var renameText by remember { mutableStateOf("") }
     val actions = LocalVaultActions.current
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var downloadItem by remember { mutableStateOf<VaultItem?>(null) }
-    var cardDownloadItem by remember { mutableStateOf<VaultItem?>(null) }
-    val cardDownloadLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
-        val card = cardDownloadItem
-        cardDownloadItem = null
-        if (uri != null && card != null) scope.launch(Dispatchers.IO) {
-            val text = buildString {
-                appendLine(card.title)
-                listOf("issuer" to "Issuer", "cardType" to "Type", "network" to "Network",
-                    "cardNumber" to "Number", "cardholder" to "Cardholder", "expiry" to "Expiry")
-                    .forEach { (key, label) -> card.metadata[key]?.takeIf { it.isNotBlank() }?.let { appendLine("$label: $it") } }
-            }
-            context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) }
-        }
-    }
-    val downloadLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
-        val attachment = downloadItem?.attachments?.firstOrNull()
-        downloadItem = null
-        if (uri != null && attachment != null) scope.launch(Dispatchers.IO) {
-            val bytes = Base64.decode(attachment.base64Data, Base64.DEFAULT)
-            try { context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
-            finally { bytes.fill(0) }
-        }
-    }
     menuItem?.let { item ->
         ModalBottomSheet(onDismissRequest = { menuItem = null; menuPage = "actions" },
             containerColor = LockrColors.Surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
@@ -133,13 +108,11 @@ fun HomeScreen(
                         HomeMenuAction(Icons.Outlined.Info, "Info", Modifier.weight(1f)) { menuItem = null; onOpenDetails(item) }
                         HomeMenuAction(Icons.Outlined.Edit, "Rename", Modifier.weight(1f)) { renameText = item.title; menuPage = "rename" }
                         HomeMenuAction(Icons.Outlined.Download, "Download", Modifier.weight(1f),
-                            item.category == VaultCategory.CARD || item.attachments.isNotEmpty()) {
+                            item.category == VaultCategory.CARD || (item.category != VaultCategory.PASSWORD && item.attachments.isNotEmpty())) {
                             menuItem = null
                             if (item.category == VaultCategory.CARD) {
-                                cardDownloadItem = item
-                                cardDownloadLauncher.launch(item.title.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".txt")
-                            } else if (item.category == VaultCategory.DOCUMENT) actions.download(listOf(item))
-                            else { downloadItem = item; downloadLauncher.launch(item.attachments.first().name) }
+                                onExportCard(item)
+                            } else actions.download(listOf(item))
                         }
                         HomeMenuAction(Icons.Outlined.DeleteOutline, "Delete", Modifier.weight(1f)) { menuPage = "delete" }
                     }

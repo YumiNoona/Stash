@@ -72,6 +72,8 @@ fun CameraScannerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val capturedPages = remember { mutableStateListOf<File>() }
+    var handedOff by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) { onDispose { if (!handedOff) capturedPages.forEach(File::delete) } }
     var hasPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
@@ -140,7 +142,7 @@ fun CameraScannerScreen(
                     modifier = Modifier.weight(1f)
                 )
                 if (!isCard && capturedPages.isNotEmpty()) {
-                    Button(onClick = { onReviewPages(capturedPages.toList()) }) {
+                    Button(onClick = { handedOff = true; onReviewPages(capturedPages.toList()) }) {
                         Icon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                         Text("Review", modifier = Modifier.padding(start = 6.dp))
                     }
@@ -159,7 +161,7 @@ fun CameraScannerScreen(
                         val options = ImageCapture.OutputFileOptions.Builder(file).build()
                         capture.takePicture(options, ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageSavedCallback {
                             override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                                if (isCard) onReviewPages(listOf(file)) else capturedPages.add(file)
+                                if (isCard) { handedOff = true; onReviewPages(listOf(file)) } else capturedPages.add(file)
                                 cameraError = null
                                 captureBusy = false
                             }

@@ -175,8 +175,8 @@ fun ItemPreviewScreen(
                     Icon(Icons.Outlined.Tune, null, tint = LockrColors.Accent, modifier = Modifier.size(23.dp))
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Organize pages", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-                        Text("Reorder, rotate or remove · ${item.attachments.size} ${if (item.attachments.size == 1) "page" else "pages"}",
+                        Text("Edit pages", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+                        Text("Add, correct, reorder or rotate · ${item.attachments.size} ${if (item.attachments.size == 1) "page" else "pages"}",
                             style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
                     }
                     Icon(Icons.Outlined.ChevronRight, null, tint = LockrColors.TextSecondary)
@@ -203,7 +203,7 @@ fun ItemPreviewScreen(
                 it.mimeType.startsWith("image/") || it.mimeType == "application/pdf" || it.name.endsWith(".pdf", true)
             } == true) OutlinedButton(onClick = { dialog = "redact" }, modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(18.dp)) {
-                Icon(Icons.Outlined.BorderColor, null, Modifier.size(19.dp)); Spacer(Modifier.width(9.dp)); Text("Redact text in this file")
+                Icon(Icons.Outlined.BorderColor, null, Modifier.size(19.dp)); Spacer(Modifier.width(9.dp)); Text("Redact text across document")
             }
             Button(onClick = {
                 dialog = ""
@@ -213,9 +213,7 @@ fun ItemPreviewScreen(
             }
         }
     }
-    if (dialog == "redact") item.attachments.getOrNull(pager.currentPage)?.let { attachment ->
-        ShareRedactionSheet(attachment, onDismiss = { dialog = "" })
-    }
+    if (dialog == "redact") ShareRedactionSheet(item.attachments, initialAttachment = pager.currentPage, onDismiss = { dialog = "" })
     if (dialog == "delete") ModalBottomSheet(onDismissRequest = { dialog = "" },
         containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 22.dp, end = 22.dp, bottom = 26.dp),

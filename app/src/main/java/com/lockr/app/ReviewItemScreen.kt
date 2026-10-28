@@ -100,7 +100,8 @@ fun ReviewItemScreen(
                 if (text.isNotBlank()) {
                     extracted += "${attachment.name}\n$text"
                 }
-            } catch (_: Exception) {
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) {
                 // The original attachment remains savable if local OCR cannot process it.
             }
         }

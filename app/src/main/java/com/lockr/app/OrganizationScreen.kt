@@ -82,13 +82,8 @@ fun OrganizationScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     )
                     Spacer(Modifier.width(8.dp))
                     IconButton(onClick = {
-                        val next = folderName.trim().replace(Regex("\\s+"), " ")
-                        folderError = when {
-                            next.isEmpty() -> "Enter a folder name."
-                            next.equals("Unfiled", true) || next.equals("All folders", true) -> "Choose another name."
-                            folders.any { it.equals(next, true) } -> "That folder already exists."
-                            else -> ""
-                        }
+                        val next = normalizedFolderName(folderName)
+                        folderError = folderNameError(next, folders).orEmpty()
                         if (folderError.isEmpty()) {
                             actions.folderChanged("", next)
                             folderName = ""
@@ -136,13 +131,8 @@ fun OrganizationScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 }
             },
             confirmButton = { TextButton(onClick = {
-                val next = edited.trim().replace(Regex("\\s+"), " ")
-                error = when {
-                    next.isEmpty() -> "Enter a folder name."
-                    next.equals("Unfiled", true) || next.equals("All folders", true) -> "Choose another name."
-                    folders.any { it != original && it.equals(next, true) } -> "That folder already exists."
-                    else -> ""
-                }
+                val next = normalizedFolderName(edited)
+                error = folderNameError(next, folders, original).orEmpty()
                 if (error.isEmpty()) {
                     if (next != original) actions.folderChanged(original, next)
                     renameFolder = null

@@ -51,9 +51,6 @@ val BACKDROP_PRESETS = listOf(
     BackdropPreset("coral", "Coral", Color(0xFFFFAD9E), Color(0x3ABD5552))
 )
 
-private fun customBackdropFile(context: android.content.Context, dark: Boolean) =
-    File(context.filesDir, if (dark) "custom-backdrop-dark.jpg" else "custom-backdrop-light.jpg")
-
 @Composable
 fun StashBackdrop(modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -61,26 +58,29 @@ fun StashBackdrop(modifier: Modifier = Modifier) {
     val prefs = remember(context) { context.getSharedPreferences("lockr_preferences", 0) }
     var revision by remember { mutableIntStateOf(0) }
     DisposableEffect(prefs) {
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key -> if (key?.startsWith("backdrop_") == true) revision++ }
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
     val id = remember(revision, dark) { prefs.getString(if (dark) "backdrop_dark" else "backdrop_light", "aurora") ?: "aurora" }
     val preset = BACKDROP_PRESETS.firstOrNull { it.id == id } ?: BACKDROP_PRESETS.first()
-    var custom by remember(id, revision, dark) { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(id, revision, dark) {
+    val customPath = remember(revision, dark) { customBackdropFile(context, dark).absolutePath }
+    var custom by remember { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(id, customPath) {
         custom = if (id == "custom") withContext(Dispatchers.IO) {
-            BitmapFactory.decodeFile(customBackdropFile(context, dark).absolutePath)
+            BitmapFactory.decodeFile(customPath)
         } else null
     }
     Box(modifier.fillMaxSize()) {
-        if (custom != null) Image(custom!!.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        if (id == "custom" && custom != null) Image(custom!!.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Image(painterResource(if (dark) R.drawable.vault_dark_aurora_bg else R.drawable.vault_aurora_bg),
             null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
             colorFilter = if (id == "aurora") null else ColorFilter.tint(preset.tint, BlendMode.Modulate))
         if (id != "aurora" && id != "custom") Box(Modifier.fillMaxSize().background(
             Brush.verticalGradient(listOf(preset.wash, Color.Transparent, preset.wash.copy(alpha = preset.wash.alpha * .5f)))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+        if (id == "custom") Box(Modifier.fillMaxSize().background(
+            if (dark) Color(0xB3000818) else Color(0xBFFFFFFF)))
+        else Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
             if (dark) listOf(Color(0x24101929), Color(0x30101929), Color(0x30121B2C))
             else listOf(Color(0x18E6DAFF), Color(0x0FFFD9C9), Color(0x16C6F3EA)))))
     }
@@ -92,14 +92,17 @@ fun BackdropSettingsScreen(onBack: () -> Unit) {
     val prefs = remember(context) { context.getSharedPreferences("lockr_preferences", 0) }
     val scope = rememberCoroutineScope()
     var target by remember { mutableStateOf("Both") }
+    var importing by remember { mutableStateOf(false) }
+    var pickerTarget by remember { mutableStateOf("Both") }
+    val previewDark = backdropTargetDark(target, LocalDarkTheme.current)
     var status by remember { mutableStateOf("") }
     var revision by remember { mutableIntStateOf(0) }
     val lightId = remember(revision, target) { prefs.getString("backdrop_light", "aurora") ?: "aurora" }
     val darkId = remember(revision, target) { prefs.getString("backdrop_dark", "aurora") ?: "aurora" }
-    var customPreview by remember(target, revision) { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(target, revision) {
+    var customPreview by remember { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(previewDark, revision) {
         customPreview = withContext(Dispatchers.IO) {
-            BitmapFactory.decodeFile(customBackdropFile(context, target == "Dark").absolutePath)
+            BitmapFactory.decodeFile(customBackdropFile(context, previewDark).absolutePath)
         }
     }
     val apply: (String) -> Unit = { id ->
@@ -111,25 +114,16 @@ fun BackdropSettingsScreen(onBack: () -> Unit) {
         status = "Applied to ${target.lowercase()} mode${if (target == "Both") "s" else ""}."
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) scope.launch {
+        if (uri == null) importing = false
+        else scope.launch {
+            val selectedTarget = pickerTarget
             try {
-                withContext(Dispatchers.IO) {
-                    val bitmap = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
-                        ?: error("Image could not be opened")
-                    val scale = minOf(1f, 1600f / maxOf(bitmap.width, bitmap.height))
-                    val sized = if (scale < 1f) Bitmap.createScaledBitmap(bitmap,
-                        (bitmap.width * scale).toInt().coerceAtLeast(1), (bitmap.height * scale).toInt().coerceAtLeast(1), true) else bitmap
-                    val files = when (target) {
-                        "Light" -> listOf(customBackdropFile(context, false))
-                        "Dark" -> listOf(customBackdropFile(context, true))
-                        else -> listOf(customBackdropFile(context, false), customBackdropFile(context, true))
-                    }
-                    files.forEach { file -> file.outputStream().use { sized.compress(Bitmap.CompressFormat.JPEG, 88, it) } }
-                    if (sized !== bitmap) sized.recycle()
-                    bitmap.recycle()
-                }
-                apply("custom")
-            } catch (_: Exception) { status = "Could not use this image. Try another photo." }
+                importBackdrop(context, uri, selectedTarget)
+                revision++
+                status = "Applied to ${selectedTarget.lowercase()} mode${if (selectedTarget == "Both") "s" else ""}."
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (error: Exception) { status = error.message ?: "Could not use this image. Your previous background is unchanged." }
+            finally { importing = false }
         }
     }
     Box(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
@@ -137,7 +131,7 @@ fun BackdropSettingsScreen(onBack: () -> Unit) {
             Text("Apply to", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 7.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Both", "Light", "Dark").forEach { option ->
-                    FilterChip(target == option, onClick = { target = option; revision++ },
+                    FilterChip(target == option, enabled = !importing, onClick = { target = option; revision++ },
                         label = { Text(option) })
                 }
             }
@@ -153,10 +147,10 @@ fun BackdropSettingsScreen(onBack: () -> Unit) {
                         else -> lightId == preset.id && darkId == preset.id
                     }
                     Box(Modifier.fillMaxWidth().height(133.dp).clip(RoundedCornerShape(20.dp))
-                        .clickable { apply(preset.id) }
+                        .clickable(enabled = !importing) { apply(preset.id) }
                         .border(if (selected) 2.dp else 1.dp, if (selected) LockrColors.Accent else LockrColors.Line,
                             RoundedCornerShape(20.dp))) {
-                        Image(painterResource(if (LocalDarkTheme.current) R.drawable.vault_dark_aurora_bg else R.drawable.vault_aurora_bg),
+                        Image(painterResource(if (previewDark) R.drawable.vault_dark_aurora_bg else R.drawable.vault_aurora_bg),
                             null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
                             colorFilter = if (preset.id == "aurora") null else ColorFilter.tint(preset.tint, BlendMode.Modulate))
                         Box(Modifier.fillMaxSize().background(preset.wash))
@@ -169,7 +163,7 @@ fun BackdropSettingsScreen(onBack: () -> Unit) {
                 item {
                     Box(Modifier.fillMaxWidth().height(133.dp).clip(RoundedCornerShape(20.dp))
                         .background(Brush.linearGradient(listOf(Color(0xFF626A9C), Color(0xFF85D7D1))))
-                        .clickable { picker.launch("image/*") }, contentAlignment = Alignment.Center) {
+                        .clickable(enabled = !importing) { pickerTarget = target; importing = true; picker.launch("image/*") }, contentAlignment = Alignment.Center) {
                         customPreview?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Outlined.AddPhotoAlternate, "Choose custom background", tint = Color.White)
@@ -178,6 +172,7 @@ fun BackdropSettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
+            if (importing) LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 8.dp))
             if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodySmall,
                 color = LockrColors.TextSecondary, modifier = Modifier.padding(bottom = 8.dp))
         }
