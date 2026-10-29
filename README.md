@@ -42,38 +42,6 @@ Six captures from the production app, using **fictional sample data**. No sample
   </tr>
 </table>
 
-## Install
-
-Download [Stash v1.0.0](https://github.com/YumiNoona/Stash/releases/tag/v1.0.0), open the APK on Android 8.0 or newer, and allow installation from your browser or file manager when prompted. The release includes a SHA-256 checksum. This is a production-signed, non-debuggable, optimized build.
-
-**Coming from an older test APK?** The production signing key is different from the former debug key, so Android cannot update those installations directly. Export and verify your information before changing installations. Uninstalling deletes the local vault and its device-bound encryption key; an encrypted backup cannot recover that deleted key. See [installation and signing](docs/building.md).
-
-## Privacy, honestly
-
-Stash encrypts its vault and attachments in app-private storage. It has no analytics, server or runtime network access. Sharing and readable exports happen only when you choose them; readable exports are **not encrypted**. Encrypted backups currently restore only on the installation/device that retains the original key. There is no cloud recovery.
-
-Text recognition uses bundled Latin OCR and needs review. NFC import is best effort and requires compatible hardware. Identity templates are personal records, not issued or verified digital IDs. See [privacy and current limits](docs/privacy.md).
-
-## Build
-
-Use JDK 17+ and Android SDK 36. The Gradle wrapper is included.
-
-```powershell
-.\gradlew.bat testDebugUnitTest :app:lintDebug :app:assembleDebug
-# Configure your own private signing key first:
-.\gradlew.bat :app:assembleRelease :app:lintRelease
-```
-
-See [the build guide](docs/building.md) for production signing. Keys and passwords must stay outside Git.
-
-The website needs Node.js 20+ and no dependencies:
-
-```sh
-cd web
-npm run dev
-npm run check
-npm run build
-```
 
 ## Project layout
 
@@ -86,5 +54,6 @@ Stash/
 ├── build.gradle.kts     Shared Android build configuration
 └── settings.gradle.kts  Project modules
 ```
-
-Space Grotesk is bundled locally under its [SIL Open Font License](docs/licenses/Space-Grotesk-OFL.txt). Artwork provenance and identity layout references live in `docs/`. Build caches, APKs, signing material and generated website output are excluded from Git.
+<p align="center">
+  Built With 💙 Made By <a href="https://venusapp.in">Veil(venusapp.in)</a>
+</p>

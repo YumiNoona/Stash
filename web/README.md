@@ -8,6 +8,6 @@ npm run check    # verify assets, anchors and download links
 npm run build    # static output in dist/
 ```
 
-Requires Node.js 20+. No installation step is needed. Publish the contents of `dist/` to any static host. The app download links point to the production GitHub release. The gallery supports mouse, touch and keyboard navigation. Installation notes use a native disclosure. The page and download links remain usable without JavaScript.
+Requires Node.js 20+. No installation step is needed. Publish the contents of `dist/` to any static host. Download buttons resolve the latest published GitHub APK at click time, including future versioned filenames. If JavaScript is disabled or the GitHub API cannot be reached, the links open the latest release page. The gallery supports mouse, touch and keyboard navigation. Installation notes use a native disclosure. The page and download links remain usable without JavaScript.
 
 `assets/screenshots/` is the canonical screenshot set, also used by the repository README. `assets/fonts-LICENSE.txt` covers the bundled font.

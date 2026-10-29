@@ -1,3 +1,5 @@
+import { latestApkUrl, LATEST_RELEASE_PAGE } from './release.mjs';
+
 const views = {
   cards: { index: 'THE WALLET / 01', title: 'A home for\nevery card.', description: 'Keep bank and partner details together. Choose artwork you like, add a little motion, or use your own.', primary: 'cards', secondary: 'dark', primaryAlt: 'Two sample bank cards in Stash', secondaryAlt: 'Stash home in dark mode', label: 'LIGHT / DARK', counter: '01 — 03' },
   documents: { index: 'THE FILES / 02', title: 'Every page.\nIn its place.', description: 'Scan or import a document. Keep its pages together, sort it into a folder, and find it without the paper pile.', primary: 'documents', secondary: 'viewer', primaryAlt: 'Sample documents organized in Stash', secondaryAlt: 'A two-page sample document in the full-screen viewer', label: 'COLLECTION / READER', counter: '02 — 03' },
@@ -26,3 +28,25 @@ tabs.forEach((tab, i) => {
     if (next) { event.preventDefault(); selectTab(next); next.focus(); }
   });
 });
+
+// Never pin the website to an old APK. GitHub's latest published release decides it.
+const downloadLinks = [...document.querySelectorAll('[data-download-latest]')];
+let downloadPending = false;
+for (const link of downloadLinks) {
+  link.addEventListener('click', async event => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (downloadPending) return;
+    downloadPending = true;
+    downloadLinks.forEach(button => button.setAttribute('aria-busy', 'true'));
+    try {
+      window.location.assign(await latestApkUrl());
+    } catch {
+      // GitHub API limits or network failures still leave a useful download destination.
+      window.location.assign(LATEST_RELEASE_PAGE);
+    } finally {
+      downloadPending = false;
+      downloadLinks.forEach(button => button.removeAttribute('aria-busy'));
+    }
+  });
+}

@@ -12,14 +12,14 @@
   <link rel="icon" type="image/webp" href="assets/logo.webp">
   <link rel="preload" href="assets/space-grotesk-regular.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="styles.css">
-  <script src="app.js" defer></script>
+  <script type="module" src="app.js"></script>
 </head>
 <body id="top">
   <a class="skip" href="#main">Skip to content</a>
   <div class="page">
     <header class="header">
       <a class="identity" href="#top" aria-label="Stash home"><img src="assets/logo.webp" width="28" height="28" alt=""><span>A private Android wallet</span></a>
-      <nav aria-label="Main navigation"><a href="https://github.com/YumiNoona/Stash" target="_blank" rel="noopener noreferrer">Source <span aria-hidden="true">↗</span></a><a class="header-download" href="#download">Get the app <span aria-hidden="true">↓</span></a></nav>
+      <a class="header-download" data-download-latest href="https://github.com/YumiNoona/Stash/releases/latest">Download <span aria-hidden="true">↓</span></a>
     </header>
     <main id="main">
       <section class="collection" aria-labelledby="title">
@@ -33,10 +33,10 @@
       </section>
       <section class="download" id="download" aria-labelledby="download-title">
         <div class="local"><span class="small-label">A NOTE ON PRIVACY</span><h2>It stays with you.</h2><p>No account to create. No cloud to depend on. Your vault is encrypted on your device, and the Android app has no internet permission.</p><div class="facts"><span>Offline access</span><span>AES-GCM encryption</span><span>On-device text recognition</span></div></div>
-        <div class="download-card"><div class="release-line"><span>STASH FOR ANDROID</span><span>V 1.0.0</span></div><h2 id="download-title">Make it yours.</h2><a class="download-button" href="https://github.com/YumiNoona/Stash/releases/download/v1.0.0/Stash-v1.0.0.apk"><span>Download APK</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m-5-5 5 5 5-5M5 17v4h14v-4"/></svg></a><p class="requirements">Android 8.0+ · Free · No sign-up</p><details><summary>Before you install <span aria-hidden="true">+</span></summary><div><p>Open the APK on your Android device and allow installation from your browser or file manager when prompted.</p><p>Using an earlier debug build? Export and verify your information first. This production key cannot update it directly. Uninstalling deletes the local vault and its key; an encrypted backup cannot recover that deleted key.</p><p>Encrypted backups need the original device key. Identity cards are personal wallet views, not verified digital IDs. Their website QR contains no personal data.</p></div></details></div>
+        <div class="download-card"><div class="release-line"><span>STASH FOR ANDROID</span><span>LATEST RELEASE</span></div><h2 id="download-title">Make it yours.</h2><a class="download-button" data-download-latest href="https://github.com/YumiNoona/Stash/releases/latest"><span>Download APK</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m-5-5 5 5 5-5M5 17v4h14v-4"/></svg></a><p class="requirements">Android 8.0+ · Free · No sign-up</p><details><summary>Before you install <span aria-hidden="true">+</span></summary><div><p>Open the APK on your Android device and allow installation from your browser or file manager when prompted.</p><p>Using an earlier debug build? Export and verify your information first. This production key cannot update it directly. Uninstalling deletes the local vault and its key; an encrypted backup cannot recover that deleted key.</p><p>Encrypted backups need the original device key. Identity cards are personal wallet views, not verified digital IDs. Their website QR contains no personal data.</p></div></details></div>
       </section>
     </main>
-    <footer><a class="footer-name" href="#top">stash.</a><span>A little space for the important stuff.</span><a href="https://github.com/YumiNoona/Stash/issues" target="_blank" rel="noopener noreferrer">Feedback <span aria-hidden="true">↗</span></a></footer>
+    <footer><a class="footer-name" href="#top">stash.</a><p class="footer-credit" align="center">Built With 💙 Made By <a href="https://venusapp.in">Veil(venusapp.in)</a></p></footer>
   </div>
 </body>
 </html>

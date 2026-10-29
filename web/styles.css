@@ -24,11 +24,10 @@ h1, h2, p { margin: 0; }
 .header { height: 86px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); font-size: 12px; }
 .identity { display: flex; align-items: center; gap: 11px; }
 .identity img { border-radius: 7px; }
-.header nav { display: flex; align-items: center; gap: 34px; }
-.header nav a { padding: 8px 0; }
-.header nav a span { padding-left: 7px; color: var(--muted); }
-.header-download { border-bottom: 1px solid var(--ink); }
-.header nav a:hover, .gallery-footer a:hover, footer a:hover { color: var(--accent); }
+.header-download { display: inline-flex; align-items: center; gap: 16px; padding: 11px 16px; background: var(--ink); color: var(--paper); border-radius: 3px; font-size: 11px; }
+.header-download:hover { background: #454c38; }
+[data-download-latest][aria-busy="true"] { opacity: .6; cursor: progress; }
+.gallery-footer a:hover, footer a:hover { color: var(--accent); }
 .masthead { display: flex; justify-content: space-between; align-items: flex-end; padding: 31px 0 46px; gap: 48px; }
 h1 { font-size: clamp(150px, 19vw, 250px); line-height: .88; font-weight: 500; letter-spacing: -.095em; margin-left: -9px; }
 h1 span { color: var(--accent); }
@@ -79,9 +78,11 @@ summary>span { font-size: 15px; transition: transform .15s; }
 details[open] summary>span { transform: rotate(45deg); }
 details>div { padding-top: 4px; }
 details p { color: #737669; font-size: 10px; line-height: 1.9; margin-top: 12px; }
-footer { border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 24px 0 30px; font-size: 9px; color: #818276; }
+footer { border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 24px 0 30px; color: #818276; }
 .footer-name { font-size: 24px; font-weight: 500; letter-spacing: -1.5px; color: var(--ink); }
-footer>a:last-child { color: #565c4a; }
+.footer-name { justify-self: start; }
+.footer-credit { grid-column: 2; text-align: center; font-size: 11px; line-height: 1.7; }
+.footer-credit a { color: var(--ink); border-bottom: 1px solid var(--line); }
 @media (min-width: 1450px) { .masthead { padding-top: 42px; } }
 @media (max-width: 1050px) {
   .page { padding-inline: 30px; }
@@ -100,8 +101,7 @@ footer>a:last-child { color: #565c4a; }
   .header { height: 72px; font-size: 10px; }
   .identity { gap: 8px; }
   .identity img { width: 23px; height: 23px; }
-  .header nav { gap: 20px; }
-  .header nav a span { padding-left: 3px; }
+  .header-download { font-size: 10px; padding: 10px 13px; gap: 11px; }
   .masthead { display: block; padding: 29px 0 27px; }
   h1 { font-size: clamp(120px, 32vw, 210px); margin-left: -5px; }
   .intro { display: flex; align-items: flex-start; gap: 22px; width: auto; padding: 25px 0 0; }
@@ -135,9 +135,9 @@ footer>a:last-child { color: #565c4a; }
   .download-button { padding-block: 18px; }
   .requirements { font-size: 8px; }
   details { margin-top: 20px; }
-  footer { flex-wrap: wrap; padding-top: 19px; gap: 14px; }
-  footer>span { order: 3; flex-basis: 100%; font-size: 8px; }
-  footer>a:last-child { margin-left: auto; }
+  footer { grid-template-columns: 40px 1fr 40px; padding-top: 19px; gap: 8px; }
+  .footer-name { font-size: 20px; }
+  .footer-credit { font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
