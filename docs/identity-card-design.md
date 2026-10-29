@@ -26,10 +26,9 @@ The Aadhaar, PAN, voter ID and driving licence views are personal wallet layouts
 ## Raster artwork and website QR
 
 The selected artwork comes from built-in imagegen reference-image editing calls,
-with a targeted repair for the single-card licence reverse. Outputs are copied
-unchanged into app/src/main/res/drawable-nodpi as identity_{aadhaar,pan,voter,licence}_{front,back}_v3.png.
+with a targeted repair for the single-card licence reverse. Outputs are losslessly encoded as WebP with identical pixels in app/src/main/res/drawable-nodpi as identity_{aadhaar,pan,voter,licence}_{front,back}_v3.webp.
 The exact prompts, reference paths, selected asset paths and generation mode are
-recorded in identity-art-v3-source.json. The earlier decorative-paper variants are
+recorded in artwork-sources.json. The earlier decorative-paper variants are
 not bundled. Static issuer headings may be part of the artwork; all personal data
 is rendered separately.
 

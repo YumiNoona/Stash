@@ -26,6 +26,13 @@ captures/
 *.p12
 *.pem
 secrets.properties
+signing.properties
+keystore.properties
+
+# Website build output and dependency/cache folders
+web/dist/
+web/node_modules/
+web/.cache/
 
 # OS/editor noise
 .DS_Store

@@ -1,8 +1,14 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+val signingFile = providers.environmentVariable("STASH_SIGNING_PROPERTIES").orNull?.let(::file)
+    ?: file("${System.getProperty("user.home")}/.android/stash-signing/signing.properties")
+val releaseSigning = Properties().apply { if (signingFile.isFile) signingFile.inputStream().use(::load) }
 
 android {
     namespace = "com.lockr.app"
@@ -12,8 +18,29 @@ android {
         applicationId = "com.lockr.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "1.8.1"
+        versionCode = 13
+        versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        create("production") {
+            if (signingFile.isFile) {
+                storeFile = file(releaseSigning.getProperty("storeFile"))
+                storePassword = releaseSigning.getProperty("storePassword")
+                keyAlias = releaseSigning.getProperty("keyAlias")
+                keyPassword = releaseSigning.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("production")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
     }
 
     buildFeatures {
@@ -47,3 +74,12 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
+
+val validateProductionSigning by tasks.registering {
+    doLast {
+        require(signingFile.isFile && listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all {
+            !releaseSigning.getProperty(it).isNullOrBlank()
+        }) { "Configure production signing outside Git. See docs/building.md." }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(validateProductionSigning) }

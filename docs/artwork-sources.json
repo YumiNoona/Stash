@@ -1,0 +1,168 @@
+{
+  "encoding": "Previously selected PNG images converted to lossless WebP with exact RGBA pixel verification; no artwork changes.",
+  "cardArt": [
+    {
+      "method": "Built-in image_gen",
+      "commonPrompt": "Premium full-bleed landscape card background; physically rendered flowing iridescent liquid glass, calm middle and lower left for app labels, no text, logos, chip, rounded corners, borders, mockup or watermarks.",
+      "assets": [
+        {
+          "id": "lagoon",
+          "prompt": "Liquid turquoise glass forming a deep spiraling underwater current, jade, seafoam and petrol blue, silky caustics, diagonally layered wave folds with a calm dark teal left area.",
+          "generationFile": "exec-5e0fa21e-3d82-49a9-af46-8633529b3d2b.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_lagoon_v2.webp"
+        },
+        {
+          "id": "chrome",
+          "prompt": "Liquid mirror-silver and gunmetal flowing into sharp sweeping metallic ribbons, blue and platinum reflections, satin grey quiet left area. Premium futuristic industrial sculpture.",
+          "generationFile": "exec-ee1e822b-4b5b-44e3-9b8c-609d6f0dd15f.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_chrome_v2.webp"
+        },
+        {
+          "id": "prism",
+          "prompt": "Deep indigo iridescent transparent glass sculpture with broad sweeping rainbow spectral ribbons wrapping asymmetrically on the upper right, luxurious holographic material, quiet blue-black left area.",
+          "generationFile": "exec-7ec78b95-334e-45b8-ac28-c7ea9dda6c71.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_prism_v2.webp"
+        }
+      ]
+    },
+    {
+      "method": "Built-in image_gen",
+      "assets": [
+        {
+          "id": "bloom",
+          "label": "Flamingo",
+          "prompt": "Use case: stylized-concept. Create ONE original full-bleed landscape 1.586:1 digital payment card BACKGROUND artwork called Flamingo. An original hot-pink low-poly flamingo head and curved long neck with oversized glossy black sunglasses, angular faceted folded-paper geometry, black and pale pink details, taking up the rightmost 45%. Clean warm ivory left half with a few tiny magenta triangles. Fashionable bold graphic composition inspired by polygonal editorial branding, no words. The left 40% and central-lower number band must stay quiet and uncluttered for app-rendered bank-card text. This is FLAT edge-to-edge rectangular artwork, no rounded corners, no borders, no card mockup, no scene, no photographed card. NO text, no lettering, no numbers, no logos, no chip, no contactless symbol, no watermark. High quality finished illustration, crisp intentional composition, vivid sophisticated palette.",
+          "generationFile": "exec-0bcd9d2c-1d68-48c3-a753-cf5db11f29d1.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_bloom_v3.webp"
+        },
+        {
+          "id": "amethyst",
+          "label": "Moon Garden",
+          "prompt": "Use case: stylized-concept. Create ONE original full-bleed landscape 1.586:1 digital payment card BACKGROUND artwork called Moon Garden. A striking psychedelic botanical illustration, oversized lilac moonflower with metallic silver center, midnight-plum leaves and peach stamen, flowing thick ink outlines, grainy lavender poster background. Graphic botanical print on the right; calm pale lilac left half with only sparse speckling. Contemporary collectible illustration. The left 40% and central-lower number band must stay quiet and uncluttered for app-rendered bank-card text. This is FLAT edge-to-edge rectangular artwork, no rounded corners, no borders, no card mockup, no scene, no photographed card. NO text, no lettering, no numbers, no logos, no chip, no contactless symbol, no watermark. High quality finished illustration, crisp intentional composition, vivid sophisticated palette.",
+          "generationFile": "exec-4906281c-8d4a-41dd-b1d0-e539ad0c63d3.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_amethyst_v3.webp"
+        },
+        {
+          "id": "neon",
+          "label": "Arcade",
+          "prompt": "Use case: stylized-concept. Create ONE original full-bleed landscape 1.586:1 digital payment card BACKGROUND artwork called Arcade. A playful original lime-green mini arcade robot mascot with one big glossy visor, chunky gloved hands and a game controller on the right, thick black ink outlines and halftone accents. Off-black charcoal background with restrained mint checkerboard corners. Premium streetwear sticker art, no text. The left 40% and central-lower number band must stay quiet and uncluttered for app-rendered bank-card text. This is FLAT edge-to-edge rectangular artwork, no rounded corners, no borders, no card mockup, no scene, no photographed card. NO text, no lettering, no numbers, no logos, no chip, no contactless symbol, no watermark. High quality finished illustration, crisp intentional composition, vivid sophisticated palette.",
+          "generationFile": "exec-d0bf3200-5d10-4234-b1e0-d763abd996f4.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_neon_v3.webp"
+        },
+        {
+          "id": "comet",
+          "label": "Orbit Club",
+          "prompt": "Use case: stylized-concept. Create ONE original full-bleed landscape 1.586:1 digital payment card BACKGROUND artwork called Orbit Club. Y2K space collage poster: a sculptural silver-chrome ringed planet on the upper right, a cobalt-blue comet trail, coral starburst and tiny lime orbit dots, cut-paper circles and grainy print textures. Quiet deep cobalt left half for white app text. Nostalgic futuristic graphic design, distinct from liquid glass. The left 40% and central-lower number band must stay quiet and uncluttered for app-rendered bank-card text. This is FLAT edge-to-edge rectangular artwork, no rounded corners, no borders, no card mockup, no scene, no photographed card. NO text, no lettering, no numbers, no logos, no chip, no contactless symbol, no watermark. High quality finished illustration, crisp intentional composition, vivid sophisticated palette.",
+          "generationFile": "exec-9663ca40-cc04-4c9f-8247-a5ad9a8a3a2f.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_comet_v3.webp"
+        },
+        {
+          "id": "ice",
+          "label": "Alpine",
+          "prompt": "Use case: stylized-concept. Create ONE original full-bleed landscape 1.586:1 digital payment card BACKGROUND artwork called Alpine. Sophisticated layered mountain landscape poster: geometric pale-blue snowy peaks with deep cobalt shadows, mint valleys and a peach rising sun on the right side. Screen-printed paper texture, broad confident graphic shapes, large quiet cream-to-pale-cyan left half. Colorful editorial travel art, NOT photorealistic, NOT liquid glass. The left 40% and central-lower number band must stay quiet and uncluttered for app-rendered bank-card text. This is FLAT edge-to-edge rectangular artwork, no rounded corners, no borders, no card mockup, no scene, no photographed card. NO text, no lettering, no numbers, no logos, no chip, no contactless symbol, no watermark. High quality finished illustration, crisp intentional composition, vivid sophisticated palette.",
+          "generationFile": "exec-af7b7875-7ea1-4e97-a5a6-16bba1a5e99b.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_ice_v3.webp"
+        }
+      ]
+    },
+    {
+      "tool": "built-in imagegen",
+      "use_case": "stylized-concept",
+      "assets": [
+        {
+          "id": "solar",
+          "prompt": "Use case: stylized-concept. Asset type: original bank-card background artwork, landscape 1.586:1 full bleed flat image. Prismatic folded satin sculpture with sharp architectural folds in cobalt electric blue, apricot and coral, a sophisticated editorial geometry composition, tactile shaded material, dramatic diagonal balance. High quality authored artwork, visually distinct, nuanced details. Keep upper left and lower quarter calm enough for overlaid card data. No text, numbers, logos, chip, border, flowers, leaves, botanicals, characters or card mockup. Fill entire landscape canvas.",
+          "source_id": "exec-354d2a22-648a-4846-8aaf-8120203c1139.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_solar_v6.webp"
+        },
+        {
+          "id": "citrus",
+          "prompt": "Use case: stylized-concept. Asset type: original bank-card background artwork, landscape 1.586:1 full bleed flat image. Funky airbrush chrome ribbon looping through a checkerboard portal, lilac, acid yellow and deep violet, glossy retro futuristic Y2K editorial artwork, playful sophisticated shapes. High quality authored artwork, visually distinct, nuanced details. Keep upper left and lower quarter calm enough for overlaid card data. No text, numbers, logos, chip, border, flowers, leaves, botanicals, characters or card mockup. Fill entire landscape canvas.",
+          "source_id": "exec-06878b06-a7a9-4894-af6a-df6c14eb3dca.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_citrus_v6.webp"
+        },
+        {
+          "id": "ember",
+          "prompt": "Use case: stylized-concept. Asset type: original bank-card background artwork, landscape 1.586:1 full bleed flat image. Rich hand painted midnight indigo landscape with a huge vermilion moon and flowing terracotta dunes, fine gouache texture, surreal graphic contemporary art, restrained dramatic composition. High quality authored artwork, visually distinct, nuanced details. Keep upper left and lower quarter calm enough for overlaid card data. No text, numbers, logos, chip, border, flowers, leaves, botanicals, characters or card mockup. Fill entire landscape canvas.",
+          "source_id": "exec-2dd8bc7d-163a-4588-a286-f7987445f567.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_ember_v6.webp"
+        },
+        {
+          "id": "mosaic",
+          "prompt": "Use case: stylized-concept. Asset type: original bank-card background artwork, landscape 1.586:1 full bleed flat image. Abstract cut-paper jazz collage, irregular sculptural arches, textured ultramarine, tangerine, cream and emerald, playful editorial art with dramatic dimensional lighting, sophisticated funky geometry. High quality authored artwork, visually distinct, nuanced details. Keep upper left and lower quarter calm enough for overlaid card data. No text, numbers, logos, chip, border, flowers, leaves, botanicals, characters or card mockup. Fill entire landscape canvas.",
+          "source_id": "exec-463e7d43-61e6-4789-b0e3-a15bb2f1a267.png",
+          "asset": "app/src/main/res/drawable-nodpi/card_mosaic_v6.webp"
+        }
+      ]
+    }
+  ],
+  "darkBackdrop": {
+    "tool": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: full-screen portrait background artwork for a premium private wallet app in dark mode, 9:20 vertical, edge-to-edge. Original sophisticated Y2K aurora glass artwork: luminous sculptural iridescent glass ribbons flowing diagonally along the outer edges, translucent rounded liquid-glass forms, softly refracted cyan, periwinkle, dusty violet and subtle rose highlights against deep charcoal indigo. A visibly rich dark design, not pitch black and not a pale wallpaper with a dark tint. Soft atmospheric depth and satin reflections, deliberate calm low-contrast central region so white app text and cards remain readable. Compose artwork throughout the full tall canvas with restrained highlights near upper right and lower left. Beautiful elegant material rendering. No text, lettering, logos, icons, cards, UI mockup, borders, characters, botanical or geometric vector placeholders.",
+    "source_id": "exec-3373925c-e716-4c2c-839f-154da2e9ad50.png",
+    "asset": "app/src/main/res/drawable-nodpi/vault_dark_aurora_bg.webp"
+  },
+  "identityCards": {
+    "mode": "built-in image_gen; reference-image editing",
+    "referenceInputs": "User-supplied Aadhaar, PAN, ECI and Maharashtra licence examples; original-style graphics and logo positions.",
+    "prompts": [
+      {
+        "name": "aadhaar_front",
+        "reference": "User-supplied reference: codex-clipboard-a8c58a98-d6d1-40de-a477-d7fd8b9c60e3.png",
+        "prompt": "Edit target/reference is the attached image of an Indian identity card. The user is building a local offline personal document wallet and wants the original visual design, NOT a redesign.\nOutput ONE straight-on, rectangular card face, edge-to-edge, landscape ratio approximately 1.586:1, no outer background, no perspective, no drop shadow outside the image. Use the original card's colors, subdued pattern, logo placement and composition faithfully. Do not add ornamental banknote guilloche, flowers, luxury paper, new gradient art, new branding, new badges or a UI layout. This is just reusable static background artwork, the app will render all labels and personal data later.\nPreserve the original official logo/emblem graphics faithfully in their correct positions. REMOVE ALL OTHER TEXT from the card, including headings, labels, sample names, addresses, numbers, dates, signatures and footer words; these will be typeset by the app. Keep the Aadhaar wordmark within its logo where applicable. Remove all sample portraits and silhouettes and leave a simple EMPTY pale-grey portrait area only where a portrait belongs. Remove QR/barcodes and leave their areas plain and unobstructed. No personal data, no invented identity details, no stamps or recreated holograms/security authentication marks. Do not include the reference's surrounding page, repeated merchant watermarks or background.\nUse ONLY the TOP/FRONT card in the two-card reference. White face, Indian emblem upper-left, orange and green brush strokes centered at top, Aadhaar logo upper-right, faint large grey fingerprint watermark behind the middle, empty portrait at x3â€“26%,y30â€“77%; blank details middle and blank QR area right. Keep the thin red horizontal line at y88% and white footer."
+      },
+      {
+        "name": "aadhaar_back",
+        "reference": "User-supplied reference: codex-clipboard-a8c58a98-d6d1-40de-a477-d7fd8b9c60e3.png",
+        "prompt": "Edit target/reference is the attached image of an Indian identity card. The user is building a local offline personal document wallet and wants the original visual design, NOT a redesign.\nOutput ONE straight-on, rectangular card face, edge-to-edge, landscape ratio approximately 1.586:1, no outer background, no perspective, no drop shadow outside the image. Use the original card's colors, subdued pattern, logo placement and composition faithfully. Do not add ornamental banknote guilloche, flowers, luxury paper, new gradient art, new branding, new badges or a UI layout. This is just reusable static background artwork, the app will render all labels and personal data later.\nPreserve the original official logo/emblem graphics faithfully in their correct positions. REMOVE ALL OTHER TEXT from the card, including headings, labels, sample names, addresses, numbers, dates, signatures and footer words; these will be typeset by the app. Keep the Aadhaar wordmark within its logo where applicable. Remove all sample portraits and silhouettes and leave a simple EMPTY pale-grey portrait area only where a portrait belongs. Remove QR/barcodes and leave their areas plain and unobstructed. No personal data, no invented identity details, no stamps or recreated holograms/security authentication marks. Do not include the reference's surrounding page, repeated merchant watermarks or background.\nUse ONLY the BOTTOM/BACK card in the two-card reference. White face, Aadhaar logo upper-left, orange/green brush strokes across the upper middle, Indian emblem upper-right. Large blank address area across left two-thirds. Blank QR area at lower-right. Thin grey footer divider at y88%. No portrait, no hologram."
+      },
+      {
+        "name": "pan_front",
+        "reference": "User-supplied reference: codex-clipboard-db1a72df-3159-447e-86aa-975d5646b326.png",
+        "prompt": "Edit target/reference is the attached image of an Indian identity card. The user is building a local offline personal document wallet and wants the original visual design, NOT a redesign.\nOutput ONE straight-on, rectangular card face, edge-to-edge, landscape ratio approximately 1.586:1, no outer background, no perspective, no drop shadow outside the image. Use the original card's colors, subdued pattern, logo placement and composition faithfully. Do not add ornamental banknote guilloche, flowers, luxury paper, new gradient art, new branding, new badges or a UI layout. This is just reusable static background artwork, the app will render all labels and personal data later.\nPreserve the original official logo/emblem graphics faithfully in their correct positions. REMOVE ALL OTHER TEXT from the card, including headings, labels, sample names, addresses, numbers, dates, signatures and footer words; these will be typeset by the app. Keep the Aadhaar wordmark within its logo where applicable. Remove all sample portraits and silhouettes and leave a simple EMPTY pale-grey portrait area only where a portrait belongs. Remove QR/barcodes and leave their areas plain and unobstructed. No personal data, no invented identity details, no stamps or recreated holograms/security authentication marks. Do not include the reference's surrounding page, repeated merchant watermarks or background.\nUse ONLY the TOP/FRONT PAN card from the two-card reference. Exact classic blue/lilac fingerprint-textured background. Indian emblem centered at top x47â€“53%, y4â€“24%. Keep wide calm heading areas at upper-left and upper-right. Leave centre and left blank for data. Empty pale-grey portrait at lower-right x75â€“94%,y59â€“96%. No QR on the front. No hologram, no ghost badge. Original style, not engraved-paper decoration."
+      },
+      {
+        "name": "pan_back",
+        "reference": "User-supplied reference: codex-clipboard-db1a72df-3159-447e-86aa-975d5646b326.png",
+        "prompt": "Edit target/reference is the attached image of an Indian identity card. The user is building a local offline personal document wallet and wants the original visual design, NOT a redesign.\nOutput ONE straight-on, rectangular card face, edge-to-edge, landscape ratio approximately 1.586:1, no outer background, no perspective, no drop shadow outside the image. Use the original card's colors, subdued pattern, logo placement and composition faithfully. Do not add ornamental banknote guilloche, flowers, luxury paper, new gradient art, new branding, new badges or a UI layout. This is just reusable static background artwork, the app will render all labels and personal data later.\nPreserve the original official logo/emblem graphics faithfully in their correct positions. REMOVE ALL OTHER TEXT from the card, including headings, labels, sample names, addresses, numbers, dates, signatures and footer words; these will be typeset by the app. Keep the Aadhaar wordmark within its logo where applicable. Remove all sample portraits and silhouettes and leave a simple EMPTY pale-grey portrait area only where a portrait belongs. Remove QR/barcodes and leave their areas plain and unobstructed. No personal data, no invented identity details, no stamps or recreated holograms/security authentication marks. Do not include the reference's surrounding page, repeated merchant watermarks or background.\nUse ONLY the BOTTOM/BACK PAN card. Same classic blue/lilac fingerprint-textured background throughout; no portrait and no emblem at top. Leave upper area blank for the bilingual printed note, left middle blank for address, lower-right blank for a separate QR. Thin blue outlined footer panel near bottom, with NO text. No merchant watermarks."
+      },
+      {
+        "name": "voter_front",
+        "reference": "User-supplied reference: codex-clipboard-f82dd86a-5d78-4ee9-af79-c3c6652a38cb.png",
+        "prompt": "Edit target/reference is the attached image of an Indian identity card. The user is building a local offline personal document wallet and wants the original visual design, NOT a redesign.\nOutput ONE straight-on, rectangular card face, edge-to-edge, landscape ratio approximately 1.586:1, no outer background, no perspective, no drop shadow outside the image. Use the original card's colors, subdued pattern, logo placement and composition faithfully. Do not add ornamental banknote guilloche, flowers, luxury paper, new gradient art, new branding, new badges or a UI layout. This is just reusable static background artwork, the app will render all labels and personal data later.\nPreserve the original official logo/emblem graphics faithfully in their correct positions. REMOVE ALL OTHER TEXT from the card, including headings, labels, sample names, addresses, numbers, dates, signatures and footer words; these will be typeset by the app. Keep the Aadhaar wordmark within its logo where applicable. Remove all sample portraits and silhouettes and leave a simple EMPTY pale-grey portrait area only where a portrait belongs. Remove QR/barcodes and leave their areas plain and unobstructed. No personal data, no invented identity details, no stamps or recreated holograms/security authentication marks. Do not include the reference's surrounding page, repeated merchant watermarks or background.\nProduce the FRONT face matching this original ECI design and its same exact very pale tricolour flowing background, faint dotted India map on the right and faint chakra motif near lower-left. Preserve Indian emblem upper-left, ECI logo upper-right. Leave centre-top empty for bilingual ECI heading. Add a simple empty pale-grey portrait at x4â€“27%,y31â€“83% (front-side portrait), blank details on right x31â€“91%,y32â€“84%. No QR on this front, no DEMO badge."
+      },
+      {
+        "name": "voter_back",
+        "reference": "User-supplied reference: codex-clipboard-f82dd86a-5d78-4ee9-af79-c3c6652a38cb.png",
+        "prompt": "Edit target/reference is the attached image of an Indian identity card. The user is building a local offline personal document wallet and wants the original visual design, NOT a redesign.\nOutput ONE straight-on, rectangular card face, edge-to-edge, landscape ratio approximately 1.586:1, no outer background, no perspective, no drop shadow outside the image. Use the original card's colors, subdued pattern, logo placement and composition faithfully. Do not add ornamental banknote guilloche, flowers, luxury paper, new gradient art, new branding, new badges or a UI layout. This is just reusable static background artwork, the app will render all labels and personal data later.\nPreserve the original official logo/emblem graphics faithfully in their correct positions. REMOVE ALL OTHER TEXT from the card, including headings, labels, sample names, addresses, numbers, dates, signatures and footer words; these will be typeset by the app. Keep the Aadhaar wordmark within its logo where applicable. Remove all sample portraits and silhouettes and leave a simple EMPTY pale-grey portrait area only where a portrait belongs. Remove QR/barcodes and leave their areas plain and unobstructed. No personal data, no invented identity details, no stamps or recreated holograms/security authentication marks. Do not include the reference's surrounding page, repeated merchant watermarks or background.\nCopy the BACK face shown in this reference faithfully. Very pale tricolour flowing background, faint dotted India map on right, faint chakra lower-left. Preserve Indian emblem upper-left and original ECI logo upper-right. Leave top centre clear for ECI title; blank left for EPIC number,address,constituency,part,serial,date. Plain blank QR region on lower-right. No portrait, no DEMO badge."
+      },
+      {
+        "name": "licence_front",
+        "reference": "User-supplied reference: codex-clipboard-1ab4fabd-e462-463a-9dbb-6ba76e10c3f9.png",
+        "prompt": "Edit target/reference is the attached image of an Indian identity card. The user is building a local offline personal document wallet and wants the original visual design, NOT a redesign.\nOutput ONE straight-on, rectangular card face, edge-to-edge, landscape ratio approximately 1.586:1, no outer background, no perspective, no drop shadow outside the image. Use the original card's colors, subdued pattern, logo placement and composition faithfully. Do not add ornamental banknote guilloche, flowers, luxury paper, new gradient art, new branding, new badges or a UI layout. This is just reusable static background artwork, the app will render all labels and personal data later.\nPreserve the original official logo/emblem graphics faithfully in their correct positions. REMOVE ALL OTHER TEXT from the card, including headings, labels, sample names, addresses, numbers, dates, signatures and footer words; these will be typeset by the app. Keep the Aadhaar wordmark within its logo where applicable. Remove all sample portraits and silhouettes and leave a simple EMPTY pale-grey portrait area only where a portrait belongs. Remove QR/barcodes and leave their areas plain and unobstructed. No personal data, no invented identity details, no stamps or recreated holograms/security authentication marks. Do not include the reference's surrounding page, repeated merchant watermarks or background.\nEnlarge and recreate ONLY the actual small Maharashtra driving licence face inside the teal image. Do not include any teal surroundings. Copy the original cream/pale-pink licence design: Indian emblem top-left, original red MMVD gear/wing logo top-right, red header band across upper centre, large very faint red MMVD gear watermark in the centre. Preserve the small gold chip graphic left-middle x7â€“24%,y40â€“64%. Empty portrait on right x77â€“95%,y38â€“76%; no secondary ghost portrait. Leave the rest blank for the app's number, dates, authorisations, name and address. No fake signature, no sample text, no QR on this front."
+      },
+      {
+        "name": "licence_back",
+        "reference": "User-supplied reference: codex-clipboard-1ab4fabd-e462-463a-9dbb-6ba76e10c3f9.png",
+        "prompt": "Edit target/reference is the attached image of an Indian identity card. The user is building a local offline personal document wallet and wants the original visual design, NOT a redesign.\nOutput ONE straight-on, rectangular card face, edge-to-edge, landscape ratio approximately 1.586:1, no outer background, no perspective, no drop shadow outside the image. Use the original card's colors, subdued pattern, logo placement and composition faithfully. Do not add ornamental banknote guilloche, flowers, luxury paper, new gradient art, new branding, new badges or a UI layout. This is just reusable static background artwork, the app will render all labels and personal data later.\nPreserve the original official logo/emblem graphics faithfully in their correct positions. REMOVE ALL OTHER TEXT from the card, including headings, labels, sample names, addresses, numbers, dates, signatures and footer words; these will be typeset by the app. Keep the Aadhaar wordmark within its logo where applicable. Remove all sample portraits and silhouettes and leave a simple EMPTY pale-grey portrait area only where a portrait belongs. Remove QR/barcodes and leave their areas plain and unobstructed. No personal data, no invented identity details, no stamps or recreated holograms/security authentication marks. Do not include the reference's surrounding page, repeated merchant watermarks or background.\nProduce the matching reverse face of this same Maharashtra driving licence, retaining cream/pale-pink substrate, red header band across upper centre, Indian emblem top-left and original red MMVD gear/wing logo top-right, faint central MMVD gear watermark. No portrait or chip on the reverse. Blank address/vehicle classes/validity area on left and blank QR region lower-right. No text, no fake signature."
+      }
+    ],
+    "licenceBackRepair": "Edit this ONE driving-licence card image into its reverse side. Keep the identical single-card shape, size, pink-white background, red header band, upper-left Indian emblem, upper-right MMVD logo and faint centre MMVD watermark. Remove ONLY the gold chip and the grey portrait window, blending those two areas into the plain pink-white background. Keep the rest unchanged. Absolutely ONE single full-size card filling the entire output, NOT a two-card sheet, NOT a before/after comparison, no surrounding background. No personal text, no portrait, no chip, no QR, no additional boxes. The blank reverse will receive live address and QR in the app.",
+    "assets": [
+      "app/src/main/res/drawable-nodpi/identity_aadhaar_front_v3.webp",
+      "app/src/main/res/drawable-nodpi/identity_aadhaar_back_v3.webp",
+      "app/src/main/res/drawable-nodpi/identity_pan_front_v3.webp",
+      "app/src/main/res/drawable-nodpi/identity_pan_back_v3.webp",
+      "app/src/main/res/drawable-nodpi/identity_voter_front_v3.webp",
+      "app/src/main/res/drawable-nodpi/identity_voter_back_v3.webp",
+      "app/src/main/res/drawable-nodpi/identity_licence_front_v3.webp",
+      "app/src/main/res/drawable-nodpi/identity_licence_back_v3.webp"
+    ],
+    "qr": {
+      "file": "app/src/main/res/drawable-nodpi/venus_website_qr.png",
+      "payload": "https://venusapp.in",
+      "containsPersonalData": false,
+      "decoderVerification": "ZXing-C++ decoded the PNG and emulator screenshot."
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "stash-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The local-first Stash Android app website",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

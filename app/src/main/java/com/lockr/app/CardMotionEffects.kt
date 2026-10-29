@@ -11,10 +11,10 @@ import kotlin.math.*
 
 /** Seamless decorative light only. Card data stays still and readable. */
 @Composable
-fun CardMotionOverlay(motion: CardMotion, phase: Float, modifier: Modifier) {
+fun CardMotionOverlay(motion: CardMotion, phase: () -> Float, modifier: Modifier) {
     Canvas(modifier) {
         val w = size.width; val h = size.height
-        val t = (phase + 1f) / 2f
+        val t = (phase() + 1f) / 2f
         val angle = t * PI * 2
         when (motion) {
             CardMotion.SHEEN, CardMotion.TILT -> {

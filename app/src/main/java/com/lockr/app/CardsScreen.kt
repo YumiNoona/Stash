@@ -50,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
@@ -140,7 +141,7 @@ private fun CardSurface(
     else "••••  ••••  ••••  ${lastFour.ifBlank { "••••" }}"
     val motion = if (animate && LocalMotionEnabled.current) cardMotion(item) else CardMotion.NONE
     val transition = if (motion != CardMotion.NONE) rememberInfiniteTransition(label = "card motion") else null
-    val phase by transition?.animateFloat(-1f, 1f,
+    val phase = transition?.animateFloat(-1f, 1f,
         animationSpec = infiniteRepeatable(tween(6400, easing = androidx.compose.animation.core.LinearEasing), RepeatMode.Restart), label = "card phase")
         ?: remember { mutableStateOf(0f) }
     // Every surface uses the physical card ratio. A single logical canvas scales uniformly,
@@ -154,10 +155,10 @@ private fun CardSurface(
         }.clip(shape).background(if (dark) Color(0xFF111B30) else Color(0xFFDBE9F5))
             .border(1.dp, ink.copy(alpha = 0.15f), shape).clickable(onClick = onClick)) {
             Box(Modifier.fillMaxSize().graphicsLayer {
-                val wave = kotlin.math.sin((phase + 1f) * kotlin.math.PI).toFloat()
+                val wave = kotlin.math.sin((phase.value + 1f) * kotlin.math.PI).toFloat()
                 if (motion == CardMotion.FLOAT) { scaleX = 1.035f; scaleY = 1.035f; translationY = wave * 2f * density }
-                if (motion == CardMotion.DRIFT) { scaleX = 1.055f; scaleY = 1.055f; translationX = wave * 5f * density; translationY = kotlin.math.cos((phase + 1f) * kotlin.math.PI).toFloat() * 2f * density }
-                if (motion == CardMotion.ZOOM) { scaleX = 1.035f + kotlin.math.sin((phase + 1f) * kotlin.math.PI).toFloat() * 0.015f; scaleY = scaleX }
+                if (motion == CardMotion.DRIFT) { scaleX = 1.055f; scaleY = 1.055f; translationX = wave * 5f * density; translationY = kotlin.math.cos((phase.value + 1f) * kotlin.math.PI).toFloat() * 2f * density }
+                if (motion == CardMotion.ZOOM) { scaleX = 1.035f + kotlin.math.sin((phase.value + 1f) * kotlin.math.PI).toFloat() * 0.015f; scaleY = scaleX }
             }) {
                 CardArtBackground(art, Modifier.fillMaxSize())
                 if (custom != null) CustomCardArtBackground(custom, Modifier.fillMaxSize(), animate && LocalArtworkAutoplay.current)
@@ -168,9 +169,10 @@ private fun CardSurface(
                     else listOf(Color(0x33FFFFFF), Color.Transparent, Color(0x33FFFFFF))
                 } else if (dark) listOf(Color(0x99071222), Color(0x55071222), Color(0xAA071222))
                 else listOf(Color(0xCCFFFFFF), Color(0x88FFFFFF), Color(0xCCFFFFFF)))))
-            if (motion == CardMotion.PULSE) Box(Modifier.fillMaxSize().background(
-                Color(0xFFB7D6FF).copy(alpha = 0.035f + (kotlin.math.sin((phase + 1f) * kotlin.math.PI).toFloat() + 1f) * 0.025f)))
-            CardMotionOverlay(motion, phase, Modifier.fillMaxSize())
+            if (motion == CardMotion.PULSE) Box(Modifier.fillMaxSize().drawBehind {
+                drawRect(Color(0xFFB7D6FF).copy(alpha = 0.035f + (kotlin.math.sin((phase.value + 1f) * kotlin.math.PI).toFloat() + 1f) * 0.025f))
+            })
+            CardMotionOverlay(motion, { phase.value }, Modifier.fillMaxSize())
             Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
