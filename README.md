@@ -55,5 +55,5 @@ Stash/
 └── settings.gradle.kts  Project modules
 ```
 <p align="center">
-  Built With 💙 Made By <a href="https://venusapp.in">Veil(venusapp.in)</a>
+  Built With 💙 Made By <a href="https://venusapp.in">Veil</a>
 </p>
