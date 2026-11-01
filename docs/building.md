@@ -33,25 +33,13 @@ Play App Bundle: `app/build/outputs/bundle/release/app-release.aab`. The APK at 
 
 Verify it with Android SDK `apksigner verify --print-certs`, and confirm that `aapt dump badging` does not contain `application-debuggable`. Publish the release APK with a SHA-256 checksum, never a keystore, password file or debug APK.
 
-The earlier GitHub v1.0.0 APK signing certificate SHA-256 is:
+The current source builds the refreshed version 1.0.0, internal version code 14. **Its new signing key cannot update an installation of the earlier v1.0.0 GitHub APK, even though the displayed version is the same.** Retain the same `com.lockr.app` package ID for the Play listing, and use this local key for future Play uploads.
 
-```text
-fac3948fe1fd202f198b6a7cdecbdcb92e95704a876cfe73d5a121b1cc07534b
-```
-
-The new Play upload certificate SHA-256 is:
-
-```text
-06fcae872c12e2778b0c25a488f37bea9e4e1f8c8704c124f707443c3ea3a366
-```
-
-The current source builds version 1.0.1, internal version code 14. **Its new signing key cannot update an existing v1.0.0 GitHub APK installation.** Retain the same `com.lockr.app` package ID for the Play listing, and use this new key for future Play uploads. Do not publish the new APK as an in-place update to the GitHub release.
-
-## Earlier debug-signed installations
+## Earlier installations
 
 Android will not install a production APK over an APK signed by the old debug key. This is independent of the displayed version number.
 
-Before removing any old installation, create a **portable encrypted backup**, keep its passphrase safe, and verify that the file exists. Version 1.0.0 did not include portable backup; on that version export readable copies of the information and original files you need, then open them to verify the copies. Readable exports are not encrypted. Uninstalling removes Stash's private storage and its Android Keystore key. The older device-bound backup cannot restore after that key has been deleted. There is no automatic cross-signature migration or cloud recovery.
+Before removing any old installation, create a **portable encrypted backup** if that version offers it, keep its passphrase safe, and verify that the file exists. The earlier v1.0.0 GitHub APK did not include portable backup; on that build, export readable copies of the information and original files you need, then open them to verify the copies. Readable exports are not encrypted. Uninstalling removes Stash's private storage and its Android Keystore key. The older device-bound backup cannot restore after that key has been deleted. There is no automatic cross-signature migration or cloud recovery.
 
 Fresh Play installations and later releases signed through Play App Signing use the normal Android update path. A fresh vault is empty.
 

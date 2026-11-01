@@ -21,7 +21,7 @@ Stash puts your everyday essentials in one place, with aurora artwork, floating 
 - **Documents, without the pile.** Scan or import images, PDFs and text. Keep multiple pages in one document, organize folders and tags, and select several items to move, download or delete.
 - **Identity details close at hand.** Store Aadhaar, PAN, voter ID and driving licence details in familiar front/back layouts, with your own photo and original scans alongside. These are personal wallet views; their website QR contains no identity data.
 - **Useful little extras.** Save notes and passwords, generate passwords locally, search your vault, extract text on the device, and add wallet or document home-screen widgets.
-- **Your information stays local.** AES-GCM encrypted records and attachments, Android Keystore, device-credential protection, clipboard clearing, explicit sharing and local exports. The current source also supports passphrase-protected portable backups.
+- **Your information stays local.** AES-GCM encrypted records and attachments, Android Keystore, device-credential protection, clipboard clearing, explicit sharing, local exports and passphrase-protected portable backups.
 
 ## A look inside
 
@@ -56,7 +56,7 @@ Stash/
 └── settings.gradle.kts  Project modules
 ```
 
-The current source is being prepared as version 1.0.1 for Google Play. It uses a new upload key, so its locally signed APK cannot update the earlier v1.0.0 GitHub APK. See the [build and migration guide](docs/building.md), [privacy policy](docs/privacy.md), and [Play submission checklist](play/README.md).
+This is the refreshed v1.0.0 release, signed with a new local key. Its APK cannot update the earlier v1.0.0 GitHub APK in place; see the [build and migration guide](docs/building.md) before replacing an older installation. The [privacy policy](docs/privacy.md) and [Play submission package](play/README.md) are also available here.
 <p align="center">
   Built With 💙 Made By <a href="https://venusapp.in">Veil</a>
 </p>

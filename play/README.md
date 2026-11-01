@@ -1,6 +1,6 @@
 # Google Play submission package
 
-Stash 1.0.1 (version code 14) uses package `com.lockr.app`, targets Android 16 / API 36, and supports Android 8.0+. Upload `app/build/outputs/bundle/release/app-release.aab` after running the release checks in `docs/building.md`. Enroll in Play App Signing using the generated upload certificate. The AAB and the local signing files are intentionally ignored by Git.
+Stash 1.0.0 (version code 14) uses package `com.lockr.app`, targets Android 16 / API 36, and supports Android 8.0+. Upload `app/build/outputs/bundle/release/app-release.aab` after running the release checks in `docs/building.md`. Enroll in Play App Signing using the local upload certificate. The AAB and signing files are intentionally ignored by Git.
 
 ## Listing assets
 
@@ -23,4 +23,4 @@ The feature graphic uses the Stash vault art style and was generated for this li
 
 ## Signing transition
 
-The v1.0.0 GitHub APK and the new Play AAB use different signing certificates. Android cannot install the new locally signed APK over the old GitHub APK. The Play bundle should start a new Play signing lineage. Keep the new upload key and `signing.properties` securely backed up outside this repository, and use the same Play app signing identity for future versions. See `docs/building.md` for certificate fingerprints and user data migration guidance.
+The earlier v1.0.0 GitHub APK and the refreshed v1.0.0 release use different signing certificates. Android cannot install the refreshed APK over the older APK. Keep the new local key and `signing.properties` securely backed up outside this repository, and use the same Play app signing identity for future versions. See `docs/building.md` for user data migration guidance.

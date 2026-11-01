@@ -1,1 +1,1 @@
-Stash 1.0.1 adds passphrase-protected portable backups, clearer export privacy controls, an in-app privacy policy, and updated Android backup protections. It also improves the launcher icon and prepares the app for Google Play.
+Stash 1.0.0 brings together secure cards, documents, passwords and notes in a local vault. Scan and review documents, organize with tags and folders, and move your data with a passphrase-protected portable backup. No account or internet permission.
