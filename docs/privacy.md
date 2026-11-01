@@ -1,20 +1,26 @@
-# Privacy and current limits
+# Privacy policy and current limits
 
-Stash has no account, server, analytics, cloud sync or internet permission. Its app data stays on your Android device unless you explicitly share or export it.
+Stash is made by Veil. Updated 1 November 2026. For privacy questions, email [rushikeshingale2001@gmail.com](mailto:rushikeshingale2001@gmail.com).
+
+Stash has no account, server, analytics, ads, cloud sync or internet permission. Its app data stays on your Android device unless you explicitly share or export it. You choose when to use the camera, selected files, NFC, profile photo and offline text recognition.
 
 ## Local protection
 
-- Vault records and imported attachments use AES-GCM in app-private storage. Android Keystore holds the device-bound encryption key.
+- Vault records and imported attachments use AES-GCM in app-private storage. Android Keystore holds the device-bound encryption key. Portable backups use AES-GCM with a passphrase-derived key; Veil cannot recover a forgotten passphrase.
+- Profile name, photo and display settings are kept separately in app-private storage. They are not included in the encrypted vault or portable backup.
 - Writes use atomic replacement. Android pickers grant access to selected files; the app does not request broad storage access.
 - Private reveal, copying, original identity scans and sensitive exports use device credentials. App lock and clipboard clearing can be configured in Settings.
 - Card verification codes are masked and excluded from readable exports. Number masking is configurable.
-- Temporary shared files are removed after ten minutes or on a later launch. Redaction creates a flattened copy and keeps the saved original.
+- Temporary shared files are removed after about ten minutes or on a later launch. Redaction creates a flattened copy and keeps the saved original.
+- Android automatic cloud and device-transfer backups are excluded. You control the destination of manual exports.
 
 ## Backups and exports
 
-Encrypted backups require the original device-bound key. They cannot move a vault to another phone or recover a key deleted by uninstalling. Keep the app installed until you have verified any independent copies you need.
+Portable encrypted backups can restore on another device or after reinstall when you know the passphrase. Keep both the file and passphrase safe. The older device-bound backup format still requires the original Android Keystore key and cannot move a vault to another phone or recover a key deleted by uninstalling.
 
-Readable JSON, PDF, Excel and text exports are not encrypted. JSON can include attachments when private fields are explicitly included. Other readable exports list attachments; export an original through its item viewer. Store exported material privately.
+Readable JSON, PDF, Excel and text exports are not encrypted. Summary exports include item types, saved dates and file counts; they omit user names, titles, free-form details, card digits and original file names. Full readable exports require device authentication. Full JSON includes attachments; other full exports list attachment names. Card verification codes are never exported. Store exported material privately and remove it from any receiving app or destination yourself when no longer needed.
+
+Vault data stays on the device until you delete it or uninstall Stash. Uninstalling deletes the local vault and its device-bound key. Exports or shared files outside Stash must be deleted separately.
 
 ## Imports and identity cards
 

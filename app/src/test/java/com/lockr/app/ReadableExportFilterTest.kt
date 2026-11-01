@@ -6,6 +6,21 @@ import org.junit.Test
 
 class ReadableExportFilterTest {
     @Test
+    fun summaryExportRemovesFreeFormNamesAndValues() {
+        val item = VaultItem("Private name", VaultCategory.DOCUMENT, "Sensitive detail", "Oct 31",
+            lastFour = "1234", metadata = mapOf("folder" to "Secret folder"),
+            attachments = listOf(VaultAttachment("Private file.pdf", "application/pdf", 5, "c2VjcmV0")))
+        val summary = exportItemsForPrivacy(listOf(item), includePrivate = false).single()
+        assertEquals("Document 1", summary.title)
+        assertEquals("", summary.detail)
+        assertEquals("", summary.lastFour)
+        assertEquals(emptyMap<String, String>(), summary.metadata)
+        assertEquals("Attachment 1", summary.attachments.single().name)
+        assertEquals("", summary.attachments.single().base64Data)
+        assertEquals(item, exportItemsForPrivacy(listOf(item), includePrivate = true).single())
+    }
+
+    @Test
     fun cvcNeverAppearsInReadableMetadata() {
         val item = VaultItem("Card", VaultCategory.CARD, "Credit", "", metadata = mapOf(
             "cardCvc" to "123", "CardCVC" to "456", "cvv" to "789",

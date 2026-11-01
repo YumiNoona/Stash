@@ -72,10 +72,13 @@ fun SettingsScreen(
     onSettingsChange: (LockrSettingsState) -> Unit,
     onBack: () -> Unit,
     onExportBackup: () -> Unit,
+    onExportPortableBackup: () -> Unit,
     onExportData: (DataExportFormat, Boolean) -> Unit,
     onImportBackup: () -> Unit,
+    onImportPortableBackup: () -> Unit,
     onOpenOrganization: () -> Unit,
     onOpenBackdrop: () -> Unit,
+    onOpenPrivacy: () -> Unit,
     backupStatus: String?,
     modifier: Modifier = Modifier
 ) {
@@ -141,11 +144,19 @@ fun SettingsScreen(
                         iconTint = Color(0xFF286DE0), iconBg = Color(0xFFE3EEFF), onClick = { dialog = "export" }
                     )
                     SettingsRow(
-                        Icons.Outlined.CloudUpload, "Export Encrypted Backup", "Save a protected file on this device", value = "›",
+                        Icons.Outlined.CloudUpload, "Portable Encrypted Backup", "Move or recover with a passphrase", value = "›",
+                        iconTint = Color(0xFF286DE0), iconBg = Color(0xFFE3EEFF), onClick = onExportPortableBackup
+                    )
+                    SettingsRow(
+                        Icons.Outlined.Restore, "Import Portable Backup", "Restore on this or another device", value = "›",
+                        iconTint = Color(0xFF5A64C8), iconBg = LockrColors.Surface, onClick = onImportPortableBackup
+                    )
+                    SettingsRow(
+                        Icons.Outlined.CloudUpload, "Device-bound Backup", "Requires this device's original key", value = "›",
                         iconTint = Color(0xFF286DE0), iconBg = Color(0xFFE3EEFF), onClick = onExportBackup
                     )
                     SettingsRow(
-                        Icons.Outlined.Restore, "Import Backup", "Restore a backup made on this device", value = "›",
+                        Icons.Outlined.Restore, "Import Device Backup", "Restore a backup made on this device", value = "›",
                         iconTint = Color(0xFF5A64C8), iconBg = LockrColors.Surface, last = true, onClick = onImportBackup
                     )
                 }
@@ -168,6 +179,10 @@ fun SettingsScreen(
                     )
                 }
                 SettingsSection("About", modifier = Modifier.padding(top = 14.dp)) {
+                    SettingsRow(
+                        Icons.Outlined.PrivacyTip, "Privacy policy", "How Stash handles your data", value = "›",
+                        iconTint = Color(0xFF4C526B), iconBg = LockrColors.Surface, onClick = onOpenPrivacy
+                    )
                     SettingsRow(
                         Icons.Outlined.Info, "About Stash", "Version $version · offline vault", value = "›",
                         iconTint = Color(0xFF4C526B), iconBg = LockrColors.Surface, last = true,
@@ -235,15 +250,15 @@ private fun ExportFormatDialog(onDismiss: () -> Unit, onExport: (DataExportForma
         title = { Text("Export vault") },
         text = {
             Column {
-                Text("Choose a readable file format. Attachments are included in JSON only when private data is enabled.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text("By default, export only item types, dates and file counts. Names, fields and file names are left out.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
                 DataExportFormat.entries.forEach { format ->
                     Text(format.label, modifier = Modifier.fillMaxWidth().clickable { onExport(format, includePrivate) }.padding(vertical = 13.dp), color = LockrColors.TextPrimary)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Include private fields", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Text("Include names and private details", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     Switch(checked = includePrivate, onCheckedChange = { includePrivate = it })
                 }
-                Text("Readable exports are not encrypted. Keep them in a safe location.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text("Full JSON also includes original attachments. CVV is never exported. Readable files are not encrypted.", color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }

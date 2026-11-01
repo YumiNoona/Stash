@@ -23,31 +23,37 @@ keyAlias=stash
 keyPassword=YOUR_PRIVATE_PASSWORD
 ```
 
-Create your own key using the JDK's `keytool` or Android Studio's signed APK workflow. Back up both the key and passwords securely: future production updates must retain the same signing identity. Do not commit or upload them to GitHub.
+The Play upload key for this checkout is at `${user.home}/.android/stash-signing/stash-play-upload.p12`, with its credentials in `signing.properties` beside it. Back up **both files** in a secure location. Losing them prevents signing a matching update until Google Play resets the upload key. Do not commit or upload either file to GitHub.
 
 ```powershell
-.\gradlew.bat testDebugUnitTest :app:assembleRelease :app:lintRelease
+.\gradlew.bat testDebugUnitTest :app:lintRelease :app:bundleRelease :app:assembleRelease
 ```
 
-Production APK: `app/build/outputs/apk/release/app-release.apk`.
+Play App Bundle: `app/build/outputs/bundle/release/app-release.aab`. The APK at `app/build/outputs/apk/release/app-release.apk` is for local installation and QA. Submit the AAB through Play Console with Play App Signing enabled.
 
 Verify it with Android SDK `apksigner verify --print-certs`, and confirm that `aapt dump badging` does not contain `application-debuggable`. Publish the release APK with a SHA-256 checksum, never a keystore, password file or debug APK.
 
-The v1.0.0 production signing certificate SHA-256 is:
+The earlier GitHub v1.0.0 APK signing certificate SHA-256 is:
 
 ```text
 fac3948fe1fd202f198b6a7cdecbdcb92e95704a876cfe73d5a121b1cc07534b
 ```
 
-The public version is reset to 1.0.0. The internal version code is 13, above all earlier test builds. Future releases must continue increasing the internal code.
+The new Play upload certificate SHA-256 is:
+
+```text
+06fcae872c12e2778b0c25a488f37bea9e4e1f8c8704c124f707443c3ea3a366
+```
+
+The current source builds version 1.0.1, internal version code 14. **Its new signing key cannot update an existing v1.0.0 GitHub APK installation.** Retain the same `com.lockr.app` package ID for the Play listing, and use this new key for future Play uploads. Do not publish the new APK as an in-place update to the GitHub release.
 
 ## Earlier debug-signed installations
 
 Android will not install a production APK over an APK signed by the old debug key. This is independent of the displayed version number.
 
-Before removing a test installation, export readable copies of the information and original files you need, open them to verify the copies, and keep them private. Readable exports are not encrypted. Uninstalling removes Stash's private storage and its Android Keystore key. An encrypted backup alone cannot restore data after that key has been deleted. There is no automatic cross-signature migration or cloud recovery.
+Before removing any old installation, create a **portable encrypted backup**, keep its passphrase safe, and verify that the file exists. Version 1.0.0 did not include portable backup; on that version export readable copies of the information and original files you need, then open them to verify the copies. Readable exports are not encrypted. Uninstalling removes Stash's private storage and its Android Keystore key. The older device-bound backup cannot restore after that key has been deleted. There is no automatic cross-signature migration or cloud recovery.
 
-Fresh installations and later releases signed with the production key use the normal Android update path. A fresh vault is empty.
+Fresh Play installations and later releases signed through Play App Signing use the normal Android update path. A fresh vault is empty.
 
 ## Website
 

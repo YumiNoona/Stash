@@ -65,6 +65,27 @@ class LocalVaultStore(context: Context) {
         return restoredItems
     }
 
+    /** Portable backups encrypt this JSON with a user passphrase, never with the device key. */
+    internal fun serializePortable(items: List<VaultItem>): ByteArray = encodeItems(items.map { item ->
+        item.copy(metadata = item.metadata.filterKeys { key ->
+            !key.equals("securityCode", true) && !key.equals("cvv", true) && !key.equals("cvc", true)
+        })
+    })
+
+    /** Consumes and wipes plaintext after parsing. No current vault data is modified. */
+    internal fun parsePortable(plaintext: ByteArray): List<VaultItem> = decodeItems(plaintext)
+
+    @Synchronized
+    internal fun restorePortable(items: List<VaultItem>): List<VaultItem> {
+        val safeItems = items.map { item ->
+            item.copy(metadata = item.metadata.filterKeys { key ->
+                !key.equals("securityCode", true) && !key.equals("cvv", true) && !key.equals("cvc", true)
+            })
+        }
+        save(safeItems)
+        return safeItems
+    }
+
     private fun decodeEncrypted(encoded: ByteArray): List<VaultItem> {
         if (encoded.size < 1 + IV_LENGTH + TAG_LENGTH_BYTES) {
             throw IOException("Encrypted vault file is incomplete")

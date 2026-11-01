@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const html = await readFile(root + 'index.html', 'utf8');
 const css = await readFile(root + 'styles.css', 'utf8');
+const privacy = await readFile(root + 'privacy.html', 'utf8');
 for (const [, file] of [...html.matchAll(/(?:src|href)="([^"#]+)"/g), ...css.matchAll(/url\('([^']+)'\)/g)]) {
   if (!/^(https?:|mailto:)/.test(file)) await access(resolve(root, file));
 }
@@ -14,6 +15,7 @@ assert.equal(new Set(ids).size, ids.length, 'Duplicate HTML IDs');
 for (const [, anchor] of html.matchAll(/href="#([^"]+)"/g)) assert(ids.includes(anchor), `Missing anchor ${anchor}`);
 assert(html.includes('data-download-latest') && html.includes('/releases/latest'), 'Latest-release download missing');
 assert(!html.includes('fonts.googleapis.com'), 'Fonts should remain local');
+assert(privacy.includes('Privacy policy') && privacy.includes('rushikeshingale2001@gmail.com'), 'Public privacy policy is incomplete');
 console.log('Website assets, anchors, screenshot set and production download references verified.');
 
 const { latestApkUrl } = await import('../release.mjs');

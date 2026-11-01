@@ -89,7 +89,7 @@ class MainActivity : androidx.activity.ComponentActivity() {
     }
 }
 
-enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, BACKDROP, ORGANIZATION, PROFILE, SEARCH, SCANNER, NFC_CARD, IMPORTING, REVIEW, CARD_REVIEW, MANUAL, ITEM_DETAIL, ITEM_PREVIEW }
+enum class LockrScreen { HOME, ALL_ITEMS, CARDS, DOCUMENTS, PASSWORDS, NOTES, SETTINGS, PRIVACY, BACKDROP, ORGANIZATION, PROFILE, SEARCH, SCANNER, NFC_CARD, IMPORTING, REVIEW, CARD_REVIEW, MANUAL, ITEM_DETAIL, ITEM_PREVIEW }
 
 enum class VaultCategory(val label: String) {
     CARD("Card"), DOCUMENT("Document"), PASSWORD("Password"), NOTE("Note")
@@ -152,6 +152,11 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
     var backupStatus by rememberSaveable { mutableStateOf<String?>(null) }
     var restoreBytes by remember { mutableStateOf<ByteArray?>(null) }
     var restoreItemCount by rememberSaveable { mutableStateOf(0) }
+    var portableExportDialog by remember { mutableStateOf(false) }
+    var portableImportDialog by remember { mutableStateOf(false) }
+    var portableImportBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var portableRestoreItems by remember { mutableStateOf<List<VaultItem>?>(null) }
+    var pendingPortableSecret by remember { mutableStateOf<CharArray?>(null) }
 
     val activity = LocalActivity.current as? MainActivity
     val context = activity?.applicationContext ?: LocalContext.current.applicationContext
@@ -320,6 +325,29 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
             }
         }
     }
+    val exportPortableLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        val secret = pendingPortableSecret
+        pendingPortableSecret = null
+        if (uri == null || secret == null || savingItem || importingPages) secret?.fill('\u0000')
+        else {
+            savingItem = true
+            val snapshot = items.toList()
+            backupStatus = "Creating portable backup…"
+            coroutineScope.launch {
+                var encoded: ByteArray? = null
+                try {
+                    encoded = withContext(Dispatchers.IO) { PortableVaultBackup.create(store, snapshot, secret) }
+                    val outputBytes = encoded
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver.openOutputStream(uri)?.use { it.write(outputBytes) }
+                            ?: throw IllegalStateException("Could not open the selected file")
+                    }
+                    backupStatus = "Portable backup saved. Keep its passphrase and file safe."
+                } catch (_: Exception) { backupStatus = "Portable backup could not be saved. Your vault is unchanged." }
+                finally { encoded?.fill(0); secret.fill('\u0000'); savingItem = false }
+            }
+        }
+    }
     val exportDataLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val request = pendingExport
         pendingExport = null
@@ -361,6 +389,20 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
             } catch (error: Exception) {
                 backupStatus = if (error.message?.contains("64 MB") == true) "This backup is larger than 64 MB." else "This backup is invalid or was created on another device."
             }
+        }
+    }
+    val importPortableLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) coroutineScope.launch {
+            try {
+                val candidate = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { readBoundedBytes(it, PortableVaultBackup.maximumBytes) }
+                        ?: throw IllegalStateException("Could not read the selected file")
+                }
+                if (!PortableVaultBackup.isPortable(candidate)) { candidate.fill(0); error("Unsupported portable backup") }
+                portableImportBytes?.fill(0)
+                portableImportBytes = candidate
+                portableImportDialog = true
+            } catch (_: Exception) { backupStatus = "This is not a supported portable backup." }
         }
     }
 
@@ -731,6 +773,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                         onSettingsChange = updateSettings,
                         onBack = { screen = returnFromSettings },
                         onExportBackup = { exportBackupLauncher.launch("Stash-Encrypted-Backup.stash") },
+                        onExportPortableBackup = { portableExportDialog = true },
                         onExportData = { format, includePrivate ->
                             pendingExport = format to includePrivate
                             val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
@@ -748,10 +791,13 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                             }
                         },
                         onImportBackup = { importBackupLauncher.launch(arrayOf("*/*")) },
+                        onImportPortableBackup = { importPortableLauncher.launch(arrayOf("*/*")) },
                         onOpenOrganization = { screen = LockrScreen.ORGANIZATION },
                         onOpenBackdrop = { screen = LockrScreen.BACKDROP },
+                        onOpenPrivacy = { screen = LockrScreen.PRIVACY },
                         backupStatus = backupStatus
                     )
+                    LockrScreen.PRIVACY -> PrivacyPolicyScreen(onBack = { screen = LockrScreen.SETTINGS })
                     LockrScreen.BACKDROP -> BackdropSettingsScreen(onBack = { screen = LockrScreen.SETTINGS })
                     LockrScreen.ORGANIZATION -> OrganizationScreen(onBack = { screen = LockrScreen.SETTINGS })
                     LockrScreen.PROFILE -> ProfileScreen(
@@ -912,6 +958,56 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                     onManual = { category -> manualCategory = category; showAdd = false; screen = LockrScreen.MANUAL }
                 )
             }
+        }
+
+        if (portableExportDialog && !vaultLocked) PortableBackupDialog(export = true,
+            onDismiss = { portableExportDialog = false }, onConfirm = { secret ->
+                portableExportDialog = false
+                pendingPortableSecret?.fill('\u0000')
+                pendingPortableSecret = secret
+                exportPortableLauncher.launch("Stash-Portable-Backup.stash")
+            })
+        if (portableImportDialog && !vaultLocked) PortableBackupDialog(export = false,
+            onDismiss = { portableImportDialog = false; portableImportBytes?.fill(0); portableImportBytes = null },
+            onConfirm = { secret ->
+                portableImportDialog = false
+                val candidate = portableImportBytes
+                if (candidate == null) secret.fill('\u0000')
+                else {
+                    savingItem = true
+                    backupStatus = "Unlocking portable backup…"
+                    coroutineScope.launch {
+                        try {
+                            portableRestoreItems = withContext(Dispatchers.IO) { PortableVaultBackup.read(store, candidate, secret) }
+                            backupStatus = null
+                        } catch (_: Exception) {
+                            backupStatus = "Wrong passphrase or damaged backup. Your vault is unchanged."
+                        } finally {
+                            candidate.fill(0); portableImportBytes = null
+                            secret.fill('\u0000'); savingItem = false
+                        }
+                    }
+                }
+            })
+
+        portableRestoreItems?.takeIf { !vaultLocked }?.let { candidate ->
+            AlertDialog(
+                onDismissRequest = { if (!savingItem) portableRestoreItems = null },
+                title = { Text("Replace your vault?") },
+                text = { Text("Restore ${candidate.size} items from this portable backup? This replaces every current item. Keep a backup of your current vault first.") },
+                dismissButton = { TextButton(enabled = !savingItem, onClick = { portableRestoreItems = null }) { Text("Cancel") } },
+                confirmButton = { TextButton(enabled = !savingItem && !importingPages, onClick = {
+                    savingItem = true
+                    coroutineScope.launch {
+                        try {
+                            val restored = withContext(Dispatchers.IO) { store.restorePortable(candidate) }
+                            items.clear(); items.addAll(restored)
+                            backupStatus = "Restored ${restored.size} vault items."
+                        } catch (_: Exception) { backupStatus = "Restore failed. Your current vault was not replaced." }
+                        finally { portableRestoreItems = null; savingItem = false }
+                    }
+                }) { Text("Restore") } }
+            )
         }
 
         restoreBytes?.takeIf { !vaultLocked }?.let { bytes ->

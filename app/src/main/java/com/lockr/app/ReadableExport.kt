@@ -19,13 +19,28 @@ enum class DataExportFormat(val label: String, val mimeType: String, val extensi
 
 /** Readable exports are user-directed files. Encrypted backups use LocalVaultStore separately. */
 fun writeReadableExport(output: OutputStream, items: List<VaultItem>, format: DataExportFormat, includePrivate: Boolean) {
+    val exportItems = exportItemsForPrivacy(items, includePrivate)
     when (format) {
-        DataExportFormat.JSON -> writeJson(output, items, includePrivate)
-        DataExportFormat.PDF -> writePdf(output, items, includePrivate)
-        DataExportFormat.EXCEL -> writeXlsx(output, items, includePrivate)
-        DataExportFormat.TEXT -> writeText(output, items, includePrivate)
+        DataExportFormat.JSON -> writeJson(output, exportItems, includePrivate)
+        DataExportFormat.PDF -> writePdf(output, exportItems, includePrivate)
+        DataExportFormat.EXCEL -> writeXlsx(output, exportItems, includePrivate)
+        DataExportFormat.TEXT -> writeText(output, exportItems, includePrivate)
     }
 }
+
+/** A summary export must not leak personal data through names or free-form fields. */
+internal fun exportItemsForPrivacy(items: List<VaultItem>, includePrivate: Boolean): List<VaultItem> =
+    if (includePrivate) items else items.mapIndexed { index, item ->
+        item.copy(
+            title = "${item.category.label} ${index + 1}",
+            detail = "",
+            lastFour = "",
+            metadata = emptyMap(),
+            attachments = item.attachments.mapIndexed { attachmentIndex, attachment ->
+                attachment.copy(name = "Attachment ${attachmentIndex + 1}", base64Data = "")
+            }
+        )
+    }
 
 private val neverExport = setOf("securitycode", "cvv", "cvc", "cardcvc")
 private val privateFields = setOf("password", "cardnumber", "idnumber", "documentnumber", "address", "extractedsnippet", "ocrtext", "content", "notes")
