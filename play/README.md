@@ -1,6 +1,6 @@
 # Google Play submission package
 
-Stash 1.0.0 (version code 14) uses package `com.lockr.app`, targets Android 16 / API 36, and supports Android 8.0+. Upload `app/build/outputs/bundle/release/app-release.aab` after running the release checks in `docs/building.md`. Enroll in Play App Signing using the local upload certificate. The AAB and signing files are intentionally ignored by Git.
+Stash 1.0.0 (version code 17) uses package `com.lockr.app`, targets Android 16 / API 36, and supports Android 8.0+. Upload `app/build/outputs/bundle/release/app-release.aab` after running the release checks in `docs/building.md`. Enroll in Play App Signing using the local upload certificate. The AAB and signing files are intentionally ignored by Git. Version code 17 is higher than the earlier public builds, even though the Play listing starts at 1.0.0.
 
 ## Listing assets
 

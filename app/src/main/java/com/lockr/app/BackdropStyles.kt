@@ -51,6 +51,11 @@ val BACKDROP_PRESETS = listOf(
     BackdropPreset("coral", "Coral", Color(0xFFFFAD9E), Color(0x3ABD5552))
 )
 
+/** Recompose the full-screen artwork in the same frame as a background selection. */
+private object BackdropSelection {
+    var revision by mutableIntStateOf(0)
+}
+
 @Composable
 fun StashBackdrop(modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -62,9 +67,10 @@ fun StashBackdrop(modifier: Modifier = Modifier) {
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    val id = remember(revision, dark) { prefs.getString(if (dark) "backdrop_dark" else "backdrop_light", "aurora") ?: "aurora" }
+    val selectionRevision = BackdropSelection.revision
+    val id = remember(revision, selectionRevision, dark) { prefs.getString(if (dark) "backdrop_dark" else "backdrop_light", "aurora") ?: "aurora" }
     val preset = BACKDROP_PRESETS.firstOrNull { it.id == id } ?: BACKDROP_PRESETS.first()
-    val customPath = remember(revision, dark) { customBackdropFile(context, dark).absolutePath }
+    val customPath = remember(revision, selectionRevision, dark) { customBackdropFile(context, dark).absolutePath }
     var custom by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(id, customPath) {
         custom = if (id == "custom") withContext(Dispatchers.IO) {
@@ -106,12 +112,15 @@ fun BackdropSettingsScreen(onBack: () -> Unit) {
         }
     }
     val apply: (String) -> Unit = { id ->
-        prefs.edit().apply {
+        val saved = prefs.edit().apply {
             if (target != "Dark") putString("backdrop_light", id)
             if (target != "Light") putString("backdrop_dark", id)
-        }.apply()
-        revision++
-        status = "Applied to ${target.lowercase()} mode${if (target == "Both") "s" else ""}."
+        }.commit()
+        if (saved) {
+            revision++
+            BackdropSelection.revision++
+            status = "Applied to ${target.lowercase()} mode${if (target == "Both") "s" else ""}."
+        } else status = "Could not save this background. Try again."
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri == null) importing = false
@@ -120,6 +129,7 @@ fun BackdropSettingsScreen(onBack: () -> Unit) {
             try {
                 importBackdrop(context, uri, selectedTarget)
                 revision++
+                BackdropSelection.revision++
                 status = "Applied to ${selectedTarget.lowercase()} mode${if (selectedTarget == "Both") "s" else ""}."
             } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
             catch (error: Exception) { status = error.message ?: "Could not use this image. Your previous background is unchanged." }

@@ -123,27 +123,15 @@ fun HomeScreen(
     BoxWithConstraints(modifier.fillMaxSize().padding(horizontal = 17.dp)) {
         val recentLimit = if (maxHeight < 1000.dp) 3 else 4
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 96.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
-            DashboardHero()
-            Row(Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Recent Items", style = MaterialTheme.typography.titleMedium,
-                    color = LockrColors.TextPrimary, modifier = Modifier.weight(1f))
-                Text("See All", style = MaterialTheme.typography.labelMedium, color = LockrColors.Accent,
-                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onOpenAllItems)
-                        .padding(horizontal = 5.dp, vertical = 5.dp))
-            }
-            if (items.isEmpty()) {
-                GlassPanel(Modifier.fillMaxWidth().height(76.dp), radius = 22.dp) {
-                    Row(Modifier.fillMaxSize().padding(horizontal = 15.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(47.dp), contentAlignment = Alignment.Center) {
-                            IridescentOrb(orbSize = 43.dp)
-                        }
-                        Column(Modifier.padding(start = 11.dp)) {
-                            Text("Your vault is ready", style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
-                            Text("Tap + to add your first item", style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
-                        }
-                    }
+            DashboardHero(empty = items.isEmpty())
+            if (items.isNotEmpty()) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Recent Items", style = MaterialTheme.typography.titleMedium,
+                        color = LockrColors.TextPrimary, modifier = Modifier.weight(1f))
+                    Text("See All", style = MaterialTheme.typography.labelMedium, color = LockrColors.Accent,
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onOpenAllItems)
+                            .padding(horizontal = 5.dp, vertical = 5.dp))
                 }
-            } else {
                 items.take(recentLimit).forEach { item ->
                     RecentItemRow(item, onClick = { onOpenItem(item) }, onMore = { menuPage = "actions"; menuItem = item })
                 }
@@ -183,7 +171,7 @@ private fun HomeMenuAction(icon: ImageVector, label: String, modifier: Modifier 
 }
 
 @Composable
-private fun DashboardHero() {
+private fun DashboardHero(empty: Boolean) {
     val shape = RoundedCornerShape(30.dp)
     Box(
         Modifier.fillMaxWidth().height(237.dp).shadow(16.dp, shape, ambientColor = Color(0x504D9ABC))
@@ -197,6 +185,9 @@ private fun DashboardHero() {
             if (LocalDarkTheme.current) listOf(Color(0xEE112033), Color(0x88112033), Color.Transparent) else listOf(Color(0xCFF7F5FF), Color(0x70F7F5FF), Color.Transparent), endX = 630f)))
         Text("Your\nSecure Space", style = MaterialTheme.typography.headlineSmall,
             color = LockrColors.TextPrimary, modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 29.dp))
+        Text(if (empty) "Tap + to get started" else "All in one place.",
+            style = MaterialTheme.typography.bodySmall, color = LockrColors.TextPrimary,
+            modifier = Modifier.align(Alignment.BottomStart).width(170.dp).padding(start = 24.dp, bottom = 22.dp))
     }
 }
 

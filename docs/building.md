@@ -17,13 +17,13 @@ The release build enables R8 code optimization, resource shrinking and `debuggab
 By default, Gradle reads `${user.home}/.android/stash-signing/signing.properties`. Alternatively, set `STASH_SIGNING_PROPERTIES` to an absolute properties-file path. Keep this file and the keystore outside the repository with private file permissions.
 
 ```properties
-storeFile=C:/private/location/stash-release.p12
+storeFile=C:/private/location/stash-play-upload.p12
 storePassword=YOUR_PRIVATE_PASSWORD
 keyAlias=stash
 keyPassword=YOUR_PRIVATE_PASSWORD
 ```
 
-This checkout uses `${user.home}/.android/stash-signing/stash-release.p12`, with its credentials in `signing.properties` beside it. Back up **both files** in a secure location. Do not commit or upload either file to GitHub. The refreshed v1.0.0 Play upload key is unavailable in this checkout; this release does not replace or reset any key registered with Google Play.
+This checkout uses `${user.home}/.android/stash-signing/stash-play-upload.p12`, with its credentials in `signing.properties` beside it. Back up **both files** in a secure location. Do not commit or upload either file to GitHub. If Google Play has already registered a different upload certificate, arrange an upload-key reset in Play Console before submitting this bundle.
 
 ```powershell
 .\gradlew.bat testDebugUnitTest :app:lintRelease :app:bundleRelease :app:assembleRelease
@@ -31,13 +31,13 @@ This checkout uses `${user.home}/.android/stash-signing/stash-release.p12`, with
 
 Play App Bundle: `app/build/outputs/bundle/release/app-release.aab`. The APK at `app/build/outputs/apk/release/app-release.apk` is for local installation and QA. Submit the AAB through Play Console with Play App Signing enabled.
 
-Verify it with Android SDK `apksigner verify --print-certs`, and confirm that `aapt dump badging` does not contain `application-debuggable`. Publish the release APK with a SHA-256 checksum, never a keystore, password file or debug APK.
+Verify the APK with Android SDK `apksigner verify --print-certs`, the AAB with `jarsigner -verify`, and confirm that `aapt dump badging` does not contain `application-debuggable`. Publish the release APK with a SHA-256 checksum, never a keystore, password file or debug APK.
 
-The refreshed version 1.0.0 uses internal code 14. Version 1.0.1 uses code 15; version 1.0.2 uses code 16. Future releases must keep increasing this code. Keep the same `com.lockr.app` package ID and production signing key for compatible updates.
+The Play candidate labeled 1.0.0 uses internal code 17. Earlier public builds used codes 14–16. Future releases must keep increasing this code. Keep the same `com.lockr.app` package ID and production signing key for compatible updates.
 
-Versions 1.0.1 and later are signed with certificate SHA-256 `fac3948fe1fd202f198b6a7cdecbdcb92e95704a876cfe73d5a121b1cc07534b`. Keep this key for future APK updates.
+This Play candidate and the refreshed v1.0.0 GitHub APK use upload certificate SHA-256 `06fcae872c12e2778b0c25a488f37bea9e4e1f8c8704c124f707443c3ea3a366`. Keep its private key for future Play uploads. Google Play uses its own app signing key for delivered APKs after enrollment.
 
-The refreshed v1.0.0 GitHub APK uses certificate `06fcae872c12e2778b0c25a488f37bea9e4e1f8c8704c124f707443c3ea3a366`. **Version 1.0.1 cannot update that APK in place.** Export and verify a portable encrypted backup before uninstalling that version, then restore it after the fresh installation. Uninstalling deletes the local vault and its device key. The original production v1.0.0, code 13, used the same key as v1.0.1 and can update normally.
+Versions 1.0.1 and 1.0.2 used a different certificate, SHA-256 `fac3948fe1fd202f198b6a7cdecbdcb92e95704a876cfe73d5a121b1cc07534b`. **This Play candidate cannot update those standalone APKs in place.** Export and verify a portable encrypted backup before uninstalling either version, then restore it after the fresh installation. Uninstalling deletes the local vault and its device key. The original production v1.0.0, code 13, used the same key as 1.0.1 and 1.0.2.
 
 ## Earlier installations
 

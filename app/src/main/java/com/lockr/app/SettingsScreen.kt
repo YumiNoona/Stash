@@ -1,17 +1,20 @@
 package com.lockr.app
 
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Wallpaper
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -25,7 +28,7 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Animation
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.DocumentScanner
-import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +43,8 @@ import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -66,6 +71,7 @@ data class LockrSettingsState(
     val hideInRecents: Boolean = false
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settings: LockrSettingsState,
@@ -104,7 +110,7 @@ fun SettingsScreen(
                     SettingsRow(Icons.Outlined.CreditCard, "Home-screen widgets", "Add a wallet or document folder", last = true, onClick = { dialog = "widgets" })
                 }
                 SettingsSection("Organization", modifier = Modifier.padding(top = 14.dp)) {
-                    SettingsRow(Icons.Outlined.Label, "Custom tags and folders", "Manage your labels and folders", value = "›", onClick = onOpenOrganization)
+                    SettingsRow(Icons.AutoMirrored.Outlined.Label, "Custom tags and folders", "Manage your labels and folders", value = "›", onClick = onOpenOrganization)
                     SettingsRow(Icons.Outlined.DocumentScanner, "Read text on import", "Suggest fields locally from scans", toggle = ocrEnabled,
                         last = true, onToggle = { ocrEnabled = it; preferences.edit().putBoolean("ocr_on_import", it).apply() })
                 }
@@ -202,12 +208,21 @@ fun SettingsScreen(
     }
 
     when (dialog) {
-        "widgets" -> AlertDialog(onDismissRequest = { dialog = "" }, title = { Text("Add a home-screen widget") },
-            text = { Column {
-                Text("Private values stay in Stash. Resize widgets on your home screen.", style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { dialog = ""; pinStashWidget(context, false) }) { Text("Wallet widget") }
-                TextButton(onClick = { dialog = ""; pinStashWidget(context, true) }) { Text("Documents widget") }
-            } }, confirmButton = { TextButton(onClick = { dialog = "" }) { Text("Done") } })
+        "widgets" -> ModalBottomSheet(onDismissRequest = { dialog = "" },
+            containerColor = LockrColors.Surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
+            Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Add a widget", style = MaterialTheme.typography.titleLarge, color = LockrColors.TextPrimary)
+                Text("Choose what opens from your home screen.", style = MaterialTheme.typography.bodyMedium,
+                    color = LockrColors.TextSecondary)
+                WidgetOption(Icons.Outlined.CreditCard, "Cards", "Open your saved cards") {
+                    dialog = ""; pinStashWidget(context, false)
+                }
+                WidgetOption(Icons.Outlined.Description, "Documents", "Open your saved documents") {
+                    dialog = ""; pinStashWidget(context, true)
+                }
+            }
+        }
         "export" -> ExportFormatDialog(onDismiss = { dialog = "" }) { format, includePrivate ->
             dialog = ""
             onExportData(format, includePrivate)
@@ -271,6 +286,23 @@ private fun SettingsSection(title: String, modifier: Modifier = Modifier, conten
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 3.dp, bottom = 7.dp))
         GlassPanel(Modifier.fillMaxWidth(), radius = 21.dp) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) { content() }
+        }
+    }
+}
+
+@Composable
+private fun WidgetOption(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    GlassPanel(Modifier.fillMaxWidth().height(72.dp).clickable(onClick = onClick), radius = 20.dp) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(42.dp).clip(CircleShape).background(LockrColors.Raised), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = LockrColors.Accent, modifier = Modifier.size(23.dp))
+            }
+            Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = LockrColors.TextPrimary)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
+            }
+            Icon(Icons.AutoMirrored.Outlined.ArrowForwardIos, contentDescription = null,
+                tint = LockrColors.TextSecondary, modifier = Modifier.size(15.dp))
         }
     }
 }
