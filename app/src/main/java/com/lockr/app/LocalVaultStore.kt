@@ -25,7 +25,7 @@ class LocalVaultStore(context: Context) {
     @Synchronized
     fun loadOrNull(): List<VaultItem>? {
         val encoded = try {
-            atomicFile.openRead().use { it.readBytes() }
+            atomicFile.openRead().use { readBoundedBytes(it, MAX_VAULT_FILE_BYTES) }
         } catch (_: FileNotFoundException) {
             return null
         }
@@ -42,7 +42,7 @@ class LocalVaultStore(context: Context) {
 
     /** Returns the encrypted vault bytes for a user-selected local backup destination. */
     @Synchronized
-    fun exportEncryptedBackup(): ByteArray = atomicFile.openRead().use { it.readBytes() }
+    fun exportEncryptedBackup(): ByteArray = atomicFile.openRead().use { readBoundedBytes(it, MAX_VAULT_FILE_BYTES) }
 
     /** Authenticates and decodes a candidate backup without modifying the current vault. */
     @Synchronized

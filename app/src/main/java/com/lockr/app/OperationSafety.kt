@@ -58,3 +58,37 @@ internal fun folderNameError(value: String, folders: List<String>, original: Str
         else -> null
     }
 }
+
+/** Read at most the declared limit before allocating an oversized vault or image. */
+internal fun readBoundedBytes(input: java.io.InputStream, maximumBytes: Int): ByteArray {
+    require(maximumBytes > 0)
+    val output = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(16 * 1024)
+    var total = 0
+    fun tooLarge(): Nothing {
+        val limit = if (maximumBytes % (1024 * 1024) == 0) "${maximumBytes / (1024 * 1024)} MB" else "$maximumBytes bytes"
+        throw IOException("The selected file is larger than $limit")
+    }
+    try {
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            if (count == 0) {
+                val single = input.read()
+                if (single < 0) break
+                if (total == maximumBytes) tooLarge()
+                output.write(single); total++
+            } else {
+                if (count > maximumBytes - total) tooLarge()
+                output.write(buffer, 0, count); total += count
+            }
+        }
+        return output.toByteArray()
+    } finally { buffer.fill(0) }
+}
+
+/** A delayed clear owns one copy, even when the same text is copied again. */
+internal fun scheduleClipboardClear(token: String, currentToken: () -> String?, clear: () -> Unit,
+                                    schedule: (Long, () -> Unit) -> Unit) {
+    schedule(30_000L) { if (currentToken() == token) clear() }
+}

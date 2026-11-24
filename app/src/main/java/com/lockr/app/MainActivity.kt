@@ -63,7 +63,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.InputStream
 import java.util.Date
 import java.util.Locale
 
@@ -353,12 +352,13 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
         pendingExport = null
         val uri = result.data?.data
         if (result.resultCode == Activity.RESULT_OK && uri != null && request != null) {
+            val exportItems = items.toList()
             backupStatus = "Creating ${request.first.label} export…"
             coroutineScope.launch {
                 try {
                     withContext(Dispatchers.IO) {
                         context.contentResolver.openOutputStream(uri)?.use { output ->
-                            writeReadableExport(output, items.toList(), request.first, request.second)
+                            writeReadableExport(output, exportItems, request.first, request.second)
                         } ?: throw IllegalStateException("Could not open destination")
                     }
                     backupStatus = "${request.first.label} export saved."
@@ -520,6 +520,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
         if (savingItem || importingPages) return@save
         savingItem = true
         coroutineScope.launch {
+            var feedback = "Saved to ${item.category.label.lowercase()}s"
             try {
                 if (item.attachments.isNotEmpty()) validateDocumentPages(item.attachments)
                 val lastFolder = preferences.getString("last_folder", "All folders").orEmpty().takeIf { it in preferences.getStringSet("vault_folders", emptySet()).orEmpty() }.orEmpty()
@@ -537,12 +538,13 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                     VaultCategory.PASSWORD -> LockrScreen.PASSWORDS
                     VaultCategory.NOTE -> LockrScreen.NOTES
                 }
-                snackbarHostState.showSnackbar("Saved to ${item.category.label.lowercase()}s")
-            } catch (error: Exception) {
-                snackbarHostState.showSnackbar(if (error.message?.contains("64 MB") == true) "Your encrypted vault is full. Remove a large file before saving." else "Could not save this item. Your vault was left unchanged.")
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                feedback = if (error.message?.contains("64 MB") == true) "Your encrypted vault is full. Remove a large file before saving." else "Could not save this item. Your vault was left unchanged."
             } finally {
                 savingItem = false
             }
+            snackbarHostState.showSnackbar(feedback)
         }
     }
 
@@ -550,6 +552,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
         if (savingItem) return@update
         savingItem = true
         coroutineScope.launch {
+            var feedback = "Item updated"
             val safeUpdate = uniqueItem(updated, items.toList())
             val updatedItems = items.map { if (it.id == updated.id) safeUpdate else it }
             try {
@@ -557,12 +560,13 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                 withContext(Dispatchers.IO) { store.save(updatedItems) }
                 items.clear(); items.addAll(updatedItems)
                 currentDetailItem = safeUpdate
-                snackbarHostState.showSnackbar("Item updated")
-            } catch (_: Exception) {
-                snackbarHostState.showSnackbar("Could not update this item. Your vault was left unchanged.")
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) {
+                feedback = "Could not update this item. Your vault was left unchanged."
             } finally {
                 savingItem = false
             }
+            snackbarHostState.showSnackbar(feedback)
         }
     }
     val openItem: (VaultItem, LockrScreen) -> Unit = { item, origin ->
@@ -583,17 +587,19 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
         savingItem = true
         val updatedItems = items.filterNot { it.id == deleting.id }
         coroutineScope.launch {
+            var feedback = "Item deleted"
             try {
                 withContext(Dispatchers.IO) { store.save(updatedItems) }
                 items.clear(); items.addAll(updatedItems)
                 currentDetailItem = null
                 screen = if (screen == LockrScreen.ITEM_PREVIEW || returnFromDetail == LockrScreen.ITEM_PREVIEW) returnFromPreview else returnFromDetail
-                snackbarHostState.showSnackbar("Item deleted")
-            } catch (_: Exception) {
-                snackbarHostState.showSnackbar("Could not delete this item. Your vault was left unchanged.")
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) {
+                feedback = "Could not delete this item. Your vault was left unchanged."
             } finally {
                 savingItem = false
             }
+            snackbarHostState.showSnackbar(feedback)
         }
     }
 
@@ -1075,21 +1081,6 @@ private fun VaultLockScreen(onUnlock: () -> Unit) {
             }
         }
     }
-}
-
-private fun readBoundedBytes(input: InputStream, maximumBytes: Int): ByteArray {
-    val output = java.io.ByteArrayOutputStream()
-    val buffer = ByteArray(16 * 1024)
-    var total = 0
-    while (true) {
-        val count = input.read(buffer)
-        if (count < 0) break
-        total += count
-        if (total > maximumBytes) throw java.io.IOException("The selected file is larger than 64 MB")
-        output.write(buffer, 0, count)
-    }
-    buffer.fill(0)
-    return output.toByteArray()
 }
 
 private fun nowLabel(): String = java.text.SimpleDateFormat("MMM d", Locale.getDefault()).format(Date())

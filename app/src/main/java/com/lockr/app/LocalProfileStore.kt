@@ -25,25 +25,25 @@ class LocalProfileStore(private val context: Context) {
     }
 
     fun savePhoto(uri: Uri): Bitmap {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        val boundsInput = context.contentResolver.openInputStream(uri)
+        val bytes = context.contentResolver.openInputStream(uri)?.use { readBoundedBytes(it, 32 * 1024 * 1024) }
             ?: throw IllegalArgumentException("Could not read this photo")
-        boundsInput.use { BitmapFactory.decodeStream(it, null, bounds) }
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw IllegalArgumentException("This photo cannot be opened")
-        var sample = 1
-        while (bounds.outWidth / sample > 1024 || bounds.outHeight / sample > 1024) sample *= 2
-        val bitmap = context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
-        } ?: throw IllegalArgumentException("Could not read this photo")
-        val output = photoFile.startWrite()
+        val bitmap = try { decodeImagePreview(bytes, 1024, 1024, Bitmap.Config.ARGB_8888) }
+            finally { bytes.fill(0) }
+        requireNotNull(bitmap) { "This photo cannot be opened" }
         try {
-            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 86, output)) throw IllegalStateException("Could not save this photo")
-            photoFile.finishWrite(output)
-        } catch (error: Exception) {
-            photoFile.failWrite(output)
+            val output = photoFile.startWrite()
+            try {
+                if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 86, output)) throw IllegalStateException("Could not save this photo")
+                photoFile.finishWrite(output)
+            } catch (error: Throwable) {
+                photoFile.failWrite(output)
+                throw error
+            }
+            return bitmap
+        } catch (error: Throwable) {
+            bitmap.recycle()
             throw error
         }
-        return bitmap
     }
 
     fun removePhoto() {

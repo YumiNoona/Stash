@@ -4,13 +4,13 @@
   <p><strong>A little space for everything important.</strong></p>
   <p>Your cards, documents, IDs, passwords and notes — together in a beautiful, offline Android vault.</p>
   <p>
-    <img alt="Release 1.0.0" src="https://img.shields.io/badge/release-v1.0.0-c36846?style=flat-square">
+    <img alt="Latest release" src="https://img.shields.io/github/v/release/YumiNoona/Stash?color=c36846&style=flat-square">
     <img alt="Android 8.0 and newer" src="https://img.shields.io/badge/Android-8.0%2B-74846a?style=flat-square&logo=android&logoColor=white">
     <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-Jetpack_Compose-8c76a5?style=flat-square&logo=kotlin&logoColor=white">
     <img alt="Works offline" src="https://img.shields.io/badge/100%25-offline-677a70?style=flat-square">
     <img alt="AES-GCM encrypted storage" src="https://img.shields.io/badge/storage-AES--GCM-967b58?style=flat-square">
   </p>
-  <p><a href="https://github.com/YumiNoona/Stash/releases/download/v1.0.0/Stash-v1.0.0.apk"><strong>Download Android APK</strong></a> · <a href="web/">Website source</a> · <a href="https://github.com/YumiNoona/Stash/issues">Report an issue</a></p>
+  <p><a href="https://github.com/YumiNoona/Stash/releases/latest"><strong>Download Android APK</strong></a> · <a href="web/">Website source</a> · <a href="https://github.com/YumiNoona/Stash/issues">Report an issue</a></p>
 </div>
 
 ## Keep life together

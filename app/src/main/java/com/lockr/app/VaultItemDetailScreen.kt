@@ -108,6 +108,12 @@ fun VaultItemDetailScreen(
     val editCardType = item.metadata["cardType"].orEmpty().ifBlank { item.detail }
     val paymentCard = isPaymentCardType(editCardType)
     var editTitle by rememberSaveable(item.id) { mutableStateOf(item.title) }
+    var editNote by remember(item.id) { mutableStateOf(item.metadata["content"].orEmpty()) }
+    var editWebsite by remember(item.id) { mutableStateOf(item.metadata["website"].orEmpty()) }
+    var editUsername by remember(item.id) { mutableStateOf(item.metadata["username"].orEmpty()) }
+    var editPassword by remember(item.id) { mutableStateOf("") }
+    var showEditPassword by remember(item.id) { mutableStateOf(false) }
+
     var editCategory by remember(item.id) { mutableStateOf(item.metadata["documentCategory"].orEmpty()) }
     var editCardholder by rememberSaveable(item.id) { mutableStateOf(item.metadata["cardholder"].orEmpty()) }
     var editCardNumberField by remember(item.id) { mutableStateOf(TextFieldValue(if (paymentCard)
@@ -153,8 +159,15 @@ fun VaultItemDetailScreen(
         }
     }
 
-    LaunchedEffect(authorized, revealTimeout) {
-        if (authorized) {
+    LaunchedEffect(editing, authorized) {
+        if (item.category == VaultCategory.PASSWORD) {
+            editPassword = if (editing && authorized) item.metadata["password"].orEmpty() else ""
+            showEditPassword = false
+            if (editing && !authorized) editing = false
+        }
+    }
+    LaunchedEffect(authorized, revealTimeout, editing) {
+        if (authorized && !editing) {
             val timeout = when {
                 revealTimeout.startsWith("10") -> 10_000L
                 revealTimeout.startsWith("1 minute") -> 60_000L
@@ -328,7 +341,16 @@ fun VaultItemDetailScreen(
             subtitle = "${item.category.label} · saved ${item.time}",
             onBack = onBack,
             trailing = {
-                IconButton(onClick = { editing = true }) { Icon(Icons.Outlined.Edit, contentDescription = "Edit item", tint = LockrColors.TextPrimary) }
+                IconButton(onClick = {
+                    if (item.category == VaultCategory.PASSWORD && !authorized) onAuthenticate()
+                    else {
+                        editTitle = item.title
+                        editNote = item.metadata["content"].orEmpty()
+                        editWebsite = item.metadata["website"].orEmpty()
+                        editUsername = item.metadata["username"].orEmpty()
+                        editing = true
+                    }
+                }) { Icon(Icons.Outlined.Edit, contentDescription = "Edit item", tint = LockrColors.TextPrimary) }
                 IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Outlined.DeleteOutline, contentDescription = "Delete item", tint = LockrColors.TextPrimary) }
             }
         )
@@ -378,6 +400,23 @@ fun VaultItemDetailScreen(
                         label = { Text(if (item.category == VaultCategory.CARD) "Card name" else "Title") }, singleLine = true,
                         isError = item.category == VaultCategory.CARD && editValidationAttempted && editValidation.titleError != null,
                         colors = editFieldColors, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
+                    if (item.category == VaultCategory.NOTE) {
+                        OutlinedTextField(editNote, { editNote = it }, label = { Text("Note") }, minLines = 5,
+                            colors = editFieldColors, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
+                    }
+                    if (item.category == VaultCategory.PASSWORD) {
+                        OutlinedTextField(editWebsite, { editWebsite = it }, label = { Text("Website or app (optional)") },
+                            singleLine = true, colors = editFieldColors, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(editUsername, { editUsername = it }, label = { Text("Username (optional)") },
+                            singleLine = true, colors = editFieldColors, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(editPassword, { editPassword = it }, label = { Text("Password") },
+                            singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            visualTransformation = if (showEditPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = { IconButton(onClick = { showEditPassword = !showEditPassword }) {
+                                Icon(if (showEditPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                    if (showEditPassword) "Hide password" else "Show password")
+                            } }, colors = editFieldColors, shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth())
+                    }
                     if (item.category == VaultCategory.CARD) {
                         OutlinedTextField(value = editCardholder, onValueChange = { editCardholder = it.take(60) },
                             label = { Text("Name on card") }, singleLine = true, colors = editFieldColors,
@@ -455,7 +494,11 @@ fun VaultItemDetailScreen(
             },
             dismissButton = { TextButton(onClick = { editing = false }) { Text("Cancel") } },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(enabled = when (item.category) {
+                    VaultCategory.NOTE -> editTitle.isNotBlank() && editNote.isNotBlank()
+                    VaultCategory.PASSWORD -> authorized && editTitle.isNotBlank() && editPassword.isNotBlank()
+                    else -> true
+                }, onClick = {
                     if (item.category == VaultCategory.CARD && !editValidation.isValid) {
                         editValidationAttempted = true
                         return@TextButton
@@ -463,6 +506,11 @@ fun VaultItemDetailScreen(
                     val digits = editCardNumber.filter(Char::isDigit)
                     val lastFour = if (paymentCard) digits.takeLast(4) else editCardNumber.takeLast(4)
                     val metadata = when (item.category) {
+                        VaultCategory.NOTE -> item.metadata + ("content" to editNote)
+                        VaultCategory.PASSWORD -> {
+                            if (!authorized || editPassword.isBlank()) return@TextButton
+                            item.metadata + mapOf("website" to editWebsite.trim(), "username" to editUsername.trim(), "password" to editPassword)
+                        }
                         VaultCategory.DOCUMENT -> item.metadata + ("documentCategory" to editCategory.ifBlank { "Other" })
                         VaultCategory.CARD -> (item.metadata - "ocrText") + mapOf("issuer" to editIssuer.trim(), "cardholder" to editCardholder.trim(),
                             "cardNumber" to (if (paymentCard) digits else editCardNumber.trim()),
@@ -470,7 +518,6 @@ fun VaultItemDetailScreen(
                             "tags" to encodeTags(editTags), "cardArt" to editCardArt.name, "partner" to editPartner.trim(), "cardMotion" to editMotion.name,
                             "cardArtAttachment" to editCustomArt?.name.orEmpty(), "cardArtLightText" to editLightText.toString(),
                             "lastFour" to lastFour.ifBlank { item.lastFour })
-                        else -> item.metadata
                     }
                     val updatedAttachments = if (item.category == VaultCategory.CARD)
                         withCardArt(item.attachments, item.metadata["cardArtAttachment"], editCustomArt) else item.attachments
@@ -550,14 +597,23 @@ private fun String.toFieldLabel(): String = when (this) {
     else -> replace(Regex("([a-z])([A-Z])"), "$1 $2").replaceFirstChar(Char::uppercase)
 }
 
+private const val CLIP_COPY_TOKEN = "com.lockr.app.clipboard.copyToken"
+
 internal fun copyPrivateText(context: Context, value: String, autoClear: Boolean) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText("Stash", value))
-    if (autoClear) {
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            if (clipboard.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString() == value) {
-                clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
-            }
-        }, 30_000L)
+    val token = java.util.UUID.randomUUID().toString()
+    val clip = ClipData.newPlainText("Stash", value).apply {
+        description.extras = android.os.PersistableBundle().apply {
+            putString(CLIP_COPY_TOKEN, token)
+            putBoolean("android.content.extra.IS_SENSITIVE", true)
+        }
     }
+    clipboard.setPrimaryClip(clip)
+    if (autoClear) scheduleClipboardClear(token,
+        currentToken = { clipboard.primaryClipDescription?.extras?.getString(CLIP_COPY_TOKEN) },
+        clear = {
+            if (android.os.Build.VERSION.SDK_INT >= 28) clipboard.clearPrimaryClip()
+            else clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+        },
+        schedule = { delay, clear -> android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ clear() }, delay) })
 }

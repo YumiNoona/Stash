@@ -316,42 +316,39 @@ internal suspend fun renderPdfAttachmentPage(attachment: VaultAttachment, reques
 }
 
 internal fun decodeAttachmentPreview(base64Data: String, maxWidth: Int = 1600, maxHeight: Int = 1900): Bitmap? {
-    val bytes = try {
-        Base64.decode(base64Data, Base64.DEFAULT)
-    } catch (_: IllegalArgumentException) {
-        return null
+    val bytes = try { Base64.decode(base64Data, Base64.DEFAULT) } catch (_: IllegalArgumentException) { return null }
+    return try { decodeImagePreview(bytes, maxWidth, maxHeight) } finally { bytes.fill(0) }
+}
+
+internal fun decodeImagePreview(bytes: ByteArray, maxWidth: Int, maxHeight: Int,
+                                config: Bitmap.Config = Bitmap.Config.RGB_565): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    val orientation = runCatching {
+        androidx.exifinterface.media.ExifInterface(java.io.ByteArrayInputStream(bytes)).getAttributeInt(
+            androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, 1)
+    }.getOrDefault(1)
+    val sample = try { imageSampleSize(bounds.outWidth, bounds.outHeight, maxWidth, maxHeight, orientation) }
+        catch (_: IllegalArgumentException) { return null }
+    val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply {
+        inSampleSize = sample
+        inPreferredConfig = config
+    }) ?: return null
+    val matrix = android.graphics.Matrix().apply {
+        when (orientation) {
+            2 -> setScale(-1f, 1f)
+            3 -> setRotate(180f)
+            4 -> setScale(1f, -1f)
+            5 -> { setRotate(90f); postScale(-1f, 1f) }
+            6 -> setRotate(90f)
+            7 -> { setRotate(-90f); postScale(-1f, 1f) }
+            8 -> setRotate(-90f)
+        }
     }
-    return try {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        var sampleSize = 1
-        while (bounds.outWidth / sampleSize > maxWidth || bounds.outHeight / sampleSize > maxHeight) sampleSize *= 2
-        val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply {
-            inSampleSize = sampleSize
-            inPreferredConfig = Bitmap.Config.RGB_565
-        }) ?: return null
-        val orientation = runCatching {
-            androidx.exifinterface.media.ExifInterface(java.io.ByteArrayInputStream(bytes)).getAttributeInt(
-                androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, 1)
-        }.getOrDefault(1)
-        val matrix = android.graphics.Matrix().apply {
-            when (orientation) {
-                2 -> setScale(-1f, 1f)
-                3 -> setRotate(180f)
-                4 -> setScale(1f, -1f)
-                5 -> { setRotate(90f); postScale(-1f, 1f) }
-                6 -> setRotate(90f)
-                7 -> { setRotate(-90f); postScale(-1f, 1f) }
-                8 -> setRotate(-90f)
-            }
-        }
-        if (matrix.isIdentity) decoded else {
-            try { Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true) }
-            finally { decoded.recycle() }
-        }
-    } finally {
-        bytes.fill(0)
+    return if (matrix.isIdentity) decoded else {
+        try { Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true) }
+        finally { decoded.recycle() }
     }
 }
 

@@ -17,14 +17,7 @@ import java.util.UUID
 
 internal const val MAX_BACKDROP_BYTES = 32L * 1024 * 1024
 
-internal fun backdropSampleSize(width: Int, height: Int): Int {
-    require(width > 0 && height > 0 && width <= 32_768 && height <= 32_768 && width.toLong() * height <= 200_000_000) {
-        "Choose an image smaller than 200 megapixels."
-    }
-    var sample = 1
-    while ((width + sample - 1) / sample > 1600 || (height + sample - 1) / sample > 1600) sample *= 2
-    return sample
-}
+internal fun backdropSampleSize(width: Int, height: Int): Int = imageSampleSize(width, height, 1600, 1600)
 
 internal fun backdropTargetDark(target: String, currentDark: Boolean): Boolean = when (target) {
     "Dark" -> true
