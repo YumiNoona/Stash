@@ -225,7 +225,7 @@ private fun RecentItemRow(item: VaultItem, onClick: () -> Unit, onMore: () -> Un
 @Composable
 private fun RecentThumbnail(item: VaultItem) {
     val shape = RoundedCornerShape(13.dp)
-    val attachment = item.attachments.firstOrNull { it.mimeType.startsWith("image/") }
+    val attachment = item.attachments.firstOrNull { isImageAttachment(it) }
     var thumbnail by remember(item.id, attachment?.name, attachment?.byteCount) { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(item.id, attachment?.name, attachment?.byteCount) {
         thumbnail = if (item.category == VaultCategory.DOCUMENT) attachment?.let {

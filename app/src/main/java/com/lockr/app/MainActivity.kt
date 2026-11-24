@@ -574,7 +574,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
         authorizedItem = null
         returnFromDetail = origin
         if (item.category !in setOf(VaultCategory.CARD, VaultCategory.PASSWORD) &&
-            item.attachments.firstOrNull()?.let { it.mimeType.startsWith("image/") || it.mimeType == "application/pdf" } == true) {
+            item.attachments.isNotEmpty()) {
             returnFromPreview = origin
             screen = LockrScreen.ITEM_PREVIEW
         } else {
@@ -841,7 +841,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                         onDraftChange = { title, group -> reviewTitleDraft = title; reviewGroupDraft = group },
                         onBack = { screen = returnScreen; showAdd = true },
                         onAddPhotos = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                        onAddFiles = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; fileLauncher.launch(arrayOf("application/pdf", "image/*", "text/*")) },
+                        onAddFiles = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; fileLauncher.launch(arrayOf("*/*")) },
                         onAddCamera = { appendToReview = true; importCategoryHint = VaultCategory.DOCUMENT; screen = LockrScreen.SCANNER },
                         onRemovePage = { index -> importedAttachments = importedAttachments.filterIndexed { i, _ -> i != index } },
                         onIdentityCard = { cardDraft = CardDraft(cardType = "ID Card"); screen = LockrScreen.CARD_REVIEW },
@@ -956,7 +956,7 @@ private fun LockrApp(widgetRequest: Pair<String, Long>?, consumeWidget: () -> Un
                     },
                     onFiles = { category ->
                         importCategoryHint = category; cardDraft = CardDraft(); showAdd = false
-                        fileLauncher.launch(arrayOf("application/pdf", "image/*", "text/plain"))
+                        fileLauncher.launch(arrayOf("*/*"))
                     },
                     onNfc = { showAdd = false; screen = LockrScreen.NFC_CARD },
                     onCardManual = { cardDraft = CardDraft(cardType = "Credit"); importedAttachments = emptyList(); showAdd = false; screen = LockrScreen.CARD_REVIEW },

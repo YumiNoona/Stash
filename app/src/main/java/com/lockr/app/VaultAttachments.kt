@@ -56,10 +56,8 @@ import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.File
-import java.net.URLConnection
 
 const val MAX_VAULT_ATTACHMENT_COUNT = 20
 const val MAX_VAULT_ATTACHMENT_BYTES = 24L * 1024 * 1024
@@ -69,27 +67,16 @@ suspend fun readVaultAttachment(context: Context, uri: Uri, byteLimit: Long): Va
     val name = context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
         if (cursor.moveToFirst()) cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)) else null
     }?.takeIf { it.isNotBlank() } ?: "Attachment"
-    val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
-    val output = ByteArrayOutputStream()
-    var total = 0L
-    context.contentResolver.openInputStream(uri)?.use { input ->
-        val buffer = ByteArray(16 * 1024)
-        while (true) {
-            val count = input.read(buffer)
-            if (count < 0) break
-            total += count
-            if (total > byteLimit) throw IOException("The selected files exceed the available attachment space for this item.")
-            output.write(buffer, 0, count)
-        }
-        buffer.fill(0)
+    val declaredMime = context.contentResolver.getType(uri)
+    val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
+        readBoundedBytes(input, byteLimit.coerceAtMost(MAX_VAULT_ATTACHMENT_BYTES).toInt())
     } ?: throw IOException("That file could not be opened.")
-    if (total == 0L) throw IOException("That file is empty.")
-    val bytes = output.toByteArray()
     try {
+        if (bytes.isEmpty()) throw IOException("That file is empty.")
         VaultAttachment(
             name = name.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(120),
-            mimeType = mimeType,
-            byteCount = total,
+            mimeType = resolveAttachmentMime(name, declaredMime, bytes),
+            byteCount = bytes.size.toLong(),
             base64Data = Base64.encodeToString(bytes, Base64.NO_WRAP)
         )
     } finally {
@@ -100,10 +87,10 @@ suspend fun readVaultAttachment(context: Context, uri: Uri, byteLimit: Long): Va
 suspend fun readFileVaultAttachment(file: File, byteLimit: Long): VaultAttachment = withContext(Dispatchers.IO) {
     if (!file.isFile || file.length() <= 0L) throw IOException("The scanned page could not be opened.")
     if (file.length() > byteLimit) throw IOException("This attachment is larger than the available vault space.")
-    val bytes = file.readBytes()
+    val bytes = file.inputStream().use { readBoundedBytes(it, byteLimit.coerceAtMost(MAX_VAULT_ATTACHMENT_BYTES).toInt()) }
     try {
-        val mime = URLConnection.guessContentTypeFromName(file.name)
-            ?: if (file.extension.equals("jpg", true) || file.extension.equals("jpeg", true)) "image/jpeg" else "application/octet-stream"
+        if (bytes.isEmpty()) throw IOException("That file is empty.")
+        val mime = resolveAttachmentMime(file.name, null, bytes)
         VaultAttachment(
             name = file.name.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(120),
             mimeType = mime,
@@ -122,7 +109,8 @@ fun VaultAttachmentPreview(attachment: VaultAttachment, modifier: Modifier = Mod
     LaunchedEffect(attachment.base64Data) {
         bitmap = if (isPdfAttachment(attachment)) {
             renderPdfAttachmentPage(attachment, 0, context).first
-        } else withContext(Dispatchers.IO) { decodeAttachmentPreview(attachment.base64Data) }
+        } else if (isImageAttachment(attachment)) withContext(Dispatchers.IO) { decodeAttachmentPreview(attachment.base64Data) }
+        else null
     }
     if (bitmap != null) {
         Image(
@@ -138,7 +126,7 @@ fun VaultAttachmentPreview(attachment: VaultAttachment, modifier: Modifier = Mod
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
-                    if (attachment.mimeType.startsWith("image/")) Icons.Outlined.Image else Icons.AutoMirrored.Outlined.InsertDriveFile,
+                    if (isImageAttachment(attachment)) Icons.Outlined.Image else Icons.AutoMirrored.Outlined.InsertDriveFile,
                     contentDescription = null,
                     tint = Color(0xFF557FA8),
                     modifier = Modifier.size(34.dp)
@@ -193,7 +181,7 @@ fun VaultAttachmentsSection(attachments: List<VaultAttachment>, modifier: Modifi
             ) {
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xFFE8F1FC)), contentAlignment = Alignment.Center) {
                     Icon(
-                        if (attachment.mimeType.startsWith("image/")) Icons.Outlined.Image else Icons.AutoMirrored.Outlined.InsertDriveFile,
+                        if (isImageAttachment(attachment)) Icons.Outlined.Image else Icons.AutoMirrored.Outlined.InsertDriveFile,
                         contentDescription = null,
                         tint = Color(0xFF557FA8),
                         modifier = Modifier.size(21.dp)
@@ -203,9 +191,9 @@ fun VaultAttachmentsSection(attachments: List<VaultAttachment>, modifier: Modifi
                     Text(attachment.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
                     Text("${attachment.mimeType.substringAfter('/').uppercase()} · ${formatAttachmentSize(attachment.byteCount)}", color = LockrColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
                 }
-                if (attachment.mimeType.startsWith("image/") || isPdfAttachment(attachment)) {
+                if (isImageAttachment(attachment) || isPdfAttachment(attachment) || isTextAttachment(attachment)) {
                     IconButton(onClick = { preview = attachment }) {
-                        Icon(if (attachment.mimeType.startsWith("image/")) Icons.Outlined.Image else Icons.AutoMirrored.Outlined.InsertDriveFile, contentDescription = "Preview ${attachment.name}", tint = LockrColors.TextPrimary)
+                        Icon(if (isImageAttachment(attachment)) Icons.Outlined.Image else Icons.AutoMirrored.Outlined.InsertDriveFile, contentDescription = "Preview ${attachment.name}", tint = LockrColors.TextPrimary)
                     }
                 }
                 IconButton(onClick = {
@@ -236,19 +224,6 @@ fun VaultAttachmentsSection(attachments: List<VaultAttachment>, modifier: Modifi
 
 @Composable
 private fun AttachmentPreviewDialog(attachment: VaultAttachment, onClose: () -> Unit, onExport: () -> Unit) {
-    var bitmap by remember(attachment.base64Data) { mutableStateOf<Bitmap?>(null) }
-    var failed by remember(attachment.base64Data) { mutableStateOf(false) }
-    var pageIndex by remember(attachment.base64Data) { mutableStateOf(0) }
-    var pageCount by remember(attachment.base64Data) { mutableStateOf(0) }
-    val context = LocalContext.current
-    val isPdf = isPdfAttachment(attachment)
-    LaunchedEffect(attachment.base64Data, pageIndex) {
-        val result = if (isPdf) renderPdfAttachmentPage(attachment, pageIndex, context)
-        else withContext(Dispatchers.IO) { decodeAttachmentPreview(attachment.base64Data) to 1 }
-        bitmap = result.first
-        pageCount = result.second
-        failed = bitmap == null
-    }
     Dialog(onDismissRequest = onClose) {
         Surface(shape = RoundedCornerShape(25.dp), color = Color(0xFFFAFBFD)) {
             Column(Modifier.fillMaxWidth().padding(14.dp)) {
@@ -256,25 +231,7 @@ private fun AttachmentPreviewDialog(attachment: VaultAttachment, onClose: () -> 
                     Text(attachment.name, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
                     IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, contentDescription = "Close preview") }
                 }
-                Box(Modifier.fillMaxWidth().height(430.dp), contentAlignment = Alignment.Center) {
-                    when {
-                        bitmap != null -> androidx.compose.foundation.Image(
-                            bitmap!!.asImageBitmap(),
-                            contentDescription = attachment.name,
-                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
-                            contentScale = ContentScale.Fit
-                        )
-                        failed -> Text("This image could not be previewed. You can still save a copy.", color = LockrColors.TextSecondary)
-                        else -> Text("Opening image…", color = LockrColors.TextSecondary)
-                    }
-                }
-                if (isPdf && pageCount > 1) {
-                    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween) {
-                        TextButton(onClick = { pageIndex = (pageIndex - 1).coerceAtLeast(0) }, enabled = pageIndex > 0) { Text("Previous") }
-                        Text("Page ${pageIndex + 1} of $pageCount", style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
-                        TextButton(onClick = { pageIndex = (pageIndex + 1).coerceAtMost(pageCount - 1) }, enabled = pageIndex < pageCount - 1) { Text("Next") }
-                    }
-                }
+                DocumentPreviewCanvas(attachment, Modifier.fillMaxWidth().height(430.dp))
                 TextButton(onClick = onExport, modifier = Modifier.align(Alignment.End)) { Text("Save a copy") }
             }
         }
@@ -282,7 +239,7 @@ private fun AttachmentPreviewDialog(attachment: VaultAttachment, onClose: () -> 
 }
 
 internal fun isPdfAttachment(attachment: VaultAttachment): Boolean =
-    attachment.mimeType.equals("application/pdf", ignoreCase = true) || attachment.name.endsWith(".pdf", ignoreCase = true)
+    attachmentMime(attachment) == "application/pdf"
 
 internal suspend fun renderPdfAttachmentPage(attachment: VaultAttachment, requestedPage: Int, context: Context): Pair<Bitmap?, Int> = withContext(Dispatchers.IO) {
     val bytes = try { Base64.decode(attachment.base64Data, Base64.DEFAULT) } catch (_: IllegalArgumentException) { return@withContext null to 0 }
@@ -322,9 +279,13 @@ internal fun decodeAttachmentPreview(base64Data: String, maxWidth: Int = 1600, m
 
 internal fun decodeImagePreview(bytes: ByteArray, maxWidth: Int, maxHeight: Int,
                                 config: Bitmap.Config = Bitmap.Config.RGB_565): Bitmap? {
+    if (android.os.Build.VERSION.SDK_INT >= 28 && detectedImageOrPdfMime(bytes) in setOf("image/heif", "image/avif")) {
+        return decodeModernImagePreview(bytes, maxWidth, maxHeight)
+    }
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return if (android.os.Build.VERSION.SDK_INT >= 28)
+        decodeModernImagePreview(bytes, maxWidth, maxHeight) else null
     val orientation = runCatching {
         androidx.exifinterface.media.ExifInterface(java.io.ByteArrayInputStream(bytes)).getAttributeInt(
             androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, 1)
@@ -356,4 +317,23 @@ fun formatAttachmentSize(byteCount: Long): String = when {
     byteCount >= 1024L * 1024L -> "${byteCount / (1024L * 1024L)} MB"
     byteCount >= 1024L -> "${byteCount / 1024L} KB"
     else -> "$byteCount B"
+}
+
+/** ImageDecoder understands modern containers and applies their orientation itself. */
+@androidx.annotation.RequiresApi(28)
+private fun decodeModernImagePreview(bytes: ByteArray, maxWidth: Int, maxHeight: Int): Bitmap? = try {
+    android.graphics.ImageDecoder.decodeBitmap(android.graphics.ImageDecoder.createSource(java.nio.ByteBuffer.wrap(bytes))) { decoder, info, _ ->
+        val sample = imageSampleSize(info.size.width, info.size.height, maxWidth, maxHeight)
+        decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+        decoder.setTargetSampleSize(sample)
+    }
+} catch (_: Exception) { null }
+
+/** Keep unsupported image originals in ZIP exports instead of trying to render them into a PDF. */
+internal fun canRenderImageAttachment(attachment: VaultAttachment): Boolean = when (attachmentMime(attachment)) {
+    "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp" -> true
+    "image/heif", "image/heic" -> android.os.Build.VERSION.SDK_INT >= 29 &&
+        android.graphics.ImageDecoder.isMimeTypeSupported("image/heif")
+    "image/avif" -> android.os.Build.VERSION.SDK_INT >= 31
+    else -> false
 }

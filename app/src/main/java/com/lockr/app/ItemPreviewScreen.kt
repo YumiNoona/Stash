@@ -203,9 +203,9 @@ fun ItemPreviewScreen(
             }
             Text("${item.attachments.size} ${if (item.attachments.size == 1) "file" else "files"} · Send a copy outside Stash",
                 style = MaterialTheme.typography.bodySmall, color = LockrColors.TextSecondary)
-            if (item.attachments.getOrNull(pager.currentPage)?.let {
-                it.mimeType.startsWith("image/") || it.mimeType == "application/pdf" || it.name.endsWith(".pdf", true)
-            } == true) OutlinedButton(onClick = { dialog = "redact" }, modifier = Modifier.fillMaxWidth().height(50.dp),
+            if (item.attachments.isNotEmpty() && item.attachments.all {
+                isImageAttachment(it) || isPdfAttachment(it)
+            }) OutlinedButton(onClick = { dialog = "redact" }, modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(18.dp)) {
                 Icon(Icons.Outlined.BorderColor, null, Modifier.size(19.dp)); Spacer(Modifier.width(9.dp)); Text("Redact text across document")
             }
@@ -280,7 +280,9 @@ internal fun DocumentPreviewCanvas(attachment: VaultAttachment, modifier: Modifi
                                    onTap: (() -> Unit)? = null, onPageInteraction: () -> Unit = {}) {
     val currentTap by rememberUpdatedState(onTap)
     val context = LocalContext.current
-    val pdf = attachment.mimeType.equals("application/pdf", true) || attachment.name.endsWith(".pdf", true)
+    val pdf = isPdfAttachment(attachment)
+    val textFile = isTextAttachment(attachment)
+    var textPreview by remember(attachment.base64Data) { mutableStateOf<String?>(null) }
     var pageIndex by remember(attachment.base64Data) { mutableIntStateOf(0) }
     var pageCount by remember(attachment.base64Data) { mutableIntStateOf(0) }
     var bitmap by remember(attachment.base64Data) { mutableStateOf<Bitmap?>(null) }
@@ -295,7 +297,17 @@ internal fun DocumentPreviewCanvas(attachment: VaultAttachment, modifier: Modifi
     LaunchedEffect(attachment.base64Data, pageIndex) {
         failed = false
         bitmap = null
+        textPreview = null
         try {
+            if (textFile) {
+                textPreview = withContext(Dispatchers.IO) {
+                    val bytes = android.util.Base64.decode(attachment.base64Data, android.util.Base64.DEFAULT)
+                    try { decodeTextPreview(bytes) } finally { bytes.fill(0) }
+                }
+                pageCount = 1
+                return@LaunchedEffect
+            }
+            if (!pdf && !isImageAttachment(attachment)) { failed = true; return@LaunchedEffect }
             val result = if (pdf) renderPdfAttachmentPage(attachment, pageIndex, context)
                 else withContext(Dispatchers.IO) { decodeAttachmentPreview(attachment.base64Data, 1800, 2400) to 1 }
             bitmap = result.first; pageCount = result.second; failed = bitmap == null
@@ -310,13 +322,24 @@ internal fun DocumentPreviewCanvas(attachment: VaultAttachment, modifier: Modifi
         viewport = it
         pan = boundedDocumentPan(pan, zoom, it, bitmap)
     }, contentAlignment = Alignment.Center) {
-        if (bitmap != null) Image(bitmap!!.asImageBitmap(), attachment.name,
+        if (textPreview != null) {
+            Text(textPreview!!.ifEmpty { "Empty text file" }, color = LockrColors.TextPrimary,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 100.dp))
+        } else if (bitmap != null) Image(bitmap!!.asImageBitmap(), attachment.name,
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxSize().then(if (gesturesEnabled) Modifier.transformable(transform, canPan = { zoom > 1f }) else Modifier).graphicsLayer {
                 scaleX = zoom; scaleY = zoom; translationX = pan.x; translationY = pan.y
             })
-        else Text(if (failed) "This file could not be previewed." else "Opening document…",
-            color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        else Column(Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (failed) Text(attachment.name, color = LockrColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(if (failed) previewUnavailableMessage(attachment) else "Opening document…",
+                color = LockrColors.TextSecondary, style = MaterialTheme.typography.bodyMedium,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
         if (showPageControls && pdf && pageCount > 1) PreviewGlass(
             Modifier.align(Alignment.BottomCenter).padding(bottom = 112.dp), RoundedCornerShape(22.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

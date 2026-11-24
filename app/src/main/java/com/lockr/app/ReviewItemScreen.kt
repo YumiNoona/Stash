@@ -128,7 +128,7 @@ fun ReviewItemScreen(
                             Icon(Icons.Outlined.Add, "Add more pages", tint = LockrColors.Accent)
                         }
                         IconButton(onClick = { correctIndex = pageState.currentPage.coerceIn(0, attachments.lastIndex) },
-                            enabled = attachments[pageState.currentPage.coerceIn(0, attachments.lastIndex)].mimeType.startsWith("image/")) {
+                            enabled = isImageAttachment(attachments[pageState.currentPage.coerceIn(0, attachments.lastIndex)])) {
                             Icon(Icons.Outlined.Crop, "Correct page edges", tint = LockrColors.Accent)
                         }
                         IconButton(onClick = { onRemovePage(pageState.currentPage.coerceIn(0, attachments.lastIndex)) },

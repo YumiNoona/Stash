@@ -53,7 +53,7 @@ fun VaultVisualCard(item: VaultItem, onClick: () -> Unit, modifier: Modifier = M
             ) {
                 val first = item.attachments.firstOrNull()
                 if (first != null && item.category != VaultCategory.PASSWORD &&
-                    (first.mimeType.startsWith("image/") || first.mimeType == "application/pdf")) {
+                    (isImageAttachment(first) || isPdfAttachment(first))) {
                     VaultAttachmentPreview(first, Modifier.fillMaxSize())
                 } else Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(42.dp))
             }

@@ -83,7 +83,7 @@ fun AddSourceSheet(
         when (stage) {
             AddStage.CHOOSE -> {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    VaultTypeCard("Documents", "Images · PDFs · text", Icons.Outlined.Description,
+                    VaultTypeCard("Documents", "Images · PDFs · files", Icons.Outlined.Description,
                         listOf(LockrColors.Surface, Color(0xFFD9F1FF), Color(0xFFE9F9F4)),
                         Color(0xFF2F79A8), Color(0xFFA4EFE0), listOf(Color(0xFF234C52), Color(0xFF2B4058), Color(0xFF394561)), Modifier.weight(1f)) { onStageChange(AddStage.DOCUMENT) }
                     VaultTypeCard("Cards", "Scan · NFC · manual", Icons.Outlined.CreditCard,

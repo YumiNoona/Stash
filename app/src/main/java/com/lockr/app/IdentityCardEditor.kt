@@ -177,7 +177,7 @@ fun IdentityCardEditor(originalAttachments: List<VaultAttachment>, onBack: () ->
                                 Text(role.label,style=MaterialTheme.typography.titleSmall)
                                 Text(if(assets[role]==null) "Crop from an original scan" else "From your original",style=MaterialTheme.typography.bodySmall,color=LockrColors.TextSecondary)
                             }
-                            TextButton(enabled=!blocked && sources.any { it.mimeType.startsWith("image/") || isPdfAttachment(it) },onClick={chooseRole=role}) { Text(if(assets[role]==null) "Add" else "Change") }
+                            TextButton(enabled=!blocked && sources.any { isImageAttachment(it) || isPdfAttachment(it) },onClick={chooseRole=role}) { Text(if(assets[role]==null) "Add" else "Change") }
                             if(assets[role]!=null) TextButton(enabled=!blocked,onClick={assets=assets-role}) { Text("Clear") }
                         }
                     }
@@ -204,7 +204,7 @@ fun IdentityCardEditor(originalAttachments: List<VaultAttachment>, onBack: () ->
     }
     chooseRole?.let { role -> AlertDialog(onDismissRequest={chooseRole=null},title={Text("Choose original for ${role.label.replaceFirstChar(Char::lowercase)}")},text={
         Column(Modifier.heightIn(max=340.dp).verticalScroll(rememberScrollState())) {
-            sources.filter { it.mimeType.startsWith("image/") || isPdfAttachment(it) }.forEach { file -> TextButton(onClick={cropRole=role;cropSource=file;chooseRole=null}) { Text(file.name) } }
+            sources.filter { isImageAttachment(it) || isPdfAttachment(it) }.forEach { file -> TextButton(onClick={cropRole=role;cropSource=file;chooseRole=null}) { Text(file.name) } }
         }
     },confirmButton={TextButton(onClick={chooseRole=null}) {Text("Cancel")}}) }
     val source=cropSource;val role=cropRole

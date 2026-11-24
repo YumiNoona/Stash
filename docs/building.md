@@ -33,9 +33,9 @@ Play App Bundle: `app/build/outputs/bundle/release/app-release.aab`. The APK at 
 
 Verify it with Android SDK `apksigner verify --print-certs`, and confirm that `aapt dump badging` does not contain `application-debuggable`. Publish the release APK with a SHA-256 checksum, never a keystore, password file or debug APK.
 
-The refreshed version 1.0.0 uses internal code 14. Version 1.0.1 uses code 15. Future releases must keep increasing this code. Keep the same `com.lockr.app` package ID and production signing key for compatible updates.
+The refreshed version 1.0.0 uses internal code 14. Version 1.0.1 uses code 15; version 1.0.2 uses code 16. Future releases must keep increasing this code. Keep the same `com.lockr.app` package ID and production signing key for compatible updates.
 
-Version 1.0.1 is a fresh production build signed with certificate SHA-256 `fac3948fe1fd202f198b6a7cdecbdcb92e95704a876cfe73d5a121b1cc07534b`. Keep this key for future APK updates.
+Versions 1.0.1 and later are signed with certificate SHA-256 `fac3948fe1fd202f198b6a7cdecbdcb92e95704a876cfe73d5a121b1cc07534b`. Keep this key for future APK updates.
 
 The refreshed v1.0.0 GitHub APK uses certificate `06fcae872c12e2778b0c25a488f37bea9e4e1f8c8704c124f707443c3ea3a366`. **Version 1.0.1 cannot update that APK in place.** Export and verify a portable encrypted backup before uninstalling that version, then restore it after the fresh installation. Uninstalling deletes the local vault and its device key. The original production v1.0.0, code 13, used the same key as v1.0.1 and can update normally.
 

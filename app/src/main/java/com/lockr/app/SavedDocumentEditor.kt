@@ -75,7 +75,7 @@ fun DocumentPagesDialog(attachments: List<VaultAttachment>, onDismiss: () -> Uni
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(enabled = !busy && remainingDocumentSlots(pages.size) > 0, onClick = {
-                    busy = true; picker.launch(arrayOf("image/*", "application/pdf"))
+                    busy = true; picker.launch(arrayOf("*/*"))
                 }, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.AddPhotoAlternate, null, Modifier.size(18.dp)); Text(" Add files") }
                 OutlinedButton(enabled = !busy && remainingDocumentSlots(pages.size) > 0, onClick = { camera = true }, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Outlined.CameraAlt, null, Modifier.size(18.dp)); Text(" Scan")
@@ -90,8 +90,8 @@ fun DocumentPagesDialog(attachments: List<VaultAttachment>, onDismiss: () -> Uni
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                                 IconButton(enabled = !busy && index > 0, onClick = { change(pages.toMutableList().apply { add(index - 1, removeAt(index)) }) }) { Icon(Icons.Outlined.ArrowUpward, "Move page ${index + 1} up") }
                                 IconButton(enabled = !busy && index < pages.lastIndex, onClick = { change(pages.toMutableList().apply { add(index + 1, removeAt(index)) }) }) { Icon(Icons.Outlined.ArrowDownward, "Move page ${index + 1} down") }
-                                IconButton(enabled = !busy && page.mimeType.startsWith("image/"), onClick = { correctIndex = index }) { Icon(Icons.Outlined.Crop, "Correct edges of page ${index + 1}") }
-                                IconButton(enabled = !busy && page.mimeType.startsWith("image/"), onClick = {
+                                IconButton(enabled = !busy && isImageAttachment(page), onClick = { correctIndex = index }) { Icon(Icons.Outlined.Crop, "Correct edges of page ${index + 1}") }
+                                IconButton(enabled = !busy && isImageAttachment(page), onClick = {
                                     busy = true
                                     scope.launch {
                                         try {

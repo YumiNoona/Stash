@@ -18,8 +18,9 @@ android {
         applicationId = "com.lockr.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.0.1"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        versionCode = 16
+        versionName = "1.0.2"
     }
 
     signingConfigs {
@@ -72,6 +73,8 @@ dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("androidx.exifinterface:exifinterface:1.4.2")
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
 

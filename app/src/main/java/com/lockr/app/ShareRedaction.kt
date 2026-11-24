@@ -62,7 +62,7 @@ private suspend fun readRedactableLines(bitmap: Bitmap): List<RedactableLine> {
 }
 
 private suspend fun redactionBitmap(context: Context, attachment: VaultAttachment, page: Int): Pair<Bitmap?, Int> {
-    return if (attachment.mimeType == "application/pdf" || attachment.name.endsWith(".pdf", true))
+    return if (isPdfAttachment(attachment))
         renderPdfAttachmentPage(attachment, page, context)
     else withContext(Dispatchers.IO) { decodeAttachmentPreview(attachment.base64Data, 2400, 3200) to 1 }
 }
@@ -103,12 +103,12 @@ fun ShareRedactionSheet(attachments: List<VaultAttachment>, initialAttachment: I
     LaunchedEffect(attachments) {
         try {
             val counts = attachments.map { attachment ->
-                if (attachment.mimeType == "application/pdf" || attachment.name.endsWith(".pdf", true)) {
+                if (isPdfAttachment(attachment)) {
                     val (first, count) = redactionBitmap(context, attachment, 0)
                     first?.recycle()
                     count
                 } else {
-                    require(attachment.mimeType.startsWith("image/")) { "This document contains a file that cannot be redacted." }
+                    require(isImageAttachment(attachment)) { "This document contains a file that cannot be redacted." }
                     1
                 }
             }
@@ -191,7 +191,7 @@ private suspend fun createRedactedCopy(context: Context, attachments: List<Vault
     selections: Map<Int, Set<Int>>, lineCache: Map<Int, List<RedactableLine>>): File {
     require(pages.isNotEmpty() && pages.size <= 100)
     val directory = File(context.cacheDir, "shares").apply { mkdirs() }
-    val pdf = pages.size > 1 || attachments.first().mimeType == "application/pdf" || attachments.first().name.endsWith(".pdf", true)
+    val pdf = pages.size > 1 || isPdfAttachment(attachments.first())
     val target = File(directory, "redacted-${System.currentTimeMillis()}.${if (pdf) "pdf" else "png"}")
     suspend fun render(index: Int): Bitmap {
         val ref = pages[index]

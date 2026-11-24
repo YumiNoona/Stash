@@ -123,7 +123,7 @@ private fun validateCardArtMedia(attachment: VaultAttachment) {
             require(reader.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()?.let { it > 0 } == true)
         } finally { reader.release() }
     } else {
-        require(attachment.mimeType.startsWith("image/"))
+        require(isImageAttachment(attachment))
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         require(bounds.outWidth > 0 && bounds.outHeight > 0 && bounds.outWidth.toLong() * bounds.outHeight <= 16_000_000)

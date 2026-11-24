@@ -1,7 +1,6 @@
 package com.lockr.app
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import android.util.Base64
@@ -9,7 +8,7 @@ import java.io.OutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-private fun imageDocument(items: List<VaultItem>) = items.size == 1 && items.first().attachments.size > 1 && items.first().attachments.all { it.mimeType.startsWith("image/") }
+private fun imageDocument(items: List<VaultItem>) = items.size == 1 && items.first().attachments.size > 1 && items.first().attachments.all { canRenderImageAttachment(it) }
 fun documentDownloadName(items: List<VaultItem>): String = when {
     imageDocument(items) -> items.first().title.substringBeforeLast('.') + ".pdf"
     items.size == 1 && items.first().attachments.size == 1 -> items.first().attachments.first().name

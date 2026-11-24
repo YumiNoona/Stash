@@ -20,7 +20,7 @@ fun shareVaultAttachment(context: Context, attachment: VaultAttachment) {
         try { target.writeBytes(bytes) } finally { bytes.fill(0) }
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", target)
         val send = Intent(Intent.ACTION_SEND).apply {
-            type = attachment.mimeType
+            type = attachmentMime(attachment)
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_TITLE, attachment.name)
             clipData = ClipData.newRawUri(attachment.name, uri)
