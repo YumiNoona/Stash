@@ -12,3 +12,6 @@ gradlew text eol=lf
 *.png binary
 *.webp binary
 *.ttf binary
+
+# Import/export fixtures must remain byte-identical on every checkout.
+app/src/androidTest/assets/formats/* -text
